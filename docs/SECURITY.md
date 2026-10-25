@@ -1,0 +1,15 @@
+# Security model
+
+- A high-entropy shared phrase (at least 128 bits of randomness) is compared against an operator-provided SHA-256 digest with constant-time digest comparison. This design requires a random phrase; a memorable human password would require a slow password KDF and revised CPU/plan assessment. No phrase, digest, signing key, or PDF password is checked in.
+- HMAC-SHA-256 session tokens include purpose, issued/expiry times, and a fresh random nonce. Login always creates a new token. Tokens expire after four hours. Rotating `SESSION_SECRET` revokes all sessions; the phrase and signing secret must be rotated together when access is withdrawn.
+- Production uses Secure, HttpOnly, SameSite=Strict, host-only `__Host-` cookies. A separate localhost-only mode is set by the synthetic preview. Production HTTP and placeholder origins are refused.
+- Login needs an expiring signed anti-CSRF token bound to an HttpOnly cookie, an exact Origin, and compatible Fetch Metadata. Logout needs the session nonce and exact Origin. Form bodies are bounded to 4 KiB; duplicate fields and cookies are rejected. Redirect destinations are fixed internal paths.
+- IP and aggregate rate-limit bindings run before phrase checks. IP keys are hashed and never logged. The thresholds are 5 attempts per IP and 60 overall per 60 seconds **per Cloudflare location**. Native limits are approximate and cannot stop a global distributed attacker by themselves. Random phrase entropy is essential. Shared networks may see temporary rate-limit errors.
+- Every material request authenticates before looking up metadata, including HEAD, Range and conditional requests. Only manifest filenames and fixed release prefixes reach R2. Multi-range is rejected; one range is streamed with validated bounds. R2 metadata cannot override cache or disposition headers.
+- Every application response has `private, no-store`, both CDN no-store headers, and `Vary: Cookie`; the code never calls Cache API. Review zone cache rules before activation and verify at the actual public edge. Browser/service-worker/shared CDN overrides outside this project are not covered by local tests.
+- CSP permits only same-origin stylesheet and progressive-enhancement script, disallows framing and base changes, and restricts form destinations. No external scripts or analytics.
+- Missing secrets, invalid origins, missing bindings and exceptions return unavailable responses. Credentials, cookies, request bodies and material keys are never logged by application code. Wrangler observability is disabled; review account-level logs separately before activation.
+
+A shared-phrase service cannot identify individual recipients or prevent authorized readers from copying files. Logout clears that browser cookie; a copied stateless token remains valid until expiry or key rotation. PDF open-password encryption protects unopened distribution copies; it is not DRM. Keep useful copy and print permissions enabled.
+
+No real material, encryption, credential creation, R2 provisioning, or deployment has been performed by the prototype.

@@ -1,0 +1,57 @@
+name: Verify and optionally deploy
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy this verified commit (secure setup must already be approved)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: course-library-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+  deploy:
+    if: inputs.deploy
+    needs: verify
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+      - run: npm ci --no-audit --no-fund
+      - name: Refuse deployment before approved secure setup
+        env:
+          SETUP_VERIFIED: ${{ vars.CLOUDFLARE_SETUP_VERIFIED }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test "$SETUP_VERIFIED" = true
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node -e 'const fs=require("fs");const text=fs.readFileSync("wrangler.jsonc","utf8");if(text.includes("setup-required")||text.includes("\"local\""))process.exit(1)'
+      - name: Deploy the same verified commit
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/wrangler.mjs deploy
