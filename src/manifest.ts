@@ -4,9 +4,14 @@ export const release = {
   date: '2026-10-25',
   synthetic: true,
   prefix: 'releases/taskapp/0.1.0-synthetic/',
+  verification: {
+    delivery: 'MacのローカルWorkerとChromiumで配布機能を確認済みです。',
+    materials: '教材コードはダミーのため、実教材の動作は未検証です。',
+    platforms: 'Windows / WSLと実教材のPDFリーダー互換性は未検証です。',
+  },
 } as const;
 
-export type Release = { schemaVersion: number; version: string; date: string; synthetic: boolean; prefix: string };
+export type Release = { schemaVersion: number; version: string; date: string; synthetic: boolean; prefix: string; verification: { delivery: string; materials: string; platforms: string } };
 export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'code' };
 export type Collection = { id: string; title: string; description: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; materials: Material[]; cover: string; mark: string };
 export const materials: Material[] = [
@@ -47,3 +52,5 @@ export const collections: Collection[] = [
   { id: 'taskapp', title: 'Taskapp講座', description: '小さなアプリを作りながら、実装の流れを身につける。', status: 'preview', version: release.version, release, materials, cover: 'Build your\nfirst app.', mark: '{ }' },
   { id: 'typescript', title: 'TypeScript講座', description: '教材と配布対象を確認しています。公開までしばらくお待ちください。', status: 'pending', version: null, release: null, materials: [], cover: 'Make types\nyour ally.', mark: 'TS' },
 ];
+
+export const collectionStatusLabel = (status: Collection['status']): string => ({ pending: '準備中', preview: '開発プレビュー', published: '公開中' })[status];

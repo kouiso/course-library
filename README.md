@@ -10,6 +10,7 @@ Requires Node.js 22.23+ and npm.
 
 ```sh
 npm ci
+npm run hooks:install
 npm run check
 npm run dev
 ```
@@ -41,7 +42,25 @@ MyASP stays unchanged. No API integration, member accounts, payments, or LMS. Th
 
 Verified locally on macOS with Node 22.23.4: strict type checking, Worker dry-run bundle, and real workerd/Miniflare tests with local R2 and native rate-limit bindings. These tests cover anonymous direct downloads (including HEAD and Range), invalid/expired authentication, cache isolation, filename validation, CSRF, brute-force limits, and byte-for-byte downloads of all 40 synthetic files.
 
-Windows and WSL are **pending**. Real course code, PDF password compatibility, production Cloudflare, and visual browser behaviour are **not yet verified**. Local browser automation was unavailable during initial implementation; no screenshot is presented as verified evidence.
+Local Chromium visual checks also cover desktop (1440×1000), mobile viewport (390×844), keyboard focus, wrong-phrase errors, submitting feedback, attachment bytes, missing downloads, pending courses, repeated login/logout and anonymous HEAD/Range denial. Screenshots below contain only synthetic materials. These are Chromium viewport checks on a Mac, not physical-device certification.
+
+![Desktop synthetic course catalogue](docs/screenshots/desktop-catalogue.png)
+
+<img src="docs/screenshots/mobile-catalogue.png" alt="Mobile synthetic course catalogue" width="300">
+
+Windows and WSL are **pending**. Real course code, PDF password compatibility, Safari, physical mobile devices, and production Cloudflare are **not yet verified**.
+
+`npm run check` includes the public staged-file/history scan. The local pre-push hook runs it again before publication; install it with `npm run hooks:install`. Pattern scanning supplements manual review and cannot prove that arbitrary content is safe to publish.
+
+Optional browser reproduction uses an already-installed official Playwright package and Chromium executable:
+
+```sh
+COURSE_PLAYWRIGHT_PACKAGE=/path/to/installed/playwright \
+COURSE_BROWSER_EXECUTABLE=/path/to/installed/chromium \
+npm run test:browser
+```
+
+Run `npm run build` first. This opt-in test starts one loopback test runtime, a new temporary BrowserServer, one context and one page, and closes its own handles in `finally`. It never downloads browsers or opens personal browser profiles. Screenshots and downloaded synthetic fixtures stay in ignored `artifacts/visual/`.
 
 ## Delivery controls
 

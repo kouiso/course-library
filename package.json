@@ -8,9 +8,11 @@
     "typecheck": "tsc --noEmit",
     "build": "node scripts/wrangler.mjs deploy --dry-run --outdir dist",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
-    "check": "npm run lint && npm run typecheck && npm run build && npm test",
+    "check": "npm run scan:public && npm run lint && npm run typecheck && npm run build && npm test",
     "lint": "node scripts/lint.mjs",
-    "scan:public": "node scripts/public-scan.mjs"
+    "scan:public": "node scripts/public-scan.mjs",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "test:browser": "node scripts/browser-check.mjs"
   },
   "keywords": [],
   "devDependencies": {

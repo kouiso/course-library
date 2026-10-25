@@ -165,7 +165,7 @@ test('release manifest validates all filenames and rejects unsafe filenames', as
 test('security headers and mobile semantic page structure are present', async () => {
   const entry = await req('/'), html = await entry.text();
   assert.match(html, /lang="ja"/); assert.match(html, /name="viewport"/); assert.match(html, /<label for="phrase">/);
-  assert.match(entry.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/); assert.equal(entry.headers.get('Referrer-Policy'), 'no-referrer');
+  assert.match(entry.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/); assert.equal(entry.headers.get('Referrer-Policy'), 'same-origin');
   assert.equal(entry.headers.get('Strict-Transport-Security'), 'max-age=31536000');
   noCache(entry);
 });
@@ -199,4 +199,24 @@ test('missing release file has an authenticated empty state and no metadata leak
     assert.equal(res.status, 404); noCache(res); assert.match(await res.text(), /準備中/);
     assert.equal((await req('/download/taskapp/starter')).status, 401);
   } finally { await bucket.put(key, fixtures().get('taskapp-starter.zip')); }
+});
+test('pending, preview and published labels are distinct; verification copy belongs to the release', async () => {
+  const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const manifestUrl = 'data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64');
+  const manifest = await import(manifestUrl);
+  const viewSource = stripTypeScriptTypes(await readFile(new URL('../src/views.ts', import.meta.url), 'utf8')).replace("from './manifest'", `from ${JSON.stringify(manifestUrl)}`);
+  const views = await import('data:text/javascript;base64,' + Buffer.from(viewSource).toString('base64'));
+  assert.deepEqual(['pending', 'preview', 'published'].map(manifest.collectionStatusLabel), ['準備中', '開発プレビュー', '公開中']);
+  const course = manifest.collections[0];
+  const originalStatus = course.status, originalRelease = course.release;
+  try {
+    course.status = 'published';
+    course.release = { ...course.release, synthetic: false, verification: { delivery: '配送の確認記録A', materials: '教材の確認記録B', platforms: '環境の確認記録C' } };
+    const catalogue = views.catalogue('synthetic-csrf');
+    assert.match(catalogue, />公開中</); assert.doesNotMatch(catalogue, /開発プレビュー/);
+    const html = views.library('synthetic-csrf', course);
+    for (const value of ['配送の確認記録A', '教材の確認記録B', '環境の確認記録C']) assert.ok(html.includes(value));
+    assert.doesNotMatch(html, /教材コードはダミー|開発プレビュー：/);
+    assert.doesNotMatch(views.guide(), /教材コードはダミー|配布サイトはMac/);
+  } finally { course.status = originalStatus; course.release = originalRelease; }
 });
