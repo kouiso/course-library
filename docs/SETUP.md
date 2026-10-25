@@ -18,22 +18,32 @@
 | セッション署名鍵 | 有効期限付きCookieを署名する。32ランダムバイト以上 | Workerの`SESSION_SECRET`と利用者の秘密管理先 |
 | PDFの開封パスワード | 確認済みの同一配布版のPDFを開く | 利用者の秘密管理先と、別途承認された読者向け案内。WorkerやGitHubへ保存する必要はない |
 | PDFの所有者パスワード | 暗号化コピーの管理。開封用とは別のランダム値 | 利用者の秘密管理先のみ |
-| Cloudflareデプロイトークン | 検証済みコードをCIから配布する | `kouiso/course-library`の`production`環境シークレット`CLOUDFLARE_API_TOKEN`。アカウントIDは`CLOUDFLARE_ACCOUNT_ID`へ |
+| Cloudflareデプロイトークン（継続CDを別途許可した場合だけ） | 検証済みコードをGitHubから自動配布する | `kouiso/course-library`の`production`環境シークレット。初回の手動公開には新規トークンを前提としない |
 
 合言葉、PDF用パスワード、署名鍵、デプロイトークンは使い回しません。PDFの印刷やコピーは利用可能なままにします。
 
-## 承認後の準備をまとめる
+## 初回は既存接続で手動公開する
 
-最小権限にするため、必要な準備を1回の承認対象として提示します。ただし実行時に、対象アカウント、Worker名、バケット名、秘密管理先、トークン権限と保存先を明記します。
+既存のCloudflare接続は、Workerのアップロード・版作成・デプロイ、R2バケット作成・オブジェクトアップロードに対応するAPIを呼べます。APIの対応と実アカウントでの書き込み許可は別なので、変更による権限テストは行いません。初回公開のために新規の継続用APIトークンを先に作る必要はありません。
 
-1. 既存の認証を使って、**未デプロイ・非公開のWorkerメタデータ**と**空の私有R2バケット**を作成する。Workerの`workers.dev`とプレビューを無効のままにする。R2の公開アクセス、公開カスタムドメイン、CORSは有効にしない。
-2. 作成済みの新Workerだけにスコープを限定した、期限付きの**Individual Worker Editor**デプロイトークンを作成する。継続用CIにWorkers Admin、他Worker、R2オブジェクト操作、DNS、Billing、メンバー管理の権限を与えない。R2のランタイムアクセスはWorkerバインディングで行う。古い汎用テンプレートへ勝手に権限を広げない。
-3. 利用者が指定した秘密管理先で値を用意し、GitHubの`production`環境にCI用トークンとアカウントIDだけを保存する。秘密値の非表示受け渡しが使えない場合は、本人による専用シークレット入力を最小限の操作として依頼する。別タスクの認証要求を再送・流用しない。
-4. Workerの合言葉ダイジェストと署名鍵は、**別途許可された未デプロイの版アップロード**で安全な`--secrets-file`入力を使うか、最初の承認済みデプロイと同時に設定する。秘密ファイルが必要なら公開リポジトリの外に、所有者だけが読める一時ファイルとして作り、処理後に自身の一時ファイルだけを片付ける。
+1. 対象アカウント・新Worker・新しい私有R2を指定する。新しい権限や課金を発生させずに実行できること、契約と利用上限を先に確認する。既存接続で拒否された操作は、勝手に権限を増やさず報告する。
+2. アプリ用の秘密値の保存先を、対象WorkerのSecret型バインディング`ACCESS_PHRASE_SHA256`と`SESSION_SECRET`として確定する。合言葉の元の値や保管用コピーは、利用者が指定した既存の秘密管理先で扱う。
+3. 秘密値の入力は、所有者がCloudflareの対象Workerの **Settings → Variables and Secrets → Add → Secret** へ直接入力する方法が公式に対応している。AIは変数名と対象を準備し、値はチャットで尋ねない。最後のDeployは配信開始を伴うため、その前に必要な確認を終える。
+4. ローカルの既存認証が別途確認できる場合は、非表示の対話入力や所有者だけが読める秘密ファイルによるWrangler入力も候補になる。既存コネクターにはローカル秘密ファイルを非表示のまま渡す入力欄が確認できていないため、その経路の全自動化は約束しない。実教材のローカルファイルからの大容量バイナリ転送も別途確認する。
+
+1Password CLIの設定状態は、ブラウザーやアプリの保管庫の有無を示すものではありません。既知のパスワードをチャットへ貼ってもらったり、別タスクの認証要求を再送・流用したりしません。
 
 通常の`wrangler secret put`は新しい版を**即時デプロイ**します。公開しない準備には使いません。既存の版に対する`wrangler versions secret put`や`wrangler versions upload --secrets-file`は版作成と配信開始を分けるための候補です。初回の対象Workerの状態とCLIの動作を確認してから選びます。
 
-Workerの新規作成と、作成済みWorkerへの継続デプロイは権限が異なります。新規作成に必要な一時的な既存管理権限を、継続用CIトークンに残しません。API接続の書き込み権限は読み取り成功やアカウントの管理者ロールだけでは確認できないため、拒否された場合は権限拡張せず報告します。
+## GitHubによる継続CDは別途決める
+
+GitHub ActionsはCodexのCloudflare接続をそのまま使えません。自動CDを選ぶ場合だけ、GitHubに渡す継続用認証を別の承認対象にします。現時点で新規の継続アクセス権は許可されていません。
+
+`Workers Scripts Edit`／`Workers Scripts Write`は公式のAPI権限一覧では**アカウント単位**の権限です。この古い権限を付けたトークンを「Worker名1つだけに限定できる」とは扱いません。
+
+新しいWorkers認可ドキュメントには、作成済みの個別Workerに対するEditorのAPIトークンが別の仕組みとして記載されています。ただし、このアカウントの発行画面・実際のポリシーで対象Workerだけに限定できることは未確認です。利用可能と断言せず、具体的な範囲を読み取り確認できてから提案します。利用できない場合にアカウント全体の権限へ置き換えることはありません。
+
+新規Worker作成と作成済みWorkerへの継続デプロイは権限が異なります。将来の継続用資格情報には、新規作成用のAdmin、他Worker、R2オブジェクト操作、DNS、Billing、メンバー管理の権限を含めないことを目標にします。R2のランタイムアクセスはWorkerバインディングで行います。
 
 ## 公開はさらに次の段階
 
@@ -41,4 +51,4 @@ Workerの新規作成と、作成済みWorkerへの継続デプロイは権限�
 
 PDF暗号化ツールは現在の公式版を使い、秘密値を引数に置かない方法を選びます。qpdfのJob JSON入力は候補ですが、実行環境の導入・確認と秘密管理先の準備が必要です。暗号化済みPDFに対する情報表示コマンドも、パスワードを表示する機能を避けて確認します。
 
-Sources: [Worker roles](https://developers.cloudflare.com/workers/authorization/workers/), [binding permissions](https://developers.cloudflare.com/workers/authorization/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [GitHub environment secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [qpdf Job JSON](https://qpdf.readthedocs.io/en/stable/qpdf-job.html).
+Sources: [API token permission scopes](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Worker roles](https://developers.cloudflare.com/workers/authorization/workers/), [binding permissions](https://developers.cloudflare.com/workers/authorization/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [GitHub environment secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [qpdf Job JSON](https://qpdf.readthedocs.io/en/stable/qpdf-job.html).
