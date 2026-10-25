@@ -1,5 +1,9 @@
 # Security model
 
+- This library distributes only the TypeScript survey-response gift. Taskapp is a paid product, absent from the gift catalogue and blocked on direct routes even when gift authentication is valid. Collection ID, distribution kind, audience, filenames and immutable prefixes are validated to prevent product/gift manifest mixing.
+- Local synthetic previews are allowed only on a loopback origin. Production requires a non-synthetic published release plus explicit `myaspVerified` and `distributionApproved` policy flags. Both are currently false. Valid auth does not bypass these release gates; direct GET/HEAD/Range returns unavailable without object metadata. The optional deployment job also refuses an unapproved gift release.
+- The shared phrase is not evidence that a particular person answered the survey. There is no MyASP API or per-reader identity check. The intended respondent-only invitation/phrase delivery must be confirmed in MyASP before enabling production. Do not send the phrase to all newsletter readers or reuse product credentials.
+
 - A high-entropy shared phrase (at least 128 bits of randomness) is compared against an operator-provided SHA-256 digest with constant-time digest comparison. This design requires a random phrase; a memorable human password would require a slow password KDF and revised CPU/plan assessment. No phrase, digest, signing key, or PDF password is checked in.
 - HMAC-SHA-256 session tokens include purpose, issued/expiry times, and a fresh random nonce. Login always creates a new token. Tokens expire after four hours. Rotating `SESSION_SECRET` revokes all sessions; the phrase and signing secret must be rotated together when access is withdrawn.
 - Production uses Secure, HttpOnly, SameSite=Strict, host-only `__Host-` cookies. A separate localhost-only mode is set by the synthetic preview. Production HTTP and placeholder origins are refused.

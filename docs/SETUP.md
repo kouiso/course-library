@@ -4,7 +4,7 @@
 
 ## 決めることは3つ
 
-1. **配布対象**：どの講座の、どの版をプレゼントにするか。商品フォルダーにあることだけでは無料配布の許可にはしません。
+1. **配布対象**：無料プレゼントはアンケート回答者向けTypeScript教材だけです。Taskappは販売商品なので、この無料ライブラリへ混在させません。TypeScriptの実配布版とMyASPの回答者向け案内設定を確認します。
 2. **公開先**：既存の本人アカウントに新しいWorkerと私有R2を作ります。既存の別サービス用リソースは使いません。最初は既存の`workers.dev`サブドメインを使うとDNS設定を減らせます。
 3. **秘密情報の安全な保管先**：利用者が管理する既存の秘密管理先を指定します。値をチャット、公開Git、コマンド引数、ログに貼らない方法を使います。
 
@@ -45,10 +45,12 @@ GitHub ActionsはCodexのCloudflare接続をそのまま使えません。自動
 
 新規Worker作成と作成済みWorkerへの継続デプロイは権限が異なります。将来の継続用資格情報には、新規作成用のAdmin、他Worker、R2オブジェクト操作、DNS、Billing、メンバー管理の権限を含めないことを目標にします。R2のランタイムアクセスはWorkerバインディングで行います。
 
-## 公開はさらに次の段階
+## 配布版と回答者向け導線を確認してから公開する
 
-上の準備では、アプリ配信、実教材の暗号化・アップロード、Actions実行、読者への連絡をしません。教材の対象確認と安全な配布コピー作成、実契約・上限確認、同一コミットの検証が揃ってから、公開範囲と配信開始を承認します。
+上の準備では、アプリ配信、実教材の暗号化・アップロード、Actions実行、読者への連絡をしません。TypeScriptの実配布版、MyASPのアンケート回答者向け導線、安全な配布コピー、実契約・上限、同一コミットの検証が揃ってから、公開範囲と配信開始を承認します。
 
 PDF暗号化ツールは現在の公式版を使い、秘密値を引数に置かない方法を選びます。qpdfのJob JSON入力は候補ですが、実行環境の導入・確認と秘密管理先の準備が必要です。暗号化済みPDFに対する情報表示コマンドも、パスワードを表示する機能を避けて確認します。
 
 Sources: [API token permission scopes](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Worker roles](https://developers.cloudflare.com/workers/authorization/workers/), [binding permissions](https://developers.cloudflare.com/workers/authorization/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [GitHub environment secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [qpdf Job JSON](https://qpdf.readthedocs.io/en/stable/qpdf-job.html).
+
+本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。共有合言葉だけで回答者本人を個別確認する仕組みはありません。MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`が失敗する現在の状態は意図した停止です。

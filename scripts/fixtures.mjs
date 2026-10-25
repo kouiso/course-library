@@ -1,6 +1,6 @@
 // Small synthetic files only. Never import production materials into this script.
 import { crc32 } from 'node:zlib';
-export const version = '0.1.0-synthetic';
+export const version = '0.2.0-synthetic';
 export function pdf(label) {
   const stream = `BT /F1 16 Tf 45 760 Td (${label} - SYNTHETIC PLACEHOLDER ONLY) Tj ET`;
   const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
@@ -32,18 +32,18 @@ export function zip(entries) {
   return Buffer.concat([...local, directory, end]);
 }
 export function fixtures() {
-  const books = Array.from({ length: 36 }, (_, i) => {
+  const chapters = Array.from({ length: 10 }, (_, i) => {
     const n = String(i + 1).padStart(2, '0');
-    return [`taskapp-book-${n}.pdf`, pdf(`Taskapp book ${n}`)];
+    return [`typescript-chapter-${n}.pdf`, pdf(`Synthetic TypeScript chapter ${n}`)];
   });
-  return new Map([
-    ['taskapp-introduction.pdf', pdf('Taskapp introduction')], ...books,
-    ['taskapp-books-01-36.zip', zip(books)],
-    ['taskapp-starter.zip', zip([['README.txt', 'Synthetic starter. No real course source.\n'], ['src/main.ts', 'export const synthetic = true;\n']])],
-    ['taskapp-example.zip', zip([['README.txt', 'Synthetic completed example. No real course source.\n'], ['src/main.ts', 'export const synthetic = true;\n']])],
-  ]);
+  const exercises = Array.from({ length: 9 }, (_, i) => {
+    const n = String(i + 1).padStart(2, '0');
+    return [`typescript-exercise-${n}.pdf`, pdf(`Synthetic TypeScript exercise ${n}`)];
+  });
+  const files = [['typescript-learning-flow.pdf', pdf('Synthetic TypeScript learning flow')], ...chapters, ...exercises];
+  return new Map([...files, ['typescript-all-materials.zip', zip(files)]]);
 }
 export async function seed(mf) {
   const bucket = await mf.getR2Bucket('MATERIALS');
-  for (const [name, data] of fixtures()) await bucket.put(`releases/taskapp/${version}/${name}`, data);
+  for (const [name, data] of fixtures()) await bucket.put(`releases/typescript/${version}/${name}`, data);
 }

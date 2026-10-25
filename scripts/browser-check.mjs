@@ -82,47 +82,58 @@ try {
   await page.unroute('**/login');
   await noOverflow();
   await screenshot('desktop-catalogue');
+  assert.equal(await page.getByRole('link', { name: /Taskapp/ }).count(), 0);
+  assert.match(await page.locator('main').innerText(), /アンケート/);
   checkpoint('Submitting: button disabled and aria-busy set, then successful catalogue navigation.');
 
-  await page.getByRole('link', { name: '教材を選ぶ' }).click();
-  await page.waitForURL(origin + '/courses/taskapp');
-  assert.equal(await page.locator('a[href^="/download/taskapp/"]').count(), 40);
+  await page.getByRole('link', { name: 'ダミー教材を見る' }).click();
+  await page.waitForURL(origin + '/courses/typescript');
+  assert.equal(await page.locator('a[href^="/download/typescript/"]').count(), 21);
   await noOverflow();
-  await screenshot('desktop-taskapp');
+  await screenshot('desktop-typescript');
   const downloadEvent = page.waitForEvent('download');
-  await page.getByRole('link', { name: '第01巻' }).click();
+  await page.getByRole('link', { name: '第01章' }).click();
   const download = await downloadEvent;
-  assert.equal(download.suggestedFilename(), 'taskapp-book-01.pdf');
-  const downloadPath = resolve(folder, 'downloaded-synthetic-book-01.pdf');
+  assert.equal(download.suggestedFilename(), 'typescript-chapter-01.pdf');
+  const downloadPath = resolve(folder, 'downloaded-synthetic-chapter-01.pdf');
   await download.saveAs(downloadPath);
-  assert.deepEqual(await readFile(downloadPath), fixtures().get('taskapp-book-01.pdf'));
+  assert.deepEqual(await readFile(downloadPath), fixtures().get('typescript-chapter-01.pdf'));
   checkpoint('Download: real browser attachment has expected filename and exact synthetic PDF bytes.');
 
   const bucket = await mf.getR2Bucket('MATERIALS');
-  const key = `releases/taskapp/${version}/taskapp-starter.zip`;
+  const key = `releases/typescript/${version}/typescript-exercise-09.pdf`;
   await bucket.delete(key);
-  await page.getByRole('link', { name: 'スターターコード' }).click();
+  await page.getByRole('link', { name: '練習問題 09' }).click();
   await page.getByRole('heading', { name: '教材はただいま準備中です' }).waitFor();
   await screenshot('desktop-missing-download');
-  await bucket.put(key, fixtures().get('taskapp-starter.zip'));
+  await bucket.put(key, fixtures().get('typescript-exercise-09.pdf'));
+  const productDenied = await context.request.get(origin + '/download/taskapp/book-01');
+  assert.equal(productDenied.status(), 404);
+  checkpoint('Taskapp product download is denied with valid survey-gift authentication.');
   checkpoint('Missing download: useful authenticated error page instead of a broken attachment.');
 
-  await page.goto(origin + '/courses/typescript');
+  await page.goto(origin + '/status');
   assert.equal(await page.locator('a[href^="/download/"]').count(), 0);
   await screenshot('desktop-pending-course');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(origin + '/library');
   await noOverflow();
+  assert.equal(await page.locator('.course-card').evaluate(card => {
+    const bounds = card.getBoundingClientRect();
+    const body = card.querySelector('.course-body').getBoundingClientRect();
+    const action = card.querySelector('.course-action').getBoundingClientRect();
+    return body.top >= bounds.top && body.bottom <= bounds.bottom + 1 && action.bottom <= bounds.bottom + 1;
+  }), true, 'Mobile gift title, description and action must fit inside the card without clipping');
   await screenshot('mobile-catalogue');
-  await page.getByRole('link', { name: '教材を選ぶ' }).click();
+  await page.getByRole('link', { name: 'ダミー教材を見る' }).click();
   await noOverflow();
-  await screenshot('mobile-taskapp');
+  await screenshot('mobile-typescript');
   await page.goto(origin + '/library');
   await page.getByRole('button', { name: 'ライブラリを閉じる' }).click();
   await page.waitForURL(origin + '/');
   await screenshot('mobile-entry');
   await noOverflow();
-  checkpoint('Mobile 390×844: entry, catalogue and 40-file course have no horizontal overflow.');
+  checkpoint('Mobile 390×844: entry, catalogue and 21-file TypeScript gift have no horizontal overflow.');
   for (let i = 0; i < 3; i++) {
     await enter();
     await page.getByRole('button', { name: 'ライブラリを閉じる' }).click();
@@ -133,7 +144,7 @@ try {
   checkpoint('Repeated login/logout: 3 additional full cycles; library denied after each logout.');
 
   for (const options of [{ method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
-    const res = await context.request.fetch(origin + '/download/taskapp/book-01', options);
+    const res = await context.request.fetch(origin + '/download/typescript/chapter-01', options);
     assert.equal(res.status(), 401);
     assert.match(res.headers()['cache-control'], /private.*no-store/);
     assert.equal(res.headers()['content-disposition'], undefined);

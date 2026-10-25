@@ -1,5 +1,5 @@
 import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
-import { collections, type Collection, validateManifest } from './manifest';
+import { canDistribute, collections, isSurveyGift, type Collection, validateManifest } from './manifest';
 import { catalogue, css, guide, js, library, login, page, pendingCourse } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string };
@@ -105,7 +105,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   const local = env.APP_MODE === 'local';
   const secret = env.SESSION_SECRET!;
   const jar = cookies(req);
-  const session = await verify(secret, jar.get(cookieName('taskapp_session', local)), 'session');
+  const session = await verify(secret, jar.get(cookieName('course_session', local)), 'session');
 
   if (req.method === 'POST') {
     if (url.pathname !== '/login' && url.pathname !== '/logout') return error(404, 'ページが見つかりません');
@@ -118,21 +118,21 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       if (!ipAllowed.success || !totalAllowed.success) return response(page('少し待ってお試しください', '<section class="card"><h1>少し待ってお試しください</h1><p>入力回数が多くなっています。1分ほど待って入口からお試しください。</p><a href="/">入口へ戻る</a></section>'), 429, { 'Retry-After': '60' });
       const form = await boundedForm(req);
       const csrf = form?.get('csrf') || '';
-      const loginCookie = jar.get(cookieName('taskapp_login', local));
+      const loginCookie = jar.get(cookieName('course_login', local));
       if (!form || !loginCookie || !await equal(csrf, loginCookie) || !await verify(secret, csrf, 'login')) return error(403, '入口からもう一度お試しください');
       const phrase = form.get('phrase') || '';
       if (phrase.length > 256 || !await equal(await sha256(phrase), env.ACCESS_PHRASE_SHA256!)) {
         return response(login(csrf, '合言葉を確認して、もう一度入力してください。'), 401);
       }
       const res = redirect('/library');
-      res.headers.append('Set-Cookie', cookie('taskapp_session', await issue(secret, 'session', SESSION_TTL), SESSION_TTL, local));
-      res.headers.append('Set-Cookie', cookie('taskapp_login', '', 0, local));
+      res.headers.append('Set-Cookie', cookie('course_session', await issue(secret, 'session', SESSION_TTL), SESSION_TTL, local));
+      res.headers.append('Set-Cookie', cookie('course_login', '', 0, local));
       return res;
     }
     const form = await boundedForm(req);
     if (!session || !form || !await equal(form.get('csrf') || '', session.nonce)) return error(403, '入口からもう一度お試しください');
     const res = redirect('/');
-    res.headers.append('Set-Cookie', cookie('taskapp_session', '', 0, local));
+    res.headers.append('Set-Cookie', cookie('course_session', '', 0, local));
     return res;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return response(null, 405, { Allow: 'GET, HEAD, POST' });
@@ -141,21 +141,26 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (url.pathname === '/') {
     if (session) return redirect('/library');
     const csrf = await issue(secret, 'login', 600);
-    return response(req.method === 'HEAD' ? null : login(csrf), 200, { 'Set-Cookie': cookie('taskapp_login', csrf, 600, local) });
+    return response(req.method === 'HEAD' ? null : login(csrf), 200, { 'Set-Cookie': cookie('course_login', csrf, 600, local) });
   }
   if (!session) return error(401, '合言葉を入力して教材を開いてください');
-  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce));
+  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local));
+  if (url.pathname === '/status') {
+    const gift = collections.find(isSurveyGift);
+    return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift)) : error(503, '配布設定の確認中です');
+  }
   const courseRoute = /^\/courses\/([a-z0-9-]+)$/.exec(url.pathname);
   if (courseRoute) {
     const course = collections.find(c => c.id === courseRoute[1]);
-    if (!course) return error(404, '講座が見つかりません');
-    return response(req.method === 'HEAD' ? null : course.status === 'pending' ? pendingCourse(course) : library(session.nonce, course));
+    if (!course || !isSurveyGift(course)) return error(404, '教材が見つかりません');
+    return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, course) : pendingCourse(course));
   }
   if (url.pathname === '/guide') return response(req.method === 'HEAD' ? null : guide());
   const downloadRoute = /^\/download\/([a-z0-9-]+)\/(.+)$/.exec(url.pathname);
   if (downloadRoute) {
     const course = collections.find(c => c.id === downloadRoute[1]);
-    if (!course || course.status === 'pending') return error(404, '教材が見つかりません');
+    if (!course || !isSurveyGift(course)) return error(404, '教材が見つかりません');
+    if (!canDistribute(course, local)) return error(503, '配布設定の確認中です');
     return download(req, env, course, downloadRoute[2]!);
   }
   return error(404, 'ページが見つかりません');
