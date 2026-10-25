@@ -1,6 +1,6 @@
 {
   "name": "course-library",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Japanese private course delivery with Cloudflare Workers and R2",
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -13,7 +13,8 @@
     "scan:public": "node scripts/public-scan.mjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "test:browser": "node scripts/browser-check.mjs",
-    "release:ready": "node scripts/check-release.mjs"
+    "release:ready": "node scripts/check-release.mjs",
+    "candidate:check": "node scripts/inspect-release-candidate.mjs"
   },
   "keywords": [],
   "devDependencies": {

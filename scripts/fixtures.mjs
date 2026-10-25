@@ -1,6 +1,6 @@
 // Small synthetic files only. Never import production materials into this script.
 import { crc32 } from 'node:zlib';
-export const version = '0.2.0-synthetic';
+export const version = '0.2.1-synthetic';
 export function pdf(label) {
   const stream = `BT /F1 16 Tf 45 760 Td (${label} - SYNTHETIC PLACEHOLDER ONLY) Tj ET`;
   const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
@@ -36,8 +36,7 @@ export function fixtures() {
     const n = String(i + 1).padStart(2, '0');
     return [`typescript-chapter-${n}.pdf`, pdf(`Synthetic TypeScript chapter ${n}`)];
   });
-  const exercises = Array.from({ length: 9 }, (_, i) => {
-    const n = String(i + 1).padStart(2, '0');
+  const exercises = ['01', '02', '03', '04', '05', '06', '07', '08', '10'].map(n => {
     return [`typescript-exercise-${n}.pdf`, pdf(`Synthetic TypeScript exercise ${n}`)];
   });
   const files = [['typescript-learning-flow.pdf', pdf('Synthetic TypeScript learning flow')], ...chapters, ...exercises];

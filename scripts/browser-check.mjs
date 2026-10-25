@@ -101,12 +101,12 @@ try {
   checkpoint('Download: real browser attachment has expected filename and exact synthetic PDF bytes.');
 
   const bucket = await mf.getR2Bucket('MATERIALS');
-  const key = `releases/typescript/${version}/typescript-exercise-09.pdf`;
+  const key = `releases/typescript/${version}/typescript-exercise-10.pdf`;
   await bucket.delete(key);
-  await page.getByRole('link', { name: '練習問題 09' }).click();
+  await page.getByRole('link', { name: '練習問題 10' }).click();
   await page.getByRole('heading', { name: '教材はただいま準備中です' }).waitFor();
   await screenshot('desktop-missing-download');
-  await bucket.put(key, fixtures().get('typescript-exercise-09.pdf'));
+  await bucket.put(key, fixtures().get('typescript-exercise-10.pdf'));
   const productDenied = await context.request.get(origin + '/download/taskapp/book-01');
   assert.equal(productDenied.status(), 404);
   checkpoint('Taskapp product download is denied with valid survey-gift authentication.');
