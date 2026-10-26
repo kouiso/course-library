@@ -181,7 +181,7 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
-  assert.match(course, /ダミー教材/); assert.match(course, /0\.2\.1-synthetic/);
+  assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
   assert.equal((course.match(/href="\/download\/typescript\//g) || []).length, 21);
 });
 test('aggregate login limiter rejects attempts spread across IP addresses', async () => {
@@ -204,6 +204,26 @@ test('missing release file has an authenticated empty state and no metadata leak
     assert.equal(res.status, 404); noCache(res); assert.match(await res.text(), /準備中/);
     assert.equal((await req('/download/typescript/exercise-10')).status, 401);
   } finally { await bucket.put(key, fixtures().get('typescript-exercise-10.pdf')); }
+});
+test('empty release files fail closed for GET, HEAD and Range without attachment metadata', async () => {
+  const { cookie } = await loginAttempt();
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  for (const id of ['chapter-01', 'all-materials']) {
+    const filename = id === 'all-materials' ? 'typescript-all-materials.zip' : 'typescript-chapter-01.pdf';
+    const key = `releases/typescript/${version}/${filename}`, path = '/download/typescript/' + id;
+    await bucket.put(key, new Uint8Array());
+    try {
+      for (const options of [{}, { method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
+        const res = await req(path, { ...options, headers: { ...options.headers, Cookie: cookie } });
+        assert.equal(res.status, 503); noCache(res);
+        for (const name of ['Content-Disposition', 'ETag', 'Accept-Ranges', 'Content-Range']) assert.equal(res.headers.get(name), null);
+        const body = await res.text();
+        if (options.method === 'HEAD') assert.equal(body, ''); else assert.match(body, /準備中/);
+        const anonymous = await req(path, options);
+        assert.equal(anonymous.status, 401); noCache(anonymous); assert.equal(anonymous.headers.get('Content-Disposition'), null);
+      }
+    } finally { await bucket.put(key, fixtures().get(filename)); }
+  }
 });
 test('pending, preview and published labels are distinct; verification copy belongs to the release', async () => {
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
