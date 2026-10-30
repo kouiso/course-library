@@ -128,3 +128,48 @@ test('only the grouped Dependabot minor/patch version PR is eligible for auto-me
   const config = await readFile('.github/dependabot.yml', 'utf8');
   for (const line of ['interval: monthly', 'timezone: Asia/Tokyo', 'open-pull-requests-limit: 2', 'default-days: 3', 'minor-and-patch:', 'applies-to: version-updates']) assert.ok(config.includes(line), line);
 });
+test('public content check flags synthetic secrets, DB info and personal email without echoing them, and passes plain text', async () => {
+  const { loadRules, scan, render } = await import('../scripts/automation/public-content.mjs');
+  const rules = await loadRules('.github/public-content-rules.json');
+  // Synthetic values are assembled at run time so the repository never contains a literal match.
+  const token = 'gh' + 'p_' + 'Synthetic0Only0Value0Abcdefghijkl12';
+  const key = '-----BEGIN ' + 'PRIVATE KEY-----';
+  const assignment = 'SESSION_' + 'SECRET=' + 'synthetic-value-0001';
+  const database = 'postgres' + '://synthetic-user:pw@db.invalid:5432/library';
+  const email = 'synthetic.person' + '@' + 'mail.invalid';
+  const body = ['## 背景', `値は ${token} です`, key, assignment, `接続先 ${database}`, `連絡先 ${email} と ${email}`].join('\n');
+  const hits = scan([{ label: 'title', text: '合成のタイトル' }, { label: 'body', text: body }], rules);
+  assert.deepEqual(hits, [
+    { rule: 'token-github', lines: [2], count: 1 },
+    { rule: 'private-key-block', lines: [3], count: 1 },
+    { rule: 'secret-assignment', lines: [4], count: 1 },
+    { rule: 'database-url', lines: [5], count: 1 },
+    // user:password@host inside a database URL also looks like an address; both rules report it.
+    { rule: 'personal-email', lines: [5, 6], count: 3 },
+  ]);
+  const comment = render('issue', '12', hits);
+  for (const secret of [token, key, assignment, database, email, 'synthetic', 'mail.invalid']) assert.ok(!comment.includes(secret), 'comment must not echo matched text');
+  assert.match(comment, /\| personal-email \| 5, 6 \| 3 \|/);
+  const plain = '## 背景\nTypeScript教材の配布画面を直しました。SESSION_SECRET は手順書どおり別の場所で管理します。\n連絡は noreply@users.noreply.github.com 経由、例は someone@example.com です。';
+  assert.deepEqual(scan([{ label: 'title', text: '画面の修正' }, { label: 'body', text: plain }], rules), []);
+  assert.match(render('pr', '3', []), /: OK$/);
+  assert.deepEqual(scan([{ label: 'title', text: `件名 ${email}` }], rules), [{ rule: 'personal-email', lines: ['title:1'], count: 1 }]);
+});
+test('public content rules are replaceable and malformed rule files fail closed', async () => {
+  const { loadRules, scan } = await import('../scripts/automation/public-content.mjs');
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const folder = await mkdtemp(join(tmpdir(), 'public-rules-'));
+  try {
+    const custom = join(folder, 'rules.json');
+    await writeFile(custom, JSON.stringify({ version: 1, rules: [{ name: 'forbidden-word', pattern: 'ごうせいきんしご', flags: 'i' }] }));
+    const rules = await loadRules(custom);
+    assert.deepEqual(scan([{ label: 'body', text: '一行目\nここに ごうせいきんしご がある' }], rules), [{ rule: 'forbidden-word', lines: [2], count: 1 }]);
+    assert.deepEqual(scan([{ label: 'body', text: '普通の文章です。' }], rules), []);
+    for (const bad of [{}, { version: 1, rules: [] }, { version: 1, rules: [{ name: 'Bad Name', pattern: 'x' }] }, { version: 1, rules: [{ name: 'a', pattern: 'x' }, { name: 'a', pattern: 'y' }] }, { version: 1, rules: [{ name: 'a', pattern: '(' }] }, { version: 1, rules: [{ name: 'a', pattern: 'x', flags: 'g' }] }]) {
+      await writeFile(custom, JSON.stringify(bad));
+      await assert.rejects(loadRules(custom));
+    }
+  } finally { await rm(folder, { recursive: true, force: true }); }
+});
