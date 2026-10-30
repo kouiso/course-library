@@ -74,3 +74,16 @@ test('issue heading fix lifts ### to ## and #### to ### once, outside code block
   assert.deepEqual(fixHeadings(fullIssue), { body: fullIssue, changed: false });
   assert.deepEqual(fixHeadings(null), { body: '', changed: false });
 });
+test('the issue form requires exactly the checked headings, and its rendered body passes after the heading fix', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { issueSections } = await import('../scripts/automation/body-format.mjs');
+  const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+  const form = await readFile('.github/ISSUE_TEMPLATE/request.yml', 'utf8');
+  const fields = [...form.matchAll(/- type: textarea\n(?:.*\n)*?\s+label: "([^"]+)"\n(?:.*\n)*?\s+required: (true|false)/g)].map(m => [m[1], m[2]]);
+  assert.deepEqual(fields, issueSections.map(s => [s.name, 'true']));
+  // GitHub renders each form field as "### label" followed by the answer.
+  const rendered = fields.map(([label]) => `### ${label}\n\n合成の${label}`).join('\n\n');
+  assert.equal(evaluate({ kind: 'issue', body: fixHeadings(rendered).body, author: human }).ok, true);
+  const unanswered = fields.map(([label]) => `### ${label}\n\n_No response_`).join('\n\n');
+  assert.equal(evaluate({ kind: 'issue', body: fixHeadings(unanswered).body, author: human }).missing.length, 5);
+});

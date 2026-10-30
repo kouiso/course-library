@@ -1,0 +1,43 @@
+name: "依頼・不具合・改善"
+description: "このリポジトリへの依頼に使います。5つの欄は全部必須です。"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        公開リポジトリです。秘密の値、実教材、個人のメールアドレス、顧客名や金額は書かないでください。
+  - type: textarea
+    id: background
+    attributes:
+      label: "背景"
+      description: "なぜ必要か。困っていることをそのまま書いてください。"
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: "今どこまで"
+      description: "分かっていること、試したこと、まだ確かめていないこと。"
+    validations:
+      required: true
+  - type: textarea
+    id: next
+    attributes:
+      label: "次にやること"
+      description: "誰が何をするか。1行に1つ。"
+    validations:
+      required: true
+  - type: textarea
+    id: waiting
+    attributes:
+      label: "誰の判断待ち"
+      description: "判断が要る人と、決めてほしいこと。無ければ「なし」。"
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: "完了条件"
+      description: "どうなったら閉じてよいか。確かめ方も書いてください。"
+      placeholder: "- [ ] "
+    validations:
+      required: true
