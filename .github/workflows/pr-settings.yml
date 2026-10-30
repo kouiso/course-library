@@ -1,0 +1,38 @@
+name: Apply PR settings
+# Manual only: run for an opened or reopened PR. Never starts on its own PR.
+on:
+  workflow_dispatch:
+    inputs:
+      number:
+        description: Pull request number
+        type: string
+        required: true
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+jobs:
+  settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+      - name: Assign the author (bots are skipped)
+        # A failed assignment must not stop the following steps.
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_NUMBER: ${{ inputs.number }}
+          SETTING_MODE: assign
+        run: node scripts/automation/pr-settings.mjs
+      - name: Add branch and path labels (existing labels are kept)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_NUMBER: ${{ inputs.number }}
+          SETTING_MODE: labels
+        run: node scripts/automation/pr-settings.mjs

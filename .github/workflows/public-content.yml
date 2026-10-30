@@ -1,0 +1,35 @@
+name: Check public issue, PR and comment text
+# Manual only. Reads one text through the API; never checks out or runs PR code, never edits or deletes the text.
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: What to check
+        type: choice
+        options: [issue, pr, issue_comment, review_comment]
+        required: true
+      id:
+        description: Issue/PR number, or comment id for comments
+        type: string
+        required: true
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+      - name: Report rule names, line numbers and counts only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_KIND: ${{ inputs.kind }}
+          TARGET_ID: ${{ inputs.id }}
+        run: node scripts/automation/public-content.mjs

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "note": "Placeholder baseline. Replace the rules with the list supplied by the requester (issue #8). Names are shown in comments; patterns and matched text never are.",
+  "rules": [
+    { "name": "token-github", "pattern": "\\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})" },
+    { "name": "token-aws-access-key", "pattern": "\\bAKIA[0-9A-Z]{16}\\b" },
+    { "name": "private-key-block", "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY-----" },
+    { "name": "secret-assignment", "pattern": "\\b[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY)[A-Z0-9_]*\\s*[=:]\\s*['\"]?[^\\s'\"]{8,}" },
+    { "name": "database-url", "pattern": "\\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|redis)://[^\\s]+", "flags": "i" },
+    { "name": "personal-email", "pattern": "[A-Za-z0-9._%+-]+@(?!(?:[A-Za-z0-9-]+\\.)*(?:users\\.noreply\\.github\\.com|noreply\\.github\\.com|anthropic\\.com|example\\.(?:com|org|net))\\b)[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}" }
+  ]
+}

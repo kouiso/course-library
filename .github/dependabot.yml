@@ -1,0 +1,21 @@
+# Monthly npm version updates (#8 item 8). Dependabot runs from the default branch only.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      # Monthly means the first day of each month.
+      interval: monthly
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 2
+    # Wait until a release is at least three days old.
+    cooldown:
+      default-days: 3
+    groups:
+      # Minor and patch version updates arrive as one PR, the only kind eligible for auto-merge.
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
