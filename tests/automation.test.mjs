@@ -113,3 +113,18 @@ test('the code secret scan pins a gitleaks release by version and checksum and r
   assert.match(text, /fetch-depth: 0/);
   assert.doesNotMatch(text, /issues:|pull-requests:|write/);
 });
+test('only the grouped Dependabot minor/patch version PR is eligible for auto-merge', async () => {
+  const { eligible } = await import('../scripts/automation/dependency-merge.mjs');
+  const base = { user: { login: 'dependabot[bot]', type: 'Bot' }, state: 'open', draft: false, labels: [{ name: 'dependencies' }], title: 'Bump the minor-and-patch group with 3 updates', head: { ref: 'dependabot/npm_and_yarn/minor-and-patch-0a1b2c' }, base: { ref: 'main', repo: { default_branch: 'main' } } };
+  assert.deepEqual(eligible(base), { eligible: true, reason: 'grouped-minor-and-patch' });
+  for (const [change, reason] of [
+    [{ user: human }, 'not-dependabot'],
+    [{ draft: true }, 'not-open'],
+    [{ base: { ref: 'other', repo: { default_branch: 'main' } } }, 'not-default-branch'],
+    [{ labels: [{ name: 'security' }] }, 'security-update'],
+    [{ title: 'Bump wrangler from 4.1.0 to 5.0.0', head: { ref: 'dependabot/npm_and_yarn/wrangler-5.0.0' } }, 'not-minor-and-patch-group'],
+  ]) assert.deepEqual(eligible({ ...base, ...change }), { eligible: false, reason });
+  const { readFile } = await import('node:fs/promises');
+  const config = await readFile('.github/dependabot.yml', 'utf8');
+  for (const line of ['interval: monthly', 'timezone: Asia/Tokyo', 'open-pull-requests-limit: 2', 'default-days: 3', 'minor-and-patch:', 'applies-to: version-updates']) assert.ok(config.includes(line), line);
+});
