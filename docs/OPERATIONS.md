@@ -30,6 +30,7 @@ Only if recurring GitHub CD is separately authorized, confirm the actual token p
 These workflows read issue/PR data with the run's `GITHUB_TOKEN` only, never check out or run code from a PR head, and use no paid service or new credential. Their decisions live in `scripts/automation/` and are unit-tested in `tests/automation.test.mjs` with a fake API, so no test issue or comment is written to this public repository.
 
 - `body-format.yml` (inputs: `issue`/`pr` and number): checks the five issue headings (背景 / 今どこまで / 次にやること / 誰の判断待ち / 完了条件) or the PR headings (概要 / 変更内容 / 関連Issue with `Closes #n` or `Refs #n`; the account default template's 概要・背景・妥協点 / やったこと / 関連 Issue are accepted). It keeps one marked comment, updates it to OK after a fix, and skips bots, draft PRs and `alert` issues.
+- `issue-heading-fix.yml` (input: issue number): changes `###` to `##` and `####` to `###` outside code blocks, and edits the issue only when the text would change.
 
 Switching any of them to automatic events is a separate decision: change its `on:` block, update this section, the README delivery note and the workflow test together.
 

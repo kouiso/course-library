@@ -67,3 +67,10 @@ test('every workflow is manual-only, has explicit permissions and pins external 
     for (const [, ref] of text.matchAll(/uses:\s*\S+@(\S+)/g)) assert.match(ref, /^[0-9a-f]{40}$/, file);
   }
 });
+test('issue heading fix lifts ### to ## and #### to ### once, outside code blocks only', async () => {
+  const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+  const form = '### 背景\n本文\n#### 詳細\n## 既存\n##### 深い\n```\n### コード\n```\n###見出しではない';
+  assert.deepEqual(fixHeadings(form), { body: '## 背景\n本文\n### 詳細\n## 既存\n##### 深い\n```\n### コード\n```\n###見出しではない', changed: true });
+  assert.deepEqual(fixHeadings(fullIssue), { body: fullIssue, changed: false });
+  assert.deepEqual(fixHeadings(null), { body: '', changed: false });
+});
