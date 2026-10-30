@@ -71,7 +71,7 @@ Run `npm run build` first. This opt-in test starts one loopback test runtime, a 
 
 ## Delivery controls
 
-The workflow is manual-only and has not been executed. It uses standard `ubuntu-latest` GitHub-hosted runners, no caches or uploaded artifacts, and serializes verification and optional deployment at one commit. Optional deployment refuses to run until the target plan/limits and secure configuration are approved. No Cloudflare Git auto-deployment should be enabled alongside it. Costs depend on the actual target account and its limits; no zero-charge claim is made.
+Every workflow is manual-only (`workflow_dispatch`) and none has been executed; repository automation is listed in [operations](docs/OPERATIONS.md#repository-automation-manual). It uses standard `ubuntu-latest` GitHub-hosted runners, no caches or uploaded artifacts, and serializes verification and optional deployment at one commit. Optional deployment refuses to run until the target plan/limits and secure configuration are approved. No Cloudflare Git auto-deployment should be enabled alongside it. Costs depend on the actual target account and its limits; no zero-charge claim is made.
 
 This repository contains application code and synthetic fixture generators only. Keep course files, reader data, credentials, and private inventory reports outside Git.
 

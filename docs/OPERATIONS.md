@@ -21,9 +21,17 @@
 
 ## CI/CD activation (not performed)
 
-The checked-in workflow is `workflow_dispatch` only. It never runs on push or PR. No Actions run has been requested. Before first manual execution, verify the actual plan and free usage limits and review this configuration. It uses `ubuntu-latest`, no self-hosted/larger runners, no artifact storage, and no cache storage. Concurrency is fixed for the library and cancellation is disabled, so verification and deployment from different releases cannot race.
+Every checked-in workflow is `workflow_dispatch` only. None runs on push, PR, issue or schedule events, so a PR that adds a workflow never starts it; `tests/automation.test.mjs` fails if a trigger is added. No Actions run has been requested. Before first manual execution, verify the actual plan and free usage limits and review this configuration. It uses `ubuntu-latest`, no self-hosted/larger runners, no artifact storage, and no cache storage. Concurrency is fixed for the library and cancellation is disabled, so verification and deployment from different releases cannot race.
 
 Only if recurring GitHub CD is separately authorized, confirm the actual token policy and secure destination before creating or storing a credential. Legacy `Workers Scripts Edit/Write` is account-scoped; do not describe it as limited to one named Worker. New individual-Worker Editor authorization is documented separately, but its actual availability and policy on the target account remain unverified. After that approval, place the credential and account ID in the `production` environment secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Set environment variable `CLOUDFLARE_SETUP_VERIFIED=true` only after plan/limit, bucket privacy, secrets, hostname, and material verification are complete. The optional deploy job uses the same `github.sha` as verification and refuses a placeholder production configuration. Environment-level approval protection should be configured separately if authorized; this runbook creates no grants or credentials.
+
+## Repository automation (manual)
+
+These workflows read issue/PR data with the run's `GITHUB_TOKEN` only, never check out or run code from a PR head, and use no paid service or new credential. Their decisions live in `scripts/automation/` and are unit-tested in `tests/automation.test.mjs` with a fake API, so no test issue or comment is written to this public repository.
+
+- `body-format.yml` (inputs: `issue`/`pr` and number): checks the five issue headings (背景 / 今どこまで / 次にやること / 誰の判断待ち / 完了条件) or the PR headings (概要 / 変更内容 / 関連Issue with `Closes #n` or `Refs #n`; the account default template's 概要・背景・妥協点 / やったこと / 関連 Issue are accepted). It keeps one marked comment, updates it to OK after a fix, and skips bots, draft PRs and `alert` issues.
+
+Switching any of them to automatic events is a separate decision: change its `on:` block, update this section, the README delivery note and the workflow test together.
 
 ## Deploy and verify
 
