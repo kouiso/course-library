@@ -103,3 +103,13 @@ test('PR labels come from the branch prefix and changed paths, and existing labe
   assert.deepEqual(labelsFor('fix/x', ['README.md'], [{ name: 'bugfix' }, { name: 'keep-me' }]), ['documentation']);
   assert.deepEqual(labelsFor('features/x', ['src/featured.ts']), []);
 });
+test('the code secret scan pins a gitleaks release by version and checksum and redacts findings', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const text = await readFile('.github/workflows/secret-scan.yml', 'utf8');
+  assert.match(text, /GITLEAKS_VERSION: \d+\.\d+\.\d+\n/);
+  assert.match(text, /GITLEAKS_SHA256: [0-9a-f]{64}\n/);
+  assert.match(text, /sha256sum -c -/);
+  assert.match(text, /--redact/);
+  assert.match(text, /fetch-depth: 0/);
+  assert.doesNotMatch(text, /issues:|pull-requests:|write/);
+});
