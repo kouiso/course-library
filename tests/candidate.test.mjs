@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, readFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, symlink, rm, readdir, stat, link as link_ } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -112,5 +112,45 @@ test('private report CLI rejects public outputs, input overwrite and output syml
     const sentinel = join(folder, 'untouched.json'), link = join(folder, 'report.json');
     await writeFile(sentinel, 'synthetic sentinel'); await symlink(sentinel, link);
     assert.notEqual(command(link).status, 0); assert.equal(await readFile(sentinel, 'utf8'), 'synthetic sentinel');
+  } finally { await rm(folder, { recursive: true, force: true }); }
+});
+test('private report CLI never truncates hard-linked inputs and replaces existing reports atomically', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'candidate-link-'));
+  try {
+    const { candidate, policy } = syntheticCandidate();
+    const input = join(folder, 'candidate.json'), rules = join(folder, 'policy.json'), sample = join(folder, 'sample.pdf');
+    await writeFile(input, JSON.stringify(candidate)); await writeFile(rules, JSON.stringify(policy)); await writeFile(sample, pdf('Synthetic hard link sentinel'));
+    const command = output => spawnSync(process.execPath, ['scripts/inspect-release-candidate.mjs', '--candidate', input, '--policy', rules, '--root', folder, '--output', output], { encoding: 'utf8', timeout: 15000 });
+    const leftovers = async () => (await readdir(folder)).filter(name => name.includes('.tmp-'));
+    for (const target of [input, rules, sample]) {
+      const before = await readFile(target), link = join(folder, 'linked-report.json');
+      await link_(target, link);
+      try {
+        const result = command(link);
+        assert.notEqual(result.status, 0, target);
+        assert.deepEqual(await readFile(target), before, target);
+        assert.deepEqual(await readFile(link), before, target);
+        assert.equal((await stat(target)).nlink, 2, target);
+        assert.deepEqual(await leftovers(), []);
+      } finally { await rm(link, { force: true }); }
+    }
+    const directory = join(folder, 'directory-report.json'); await mkdir(directory);
+    assert.notEqual(command(directory).status, 0);
+    assert.equal((await stat(directory)).isDirectory(), true);
+    // `.env-report.json` is ignored, but its temporary sibling would not be; refuse before writing.
+    assert.notEqual(command('.env-report.json').status, 0);
+    await assert.rejects(stat('.env-report.json'));
+    assert.deepEqual((await readdir('.')).filter(name => name.includes('.tmp-')), []);
+    const report = join(folder, 'report.json');
+    command(report);
+    const first = JSON.parse(await readFile(report, 'utf8'));
+    assert.equal(first.sourceReadOnly, true);
+    assert.equal((await stat(report)).mode & 0o777, 0o600);
+    await writeFile(report, '{"stale":true}\n');
+    command(report);
+    assert.equal(JSON.parse(await readFile(report, 'utf8')).sourceReadOnly, true);
+    assert.equal((await stat(report)).mode & 0o777, 0o600);
+    assert.equal((await stat(report)).nlink, 1);
+    assert.deepEqual(await leftovers(), []);
   } finally { await rm(folder, { recursive: true, force: true }); }
 });
