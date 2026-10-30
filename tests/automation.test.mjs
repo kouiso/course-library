@@ -93,3 +93,13 @@ test('PR assignee is the human author; bots and already-assigned authors are lef
   assert.deepEqual(assignment({ user: human, assignees: [human] }), { assign: null, reason: 'already-assigned' });
   assert.deepEqual(assignment({ user: { login: 'renovate[bot]', type: 'Bot' }, assignees: [] }), { assign: null, reason: 'bot-author' });
 });
+test('PR labels come from the branch prefix and changed paths, and existing labels are never removed', async () => {
+  const { labelsFor } = await import('../scripts/automation/pr-settings.mjs');
+  for (const [branch, label] of [['feature/a', 'feature'], ['feat/a', 'feature'], ['bugfix/a', 'bugfix'], ['fix/a', 'bugfix'], ['hotfix/a', 'hotfix'], ['chore/a', 'chore'], ['refactor/a', 'chore'], ['docs/a', 'documentation'], ['release/a', 'release']]) {
+    assert.deepEqual(labelsFor(branch, []), [label], branch);
+  }
+  assert.deepEqual(labelsFor('ccr-synthetic', ['src/index.ts']), []);
+  assert.deepEqual(labelsFor('fix/x', ['docs/SECURITY.md', 'wrangler.jsonc', '.github/workflows/verify.yml', 'package-lock.json', 'src/views.ts']), ['bugfix', 'config', 'dependencies', 'documentation']);
+  assert.deepEqual(labelsFor('fix/x', ['README.md'], [{ name: 'bugfix' }, { name: 'keep-me' }]), ['documentation']);
+  assert.deepEqual(labelsFor('features/x', ['src/featured.ts']), []);
+});

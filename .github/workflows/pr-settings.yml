@@ -30,3 +30,9 @@ jobs:
           TARGET_NUMBER: ${{ inputs.number }}
           SETTING_MODE: assign
         run: node scripts/automation/pr-settings.mjs
+      - name: Add branch and path labels (existing labels are kept)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_NUMBER: ${{ inputs.number }}
+          SETTING_MODE: labels
+        run: node scripts/automation/pr-settings.mjs
