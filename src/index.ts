@@ -1,6 +1,6 @@
 import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
 import { canDistribute, collections, isSurveyGift, type Collection, validateManifest } from './manifest';
-import { catalogue, css, guide, js, library, login, page, pendingCourse } from './views';
+import { catalogue, css, guide, js, library, login, page, pendingCourse, preparingMaterial } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string };
 const security = {
@@ -65,6 +65,8 @@ async function download(req: Request, env: AppEnv, course: Collection, id: strin
   const key = course.release.prefix + material.filename;
   const object = await env.MATERIALS.head(key);
   if (!object) return error(404, '教材はただいま準備中です');
+  // An empty object is an unfinished upload, not a material. Answer before any attachment metadata exists.
+  if (object.size === 0) return response(preparingMaterial(course), 503);
   const h = new Headers({
     'Content-Type': material.type,
     'Content-Disposition': `attachment; filename="${material.filename}"`,
