@@ -87,3 +87,9 @@ test('the issue form requires exactly the checked headings, and its rendered bod
   const unanswered = fields.map(([label]) => `### ${label}\n\n_No response_`).join('\n\n');
   assert.equal(evaluate({ kind: 'issue', body: fixHeadings(unanswered).body, author: human }).missing.length, 5);
 });
+test('PR assignee is the human author; bots and already-assigned authors are left alone', async () => {
+  const { assignment } = await import('../scripts/automation/pr-settings.mjs');
+  assert.deepEqual(assignment({ user: human, assignees: [] }), { assign: 'synthetic-writer', reason: 'author' });
+  assert.deepEqual(assignment({ user: human, assignees: [human] }), { assign: null, reason: 'already-assigned' });
+  assert.deepEqual(assignment({ user: { login: 'renovate[bot]', type: 'Bot' }, assignees: [] }), { assign: null, reason: 'bot-author' });
+});
