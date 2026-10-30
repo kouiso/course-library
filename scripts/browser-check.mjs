@@ -104,7 +104,7 @@ try {
   const key = `releases/typescript/${version}/typescript-exercise-10.pdf`;
   await bucket.delete(key);
   await page.getByRole('link', { name: '練習問題 10' }).click();
-  await page.getByRole('heading', { name: '教材はただいま準備中です' }).waitFor();
+  await page.getByRole('heading', { name: 'この教材はただいま準備中です' }).waitFor();
   await screenshot('desktop-missing-download');
   await bucket.put(key, fixtures().get('typescript-exercise-10.pdf'));
   const productDenied = await context.request.get(origin + '/download/taskapp/book-01');
@@ -130,6 +130,10 @@ try {
   await screenshot('mobile-typescript');
   await page.goto(origin + '/library');
   await page.getByRole('button', { name: 'ライブラリを閉じる' }).click();
+  await page.waitForURL(origin + '/closed');
+  assert.match(await page.getByRole('status').innerText(), /教材ページを閉じました/);
+  await screenshot('mobile-closed');
+  await page.getByRole('link', { name: '入口へ戻る' }).click();
   await page.waitForURL(origin + '/');
   await screenshot('mobile-entry');
   await noOverflow();
@@ -137,7 +141,7 @@ try {
   for (let i = 0; i < 3; i++) {
     await enter();
     await page.getByRole('button', { name: 'ライブラリを閉じる' }).click();
-    await page.waitForURL(origin + '/');
+    await page.waitForURL(origin + '/closed');
     const denied = await context.request.get(origin + '/library');
     assert.equal(denied.status(), 401);
   }

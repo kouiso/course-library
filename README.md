@@ -25,7 +25,7 @@ Production shows a preparation state and denies downloads until a non-synthetic 
 
 ## Design
 
-Japanese typography, warm paper backgrounds, restrained forest and slate colours, CSS book illustrations, a focused gift card, and a compact mobile layout. Forms have visible labels, focus indicators, a submitting state, and errors. All navigation and downloads work without JavaScript; the small script only gives submission feedback. No external fonts, image services, analytics, or trackers.
+Japanese typography, warm paper backgrounds, restrained forest and slate colours, CSS book illustrations, a focused gift card, and a compact mobile layout. Forms have visible labels, focus indicators, a submitting state, and errors. An empty material object shows a preparation page (503), and closing the library lands on a fixed `/closed` confirmation page instead of a silent redirect. All navigation and downloads work without JavaScript; the small script only gives submission feedback. No external fonts, image services, analytics, or trackers.
 
 ## Architecture
 

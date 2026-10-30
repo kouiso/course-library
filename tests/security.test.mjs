@@ -138,8 +138,14 @@ test('logout requires session-bound CSRF and clears the browser cookie', async (
   for (const value of ['bad', csrf]) {
     const res = await req('/logout', { method: 'POST', headers: { Origin: origin, Cookie: cookie }, body: new URLSearchParams({ csrf: value }) });
     assert.equal(res.status, value === 'bad' ? 403 : 303);
-    if (value === csrf) assert.match(res.headers.get('Set-Cookie'), /Max-Age=0/);
+    if (value === csrf) { assert.match(res.headers.get('Set-Cookie'), /Max-Age=0/); assert.equal(res.headers.get('Location'), '/closed'); }
   }
+  const page = await req('/closed');
+  assert.equal(page.status, 200); noCache(page);
+  const html = await page.text();
+  assert.match(html, /role="status"/); assert.match(html, /教材ページを閉じました/); assert.match(html, /href="\/"/);
+  assert.doesNotMatch(html, /name="csrf"|<script(?! defer src="\/app\.js")/);
+  assert.equal((await req('/closed', { headers: { Cookie: cookie } })).headers.get('Location'), '/library');
 });
 test('fixed redirects ignore user-controlled next URL; unexpected hosts are refused', async () => {
   const { cookie } = await loginAttempt();
