@@ -232,3 +232,18 @@ test('parent section includes nested body but never borrows sibling content', as
  assert.match(found.get('概要'), /本文/); assert.match(found.get('概要'), /説明/);
  assert.equal(found.get('変更内容').trim(), ''); assert.doesNotMatch(found.get('概要'), /隣の本文/);
 });
+
+test('CRLF fences preserve code and retain original line endings', async () => {
+ const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+ const { sections } = await import('../scripts/automation/body-format.mjs');
+ const code = '```js\r\n### literal code\r\n```\r\n';
+ assert.equal(fixHeadings(code+'### outside\r\nreal').body, code+'## outside\r\nreal');
+ assert.equal(sections(code+'### outside\r\nreal').has('literalcode'), false);
+});
+test('secret reports emit only safe finding location metadata', async () => {
+ const { safeFindings } = await import('../scripts/automation/secret-report.mjs');
+ const result=safeFindings([{File:'fixture.ts',Commit:'a'.repeat(40),StartLine:7,RuleID:'fixture-rule',Secret:'PRIVATE_SENTINEL',Match:'PRIVATE_MATCH'}]);
+ assert.deepEqual(result,[{file:'fixture.ts',commit:'a'.repeat(40),line:7,rule:'fixture-rule'}]);
+ assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+ assert.throws(()=>safeFindings(null)); assert.throws(()=>safeFindings([{}]));
+});

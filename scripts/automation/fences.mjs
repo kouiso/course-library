@@ -2,7 +2,7 @@
 export function fenceTracker() {
   let marker = null;
   return function fenced(line) {
-    let content = line, indent = 0, quotes = 0, container;
+    let content = line.replace(/\r$/, ''), indent = 0, quotes = 0, container;
     if (marker) {
       for (let i = 0; i < marker.quotes; i++) {
         const quote = /^ {0,3}>[ \t]?/.exec(content);
