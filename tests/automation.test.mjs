@@ -198,3 +198,26 @@ test('list and quote fenced code never becomes a heading section', async () => {
     assert.equal(sections(body).get('outside'), 'real');
   }
 });
+
+test('literal container markers inside plain fences cannot close the code block', async () => {
+  const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+  const { sections } = await import('../scripts/automation/body-format.mjs');
+  for (const literal of ['- ```', '> ```', '1. ```']) {
+    const code = ['```', literal, '### literal code', '```'].join('\n');
+    const source = code + '\n### outside\nreal';
+    assert.equal(fixHeadings(source).body, code + '\n## outside\nreal');
+    assert.equal(sections(source).has('literalcode'), false);
+    assert.equal(sections(source).get('outside'), 'real');
+  }
+});
+
+test('unclosed container fences end when the quote or list ends', async () => {
+  const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+  const { sections } = await import('../scripts/automation/body-format.mjs');
+  for (const code of ['> ```\n> ### literal code', '- ```\n  ### literal code']) {
+    const source = code + '\n\n### outside\nreal';
+    assert.equal(fixHeadings(source).body, code + '\n\n## outside\nreal');
+    assert.equal(sections(source).has('literalcode'), false);
+    assert.equal(sections(source).get('outside'), 'real');
+  }
+});
