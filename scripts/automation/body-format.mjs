@@ -15,13 +15,19 @@ export const alertLabels = ['alert', 'alerts'];
 const normalize = heading => heading.replace(/[（(]\s*(?:必須|任意)\s*[）)]/g, '').replace(/\s+/g, '').replace(/[:：]$/, '');
 export function sections(markdown) {
   const found = new Map();
-  let current = null;
+  const active = [];
   const fenced = fenceTracker();
   for (const line of String(markdown || '').replace(/\r\n?/g, '\n').split('\n')) {
     const inside = fenced(line);
-    const heading = !inside && /^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(line);
-    if (heading) { current = normalize(heading[1]); if (!found.has(current)) found.set(current, []); continue; }
-    if (current) found.get(current).push(line);
+    const heading = !inside && /^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (heading) {
+      const depth = heading[1].length, name = normalize(heading[2]);
+      while (active.length && active.at(-1).depth >= depth) active.pop();
+      if (!found.has(name)) found.set(name, []);
+      active.push({ depth, name });
+      continue;
+    }
+    for (const name of new Set(active.map(section => section.name))) found.get(name).push(line);
   }
   return new Map([...found].map(([k, v]) => [k, v.join('\n')]));
 }

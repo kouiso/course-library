@@ -6,7 +6,7 @@ export function fixHeadings(body) {
   const lines = String(body ?? '').split('\n').map(line => {
     if (fenced(line)) return line;
     // One replacement per line, so #### becomes ### and is not lifted twice. ## and ##### stay.
-    return line.replace(/^(\s{0,3})(#{3,4})(?=[ \t])/, (m, indent, marks) => indent + marks.slice(1));
+    return line.replace(/^( {0,3})(#{3,4})(?=[ \t])/, (m, indent, marks) => indent + marks.slice(1));
   });
   const fixed = lines.join('\n');
   return { body: fixed, changed: fixed !== String(body ?? '') };

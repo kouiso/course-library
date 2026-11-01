@@ -221,3 +221,14 @@ test('unclosed container fences end when the quote or list ends', async () => {
     assert.equal(sections(source).get('outside'), 'real');
   }
 });
+
+test('tab-indented code is never rewritten as headings', async () => {
+ const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+ for (const code of ['\t### literal', ' \t#### literal', '    ### literal']) assert.equal(fixHeadings(code).body, code);
+});
+test('parent section includes nested body but never borrows sibling content', async () => {
+ const { sections } = await import('../scripts/automation/body-format.mjs');
+ const found = sections('## 概要\n### 現状\n本文\n#### 詳細\n説明\n## 変更内容\n### 空欄\n## 別節\n隣の本文');
+ assert.match(found.get('概要'), /本文/); assert.match(found.get('概要'), /説明/);
+ assert.equal(found.get('変更内容').trim(), ''); assert.doesNotMatch(found.get('概要'), /隣の本文/);
+});
