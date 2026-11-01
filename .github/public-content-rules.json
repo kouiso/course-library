@@ -7,6 +7,6 @@
     { "name": "private-key-block", "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY-----" },
     { "name": "secret-assignment", "pattern": "\\b[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY)[A-Z0-9_]*\\s*[=:]\\s*['\"]?[^\\s'\"]{8,}" },
     { "name": "database-url", "pattern": "\\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\\+srv)?|redis)://[^\\s]+", "flags": "i" },
-    { "name": "personal-email", "pattern": "[A-Za-z0-9._%+-]+@(?!(?:[A-Za-z0-9-]+\\.)*(?:users\\.noreply\\.github\\.com|noreply\\.github\\.com|anthropic\\.com|example\\.(?:com|org|net))\\b)[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}" }
+    { "name": "personal-email", "pattern": "[A-Za-z0-9._%+-]+@(?!(?:[A-Za-z0-9-]+\\.)*(?:users\\.noreply\\.github\\.com|noreply\\.github\\.com|anthropic\\.com|example\\.(?:com|org|net))(?![A-Za-z0-9-]|\\.[A-Za-z0-9-]))[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}" }
   ]
 }

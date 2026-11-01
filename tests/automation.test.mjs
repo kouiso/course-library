@@ -247,3 +247,10 @@ test('secret reports emit only safe finding location metadata', async () => {
  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
  assert.throws(()=>safeFindings(null)); assert.throws(()=>safeFindings([{}]));
 });
+
+test('email exemptions match the complete host rather than a domain prefix', async () => {
+ const { loadRules, scan } = await import('../scripts/automation/public-content.mjs');
+ const rules=(await loadRules('.github/public-content-rules.json')).filter(r=>r.name==='personal-email');
+ for (const host of ['example.com.private.invalid','example.com-private.invalid','users.noreply.github.com.private.invalid','anthropic.com.private.invalid']) assert.equal(scan([{label:'body',text:'person'+'@'+host}],rules).length,1,host);
+ for (const host of ['example.com','sub.example.com','users.noreply.github.com','noreply.github.com','anthropic.com']) for(const suffix of ['', '.', ',']) assert.equal(scan([{label:'body',text:'person'+'@'+host+suffix}],rules).length,0,host+suffix);
+});
