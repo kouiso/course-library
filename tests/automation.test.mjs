@@ -173,3 +173,28 @@ test('public content rules are replaceable and malformed rule files fail closed'
     }
   } finally { await rm(folder, { recursive: true, force: true }); }
 });
+
+test('long and mixed code fences preserve literal headings and outside sections', async () => {
+  const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+  const { sections } = await import('../scripts/automation/body-format.mjs');
+  for (const [open, nested, close] of [['````js', '```', '````'], ['~~~~', '```', '~~~~'], ['````', '~~~', '`````']]) {
+    const code = [open, nested, '### literal code', close].join('\n');
+    const source = code + '\n### outside\nreal';
+    assert.equal(fixHeadings(source).body, code + '\n## outside\nreal');
+    const found = sections(source);
+    assert.equal(found.has('literalcode'), false);
+    assert.equal(found.get('outside'), 'real');
+  }
+});
+
+test('list and quote fenced code never becomes a heading section', async () => {
+  const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
+  const { sections } = await import('../scripts/automation/body-format.mjs');
+  for (const [start, indent] of [['- ', '  '], ['1. ', '   '], ['> ', '> ']]) {
+    const code = start + '```\n' + indent + '### literal code\n' + indent + '```';
+    const body = code + '\n### outside\nreal';
+    assert.equal(fixHeadings(body).body, code + '\n## outside\nreal');
+    assert.equal(sections(body).has('literalcode'), false);
+    assert.equal(sections(body).get('outside'), 'real');
+  }
+});

@@ -1,10 +1,10 @@
 // Issue heading fix (#8 item 3). Issue forms render fields one level deeper (###), so lift them by one.
 import { client, runDirectly, targetNumber } from './github-api.mjs';
+import { fenceTracker } from './fences.mjs';
 export function fixHeadings(body) {
-  let fence = false;
+  const fenced = fenceTracker();
   const lines = String(body ?? '').split('\n').map(line => {
-    if (/^\s*(```|~~~)/.test(line)) { fence = !fence; return line; }
-    if (fence) return line;
+    if (fenced(line)) return line;
     // One replacement per line, so #### becomes ### and is not lifted twice. ## and ##### stay.
     return line.replace(/^(\s{0,3})(#{3,4})(?=[ \t])/, (m, indent, marks) => indent + marks.slice(1));
   });

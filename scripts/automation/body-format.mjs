@@ -1,5 +1,6 @@
 // Issue / PR body format check (#8 item 2). Plain text rules only, no AI.
 import { client, isBot, runDirectly, targetNumber, upsertMarkerComment } from './github-api.mjs';
+import { fenceTracker } from './fences.mjs';
 export const MARKER = '<!-- course-library:body-format -->';
 export const issueSections = [
   { name: '背景' }, { name: '今どこまで' }, { name: '次にやること' }, { name: '誰の判断待ち' }, { name: '完了条件' },
@@ -14,10 +15,11 @@ export const alertLabels = ['alert', 'alerts'];
 const normalize = heading => heading.replace(/[（(]\s*(?:必須|任意)\s*[）)]/g, '').replace(/\s+/g, '').replace(/[:：]$/, '');
 export function sections(markdown) {
   const found = new Map();
-  let current = null, fence = false;
+  let current = null;
+  const fenced = fenceTracker();
   for (const line of String(markdown || '').replace(/\r\n?/g, '\n').split('\n')) {
-    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
-    const heading = !fence && /^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(line);
+    const inside = fenced(line);
+    const heading = !inside && /^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(line);
     if (heading) { current = normalize(heading[1]); if (!found.has(current)) found.set(current, []); continue; }
     if (current) found.get(current).push(line);
   }

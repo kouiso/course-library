@@ -134,7 +134,7 @@ try {
     const empty = await emptyResponse;
     assert.equal(empty.status(), 503);
     assert.equal(empty.headers()['content-disposition'], undefined);
-    await page.getByRole('heading', { name: '教材はただいま準備中です' }).waitFor();
+    await page.getByRole('heading', { name: 'この教材はただいま準備中です' }).waitFor();
     await screenshot('desktop-empty-download');
   } finally { await bucket.put(key, fixtures().get('typescript-exercise-10.pdf')); }
   checkpoint('Empty download: preparing page with503 and no attachment; synthetic source restored.');
