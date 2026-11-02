@@ -1,6 +1,7 @@
-import { readFile, mkdir, realpath, open } from 'node:fs/promises';
+import { readFile, mkdir, realpath, open, lstat, rename, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { resolve, dirname, basename, relative, isAbsolute, sep } from 'node:path';
+import { resolve, dirname, basename, join, relative, isAbsolute, sep } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { inspectPdf, validateCandidate } from './candidate-validation.mjs';
 async function main() {
@@ -26,6 +27,31 @@ await mkdir(dirname(values['--output']), { recursive: true, mode: 0o700 });
 const output = resolve(await realpath(dirname(values['--output'])), basename(values['--output']));
 requirePrivate(output);
 if ([await realpath(values['--candidate']), await realpath(values['--policy'])].includes(output)) throw new Error('Do not overwrite candidate or policy inputs');
+// An existing report may be replaced only when it is a plain file with no other names.
+// A hard link would otherwise let truncation reach a candidate, policy or PDF inode.
+async function replaceableOutput(path) {
+  const existing = await lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  if (existing && (!existing.isFile() || existing.nlink !== 1)) throw new Error('Report output must be a new file or an unlinked regular report');
+}
+await replaceableOutput(output);
+const temporary = join(dirname(output), `.${basename(output)}.tmp-${randomUUID()}`);
+requirePrivate(temporary);
+// Write a unique 0600 file, then rename it over the report so no existing inode is truncated.
+async function writeReport(path, text) {
+  let created = false;
+  try {
+    const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    created = true;
+    try { await handle.writeFile(text); await handle.chmod(0o600); await handle.sync(); }
+    finally { await handle.close(); }
+    await replaceableOutput(path);
+    await rename(temporary, path);
+    created = false;
+  } finally {
+    // Cleanup must not mask the original write or rename error.
+    if (created) await unlink(temporary).catch(() => undefined);
+  }
+}
 const candidate = JSON.parse(await readFile(values['--candidate'], 'utf8'));
 const policy = JSON.parse(await readFile(values['--policy'], 'utf8'));
 const inspections = new Map(), inspectionFailures = [];
@@ -37,9 +63,7 @@ const result = validateCandidate(candidate, policy, inspections, { strict: value
 result.inspectionFailures = inspectionFailures;
 result.sourceReadOnly = true;
 result.mode = values['--mode'] || 'candidate';
-const report = await open(output, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW, 0o600);
-try { await report.writeFile(JSON.stringify(result, null, 2) + '\n'); await report.chmod(0o600); }
-finally { await report.close(); }
+await writeReport(output, JSON.stringify(result, null, 2) + '\n');
 console.log(JSON.stringify({ valid: result.valid, approved: false, releaseReady: false, inspected: inspections.size, errors: result.errors, warnings: result.warnings.length, inspectionFailures }));
 if (!result.valid || inspectionFailures.length) process.exitCode = 1;
 

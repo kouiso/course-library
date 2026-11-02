@@ -138,8 +138,14 @@ test('logout requires session-bound CSRF and clears the browser cookie', async (
   for (const value of ['bad', csrf]) {
     const res = await req('/logout', { method: 'POST', headers: { Origin: origin, Cookie: cookie }, body: new URLSearchParams({ csrf: value }) });
     assert.equal(res.status, value === 'bad' ? 403 : 303);
-    if (value === csrf) assert.match(res.headers.get('Set-Cookie'), /Max-Age=0/);
+    if (value === csrf) { assert.match(res.headers.get('Set-Cookie'), /Max-Age=0/); assert.equal(res.headers.get('Location'), '/closed'); }
   }
+  const page = await req('/closed');
+  assert.equal(page.status, 200); noCache(page);
+  const html = await page.text();
+  assert.match(html, /role="status"/); assert.match(html, /教材ページを閉じました/); assert.match(html, /href="\/"/);
+  assert.doesNotMatch(html, /name="csrf"|<script(?! defer src="\/app\.js")/);
+  assert.equal((await req('/closed', { headers: { Cookie: cookie } })).headers.get('Location'), '/library');
 });
 test('fixed redirects ignore user-controlled next URL; unexpected hosts are refused', async () => {
   const { cookie } = await loginAttempt();
@@ -175,7 +181,7 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
-  assert.match(course, /ダミー教材/); assert.match(course, /0\.2\.1-synthetic/);
+  assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
   assert.equal((course.match(/href="\/download\/typescript\//g) || []).length, 21);
 });
 test('aggregate login limiter rejects attempts spread across IP addresses', async () => {
@@ -198,6 +204,26 @@ test('missing release file has an authenticated empty state and no metadata leak
     assert.equal(res.status, 404); noCache(res); assert.match(await res.text(), /準備中/);
     assert.equal((await req('/download/typescript/exercise-10')).status, 401);
   } finally { await bucket.put(key, fixtures().get('typescript-exercise-10.pdf')); }
+});
+test('empty release files fail closed for GET, HEAD and Range without attachment metadata', async () => {
+  const { cookie } = await loginAttempt();
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  for (const id of ['chapter-01', 'all-materials']) {
+    const filename = id === 'all-materials' ? 'typescript-all-materials.zip' : 'typescript-chapter-01.pdf';
+    const key = `releases/typescript/${version}/${filename}`, path = '/download/typescript/' + id;
+    await bucket.put(key, new Uint8Array());
+    try {
+      for (const options of [{}, { method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
+        const res = await req(path, { ...options, headers: { ...options.headers, Cookie: cookie } });
+        assert.equal(res.status, 503); noCache(res);
+        for (const name of ['Content-Disposition', 'ETag', 'Accept-Ranges', 'Content-Range']) assert.equal(res.headers.get(name), null);
+        const body = await res.text();
+        if (options.method === 'HEAD') assert.equal(body, ''); else assert.match(body, /準備中/);
+        const anonymous = await req(path, options);
+        assert.equal(anonymous.status, 401); noCache(anonymous); assert.equal(anonymous.headers.get('Content-Disposition'), null);
+      }
+    } finally { await bucket.put(key, fixtures().get(filename)); }
+  }
 });
 test('pending, preview and published labels are distinct; verification copy belongs to the release', async () => {
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
@@ -283,4 +309,34 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     Object.assign(manifest.giftPolicy, { myaspVerified: true, distributionApproved: true });
     assert.equal(manifest.canDistribute(course, false), true);
   } finally { Object.assign(course, original); Object.assign(manifest.giftPolicy, policy); }
+});
+test('zero-byte release objects return an authenticated no-store 503 without attachment metadata', async () => {
+  const { cookie } = await loginAttempt();
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  const files = { 'chapter-01': 'typescript-chapter-01.pdf', 'all-materials': 'typescript-all-materials.zip' };
+  try {
+    for (const name of Object.values(files)) await bucket.put(`releases/typescript/${version}/${name}`, new Uint8Array(0));
+    for (const id of Object.keys(files)) {
+      for (const options of [{}, { method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
+        const label = `${id} ${options.method || 'GET'} ${options.headers?.Range || ''}`;
+        const res = await req('/download/typescript/' + id, { ...options, headers: { ...options.headers, Cookie: cookie } });
+        assert.equal(res.status, 503, label); noCache(res);
+        for (const header of ['Content-Disposition', 'ETag', 'Accept-Ranges', 'Content-Range']) assert.equal(res.headers.get(header), null, `${label} ${header}`);
+        assert.match(res.headers.get('Content-Type'), /^text\/html/, label);
+        const body = await res.text();
+        if (options.method === 'HEAD') assert.equal(body, '', label);
+        else { assert.match(body, /準備中/, label); assert.match(body, /href="\/courses\/typescript"/, label); }
+        const anonymous = await req('/download/typescript/' + id, options);
+        assert.equal(anonymous.status, 401, label); assert.equal(anonymous.headers.get('Content-Disposition'), null);
+      }
+    }
+  } finally {
+    for (const name of Object.values(files)) await bucket.put(`releases/typescript/${version}/${name}`, fixtures().get(name));
+  }
+  for (const [id, name] of Object.entries(files)) {
+    const res = await req('/download/typescript/' + id, { headers: { Cookie: cookie } });
+    assert.equal(res.status, 200, id); assert.deepEqual(Buffer.from(await res.arrayBuffer()), fixtures().get(name));
+    const part = await req('/download/typescript/' + id, { headers: { Cookie: cookie, Range: 'bytes=0-9' } });
+    assert.equal(part.status, 206, id); assert.deepEqual(Buffer.from(await part.arrayBuffer()), fixtures().get(name).subarray(0, 10));
+  }
 });

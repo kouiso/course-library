@@ -1,6 +1,6 @@
 import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
 import { canDistribute, collections, isSurveyGift, type Collection, validateManifest } from './manifest';
-import { catalogue, css, guide, js, library, login, page, pendingCourse } from './views';
+import { catalogue, closed, css, guide, js, library, login, message, pendingCourse, preparingMaterial } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string };
 const security = {
@@ -20,8 +20,8 @@ function response(body: BodyInit | null, status = 200, headers: HeadersInit = {}
   new Headers(headers).forEach((v, k) => h.set(k, v));
   return new Response(body, { status, headers: h });
 }
-const error = (status: number, message: string) => response(page('ご案内', `<section class="card"><h1>${message}</h1><a href="/">入口へ戻る</a></section>`), status);
-const redirect = (to: '/' | '/library') => response(null, 303, { Location: to });
+const error = (status: number, title: string) => response(message(title), status);
+const redirect = (to: '/closed' | '/library') => response(null, 303, { Location: to });
 function configured(env: AppEnv): boolean {
   try {
     const u = new URL(env.APP_ORIGIN);
@@ -64,7 +64,9 @@ async function download(req: Request, env: AppEnv, course: Collection, id: strin
   if (!material || !course.release) return error(404, '教材が見つかりません');
   const key = course.release.prefix + material.filename;
   const object = await env.MATERIALS.head(key);
-  if (!object) return error(404, '教材はただいま準備中です');
+  if (!object) return response(preparingMaterial(course), 404);
+  // An empty object is an unfinished upload, not a material. Answer before any attachment metadata exists.
+  if (object.size === 0) return response(preparingMaterial(course), 503);
   const h = new Headers({
     'Content-Type': material.type,
     'Content-Disposition': `attachment; filename="${material.filename}"`,
@@ -115,7 +117,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       if (!ip) return error(403, '入口からもう一度お試しください');
       const ipAllowed = await env.LOGIN_IP_LIMIT.limit({ key: await sha256(ip) });
       const totalAllowed = await env.LOGIN_TOTAL_LIMIT.limit({ key: 'course-login' });
-      if (!ipAllowed.success || !totalAllowed.success) return response(page('少し待ってお試しください', '<section class="card"><h1>少し待ってお試しください</h1><p>入力回数が多くなっています。1分ほど待って入口からお試しください。</p><a href="/">入口へ戻る</a></section>'), 429, { 'Retry-After': '60' });
+      if (!ipAllowed.success || !totalAllowed.success) return response(message('少し待ってお試しください', '入力回数が多くなっています。1分ほど待って入口からお試しください。'), 429, { 'Retry-After': '60' });
       const form = await boundedForm(req);
       const csrf = form?.get('csrf') || '';
       const loginCookie = jar.get(cookieName('course_login', local));
@@ -131,7 +133,8 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
     }
     const form = await boundedForm(req);
     if (!session || !form || !await equal(form.get('csrf') || '', session.nonce)) return error(403, '入口からもう一度お試しください');
-    const res = redirect('/');
+    // A fixed page confirms the closed session without query parameters or JavaScript.
+    const res = redirect('/closed');
     res.headers.append('Set-Cookie', cookie('course_session', '', 0, local));
     return res;
   }
@@ -143,17 +146,18 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
     const csrf = await issue(secret, 'login', 600);
     return response(req.method === 'HEAD' ? null : login(csrf), 200, { 'Set-Cookie': cookie('course_login', csrf, 600, local) });
   }
+  if (url.pathname === '/closed') return session ? redirect('/library') : response(req.method === 'HEAD' ? null : closed());
   if (!session) return error(401, '合言葉を入力して教材を開いてください');
   if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local));
   if (url.pathname === '/status') {
     const gift = collections.find(isSurveyGift);
-    return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift)) : error(503, '配布設定の確認中です');
+    return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift, session.nonce)) : error(503, '配布設定の確認中です');
   }
   const courseRoute = /^\/courses\/([a-z0-9-]+)$/.exec(url.pathname);
   if (courseRoute) {
     const course = collections.find(c => c.id === courseRoute[1]);
     if (!course || !isSurveyGift(course)) return error(404, '教材が見つかりません');
-    return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, course) : pendingCourse(course));
+    return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, course) : pendingCourse(course, session.nonce));
   }
   if (url.pathname === '/guide') return response(req.method === 'HEAD' ? null : guide());
   const downloadRoute = /^\/download\/([a-z0-9-]+)\/(.+)$/.exec(url.pathname);

@@ -1,6 +1,6 @@
 // Small synthetic files only. Never import production materials into this script.
 import { crc32 } from 'node:zlib';
-export const version = '0.2.1-synthetic';
+export const version = '0.2.2-synthetic';
 export function pdf(label) {
   const stream = `BT /F1 16 Tf 45 760 Td (${label} - SYNTHETIC PLACEHOLDER ONLY) Tj ET`;
   const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];

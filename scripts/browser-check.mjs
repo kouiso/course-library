@@ -100,17 +100,44 @@ try {
   assert.deepEqual(await readFile(downloadPath), fixtures().get('typescript-chapter-01.pdf'));
   checkpoint('Download: real browser attachment has expected filename and exact synthetic PDF bytes.');
 
+  await page.getByRole('link', { name: '保存と閲覧の手順を見る' }).click();
+  await page.getByRole('heading', { name: '教材を手元に。' }).waitFor();
+  await screenshot('desktop-guide');
+  await page.getByRole('link', { name: 'プレゼント一覧へ戻る' }).click();
+  await page.getByRole('link', { name: 'ダミー教材を見る' }).click();
+  const bundleEvent = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'ダミー教材をまとめて保存' }).click();
+  const bundle = await bundleEvent;
+  assert.equal(bundle.suggestedFilename(), 'typescript-all-materials.zip');
+  const bundlePath = resolve(folder, 'downloaded-synthetic-bundle.zip');
+  await bundle.saveAs(bundlePath);
+  assert.deepEqual(await readFile(bundlePath), fixtures().get('typescript-all-materials.zip'));
+  checkpoint('Guide and bundle: navigation returns to the gift; ZIP attachment has the expected filename and bytes.');
+
   const bucket = await mf.getR2Bucket('MATERIALS');
   const key = `releases/typescript/${version}/typescript-exercise-10.pdf`;
   await bucket.delete(key);
   await page.getByRole('link', { name: '練習問題 10' }).click();
-  await page.getByRole('heading', { name: '教材はただいま準備中です' }).waitFor();
+  await page.getByRole('heading', { name: 'この教材はただいま準備中です' }).waitFor();
   await screenshot('desktop-missing-download');
   await bucket.put(key, fixtures().get('typescript-exercise-10.pdf'));
   const productDenied = await context.request.get(origin + '/download/taskapp/book-01');
   assert.equal(productDenied.status(), 404);
   checkpoint('Taskapp product download is denied with valid survey-gift authentication.');
   checkpoint('Missing download: useful authenticated error page instead of a broken attachment.');
+
+  await bucket.put(key, new Uint8Array());
+  try {
+    await page.goto(origin + '/courses/typescript');
+    const emptyResponse = page.waitForResponse(origin + '/download/typescript/exercise-10');
+    await page.getByRole('link', { name: '練習問題 10' }).click();
+    const empty = await emptyResponse;
+    assert.equal(empty.status(), 503);
+    assert.equal(empty.headers()['content-disposition'], undefined);
+    await page.getByRole('heading', { name: 'この教材はただいま準備中です' }).waitFor();
+    await screenshot('desktop-empty-download');
+  } finally { await bucket.put(key, fixtures().get('typescript-exercise-10.pdf')); }
+  checkpoint('Empty download: preparing page with503 and no attachment; synthetic source restored.');
 
   await page.goto(origin + '/status');
   assert.equal(await page.locator('a[href^="/download/"]').count(), 0);
@@ -130,6 +157,10 @@ try {
   await screenshot('mobile-typescript');
   await page.goto(origin + '/library');
   await page.getByRole('button', { name: 'ライブラリを閉じる' }).click();
+  await page.waitForURL(origin + '/closed');
+  assert.match(await page.getByRole('status').innerText(), /教材ページを閉じました/);
+  await screenshot('mobile-closed');
+  await page.getByRole('link', { name: '入口へ戻る' }).click();
   await page.waitForURL(origin + '/');
   await screenshot('mobile-entry');
   await noOverflow();
@@ -137,7 +168,7 @@ try {
   for (let i = 0; i < 3; i++) {
     await enter();
     await page.getByRole('button', { name: 'ライブラリを閉じる' }).click();
-    await page.waitForURL(origin + '/');
+    await page.waitForURL(origin + '/closed');
     const denied = await context.request.get(origin + '/library');
     assert.equal(denied.status(), 401);
   }

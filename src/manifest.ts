@@ -7,10 +7,10 @@ export const giftPolicy = {
 };
 export const release = {
   schemaVersion: 1,
-  version: '0.2.1-synthetic',
-  date: '2026-10-25',
+  version: '0.2.2-synthetic',
+  date: '2026-10-26',
   synthetic: true,
-  prefix: 'releases/typescript/0.2.1-synthetic/',
+  prefix: 'releases/typescript/0.2.2-synthetic/',
   verification: {
     delivery: 'MacのローカルWorkerとChromiumで配布機能を検証しています。',
     materials: 'この画面の教材はダミーです。実教材と配布版は未検証です。',

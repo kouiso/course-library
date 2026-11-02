@@ -1,0 +1,35 @@
+name: Check issue or PR body format
+# Manual only: this workflow never starts on push, issue or PR events, including its own PR.
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: issue or pr
+        type: choice
+        options: [issue, pr]
+        required: true
+      number:
+        description: Issue or pull request number
+        type: string
+        required: true
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+      - name: Check the body and update one marked comment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_KIND: ${{ inputs.kind }}
+          TARGET_NUMBER: ${{ inputs.number }}
+        run: node scripts/automation/body-format.mjs

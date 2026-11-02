@@ -2,7 +2,7 @@
 
 A small Japanese library for the TypeScript survey-response gift built with TypeScript, Cloudflare Workers, and a **private** R2 bucket. A stable entry URL, one shared access phrase, and a clear course catalogue keep delivery simple.
 
-**Status: local prototype, version 0.2.1. No live deployment. Every downloadable file is synthetic.**
+**Status: local acceptance build, version 0.2.2. Production delivery is pending approved setup. Every downloadable file in this repository is synthetic.**
 
 ## Try locally
 
@@ -25,7 +25,7 @@ Production shows a preparation state and denies downloads until a non-synthetic 
 
 ## Design
 
-Japanese typography, warm paper backgrounds, restrained forest and slate colours, CSS book illustrations, a focused gift card, and a compact mobile layout. Forms have visible labels, focus indicators, a submitting state, and errors. All navigation and downloads work without JavaScript; the small script only gives submission feedback. No external fonts, image services, analytics, or trackers.
+Japanese typography, warm paper backgrounds, restrained forest and slate colours, CSS book illustrations, a focused gift card, and a compact mobile layout. Forms have visible labels, focus indicators, a submitting state, and errors. An empty material object shows a preparation page (503), and closing the library lands on a fixed `/closed` confirmation page instead of a silent redirect. All navigation and downloads work without JavaScript; the small script only gives submission feedback. No external fonts, image services, analytics, or trackers.
 
 ## Architecture
 
@@ -49,7 +49,7 @@ For the first release, use the concise [Japanese setup guide](docs/SETUP.md). It
 
 Verified locally on macOS with Node 22.23.4: strict type checking, Worker dry-run bundle, and real workerd/Miniflare tests with local R2 and native rate-limit bindings. These tests cover anonymous direct downloads (including HEAD and Range), invalid/expired authentication, cache isolation, filename validation, CSRF, brute-force limits, and byte-for-byte downloads of all 21 TypeScript synthetic files, denial of legacy Taskapp product URLs and product/recipient manifest mixing, and fail-closed production release approval.
 
-Local Chromium visual checks also cover desktop (1440×1000), mobile viewport (390×844), keyboard focus, wrong-phrase errors, submitting feedback, attachment bytes, missing downloads, pending distribution settings, repeated login/logout and anonymous HEAD/Range denial. Screenshots below contain only synthetic materials. These are Chromium viewport checks on a Mac, not physical-device certification.
+Local Chromium visual checks also cover desktop (1440×1000), mobile viewport (390×844), keyboard focus, wrong-phrase errors, submitting feedback, attachment bytes, missing or empty downloads, pending distribution settings, repeated login/logout and anonymous HEAD/Range denial. Screenshots below contain only synthetic materials. These are Chromium viewport checks on a Mac, not physical-device certification.
 
 ![Desktop synthetic survey-gift library](docs/screenshots/desktop-catalogue.png)
 
@@ -71,8 +71,8 @@ Run `npm run build` first. This opt-in test starts one loopback test runtime, a 
 
 ## Delivery controls
 
-The workflow is manual-only and has not been executed. It uses standard `ubuntu-latest` GitHub-hosted runners, no caches or uploaded artifacts, and serializes verification and optional deployment at one commit. Optional deployment refuses to run until the target plan/limits and secure configuration are approved. No Cloudflare Git auto-deployment should be enabled alongside it. Costs depend on the actual target account and its limits; no zero-charge claim is made.
+Every workflow is manual-only (`workflow_dispatch`) and none has been executed; repository automation is listed in [operations](docs/OPERATIONS.md#repository-automation-manual). It uses standard `ubuntu-latest` GitHub-hosted runners, no caches or uploaded artifacts, and serializes verification and optional deployment at one commit. Optional deployment refuses to run until the target plan/limits and secure configuration are approved. No Cloudflare Git auto-deployment should be enabled alongside it. Costs depend on the actual target account and its limits; no zero-charge claim is made.
 
 This repository contains application code and synthetic fixture generators only. Keep course files, reader data, credentials, and private inventory reports outside Git.
 
-Private release candidates can be checked offline with `npm run candidate:check -- --candidate <ignored-json> --policy <ignored-json> --root <private-directory> --output <ignored-report>`. This requires existing `pdfinfo` and `pdftotext` commands. Source identities, explicit chapter IDs, topic anchors, byte hashes, pages, versions and foreign-course markers are checked; `--mode strict` also rejects missing body version labels. A candidate report never approves a release, changes originals, encrypts files or uploads anything. Real IDs, policy values, PDF text and candidate files belong outside public Git.
+Private release candidates can be checked offline with `npm run candidate:check -- --candidate <ignored-json> --policy <ignored-json> --root <private-directory> --output <ignored-report>`. This requires existing `pdfinfo` and `pdftotext` commands. Source identities, explicit chapter IDs, topic anchors, byte hashes, pages, versions and foreign-course markers are checked; `--mode strict` is an optional diagnostic that also rejects missing body version labels; printed labels are not a distribution requirement when a source snapshot is traceable by original filenames, acquisition records and SHA-256. Reports use private atomic replacement; keep the output in an ignored directory or outside the repository so temporary files remain private after interruption. A candidate report never approves a release, changes originals, encrypts files or uploads anything. Real IDs, policy values, PDF text and candidate files belong outside public Git.

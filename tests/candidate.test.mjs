@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, readFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, symlink, link, rm, readdir, stat, link as link_ } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { inspectPdf, validateCandidate } from '../scripts/candidate-validation.mjs';
 import { fixtures, pdf } from '../scripts/fixtures.mjs';
 const ver = '0.0.1';
@@ -112,5 +113,84 @@ test('private report CLI rejects public outputs, input overwrite and output syml
     const sentinel = join(folder, 'untouched.json'), link = join(folder, 'report.json');
     await writeFile(sentinel, 'synthetic sentinel'); await symlink(sentinel, link);
     assert.notEqual(command(link).status, 0); assert.equal(await readFile(sentinel, 'utf8'), 'synthetic sentinel');
+  } finally { await rm(folder, { recursive: true, force: true }); }
+});
+test('private report CLI never truncates hard-linked inputs and replaces existing reports atomically', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'candidate-link-'));
+  try {
+    const { candidate, policy } = syntheticCandidate();
+    const input = join(folder, 'candidate.json'), rules = join(folder, 'policy.json'), sample = join(folder, 'sample.pdf');
+    await writeFile(input, JSON.stringify(candidate)); await writeFile(rules, JSON.stringify(policy)); await writeFile(sample, pdf('Synthetic hard link sentinel'));
+    const command = output => spawnSync(process.execPath, ['scripts/inspect-release-candidate.mjs', '--candidate', input, '--policy', rules, '--root', folder, '--output', output], { encoding: 'utf8', timeout: 15000 });
+    const leftovers = async () => (await readdir(folder)).filter(name => name.includes('.tmp-'));
+    for (const target of [input, rules, sample]) {
+      const before = await readFile(target), link = join(folder, 'linked-report.json');
+      await link_(target, link);
+      try {
+        const result = command(link);
+        assert.notEqual(result.status, 0, target);
+        assert.deepEqual(await readFile(target), before, target);
+        assert.deepEqual(await readFile(link), before, target);
+        assert.equal((await stat(target)).nlink, 2, target);
+        assert.deepEqual(await leftovers(), []);
+      } finally { await rm(link, { force: true }); }
+    }
+    const directory = join(folder, 'directory-report.json'); await mkdir(directory);
+    assert.notEqual(command(directory).status, 0);
+    assert.equal((await stat(directory)).isDirectory(), true);
+    // `.env-report.json` is ignored, but its temporary sibling would not be; refuse before writing.
+    assert.notEqual(command('.env-report.json').status, 0);
+    await assert.rejects(stat('.env-report.json'));
+    assert.deepEqual((await readdir('.')).filter(name => name.includes('.tmp-')), []);
+    const report = join(folder, 'report.json');
+    command(report);
+    const first = JSON.parse(await readFile(report, 'utf8'));
+    assert.equal(first.sourceReadOnly, true);
+    assert.equal((await stat(report)).mode & 0o777, 0o600);
+    await writeFile(report, '{"stale":true}\n');
+    command(report);
+    assert.equal(JSON.parse(await readFile(report, 'utf8')).sourceReadOnly, true);
+    assert.equal((await stat(report)).mode & 0o777, 0o600);
+    assert.equal((await stat(report)).nlink, 1);
+    assert.deepEqual(await leftovers(), []);
+  } finally { await rm(folder, { recursive: true, force: true }); }
+});
+
+test('candidate reports preserve hard-linked inputs and replace ordinary reports atomically', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'candidate-report-preservation-'));
+  try {
+    const { candidate, policy } = syntheticCandidate();
+    candidate.entries = candidate.entries.slice(0, 1); policy.slots = policy.slots.slice(0, 1);
+    const bytes = pdf('Learning Flow: fixture-flow Version 0.0.1');
+    const entry = candidate.entries[0];
+    entry.localFile = 'source.pdf'; entry.bytes = bytes.length; entry.source.bytes = bytes.length;
+    entry.sha256 = createHash('sha256').update(bytes).digest('hex');
+    const input = join(folder, 'candidate.json'), rules = join(folder, 'policy.json'), source = join(folder, 'source.pdf');
+    await writeFile(input, JSON.stringify(candidate)); await writeFile(rules, JSON.stringify(policy)); await writeFile(source, bytes);
+    const command = output => spawnSync(process.execPath, ['scripts/inspect-release-candidate.mjs', '--candidate', input, '--policy', rules, '--root', folder, '--output', output], { encoding: 'utf8', timeout: 15000 });
+    const output = join(folder, 'report.json');
+    assert.equal(command(output).status, 0);
+    assert.equal(JSON.parse(await readFile(output, 'utf8')).valid, true);
+    for (const [index, target] of [input, rules, source].entries()) {
+      const alias = join(folder, `alias-${index}.json`), before = await readFile(target);
+      await link(target, alias);
+      assert.notEqual(command(alias).status, 0);
+      assert.deepEqual(await readFile(target), before);
+      assert.deepEqual(await readFile(alias), before);
+      await rm(alias);
+    }
+    const originalInode = (await stat(output)).ino;
+    assert.equal(command(output).status, 0);
+    assert.equal(JSON.parse(await readFile(output, 'utf8')).valid, true);
+    assert.notEqual((await stat(output)).ino, originalInode);
+    assert.equal((await stat(output)).mode & 0o777, 0o600);
+    assert.ok(!(await readdir(folder)).some(name => name.startsWith('.candidate-report-')));
+    const publicRoot = join(folder, 'public-repository'); await mkdir(publicRoot);
+    assert.equal(spawnSync('git', ['init', '--quiet', publicRoot]).status, 0);
+    await writeFile(join(publicRoot, '.git/info/exclude'), '/ignored-report.json\n');
+    const individuallyIgnored = join(publicRoot, 'ignored-report.json');
+    const privacy = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/inspect-release-candidate.mjs', import.meta.url)), '--candidate', input, '--policy', rules, '--root', folder, '--output', individuallyIgnored], { cwd: publicRoot, encoding: 'utf8', timeout: 15000 });
+    assert.notEqual(privacy.status, 0);
+    assert.deepEqual(await readdir(publicRoot), ['.git']);
   } finally { await rm(folder, { recursive: true, force: true }); }
 });

@@ -1,0 +1,35 @@
+name: Enable auto-merge for a grouped minor/patch update
+# Manual only. Major, security and ungrouped updates are refused and stay manual.
+on:
+  workflow_dispatch:
+    inputs:
+      number:
+        description: Dependabot pull request number
+        type: string
+        required: true
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+      - id: decide
+        name: Decide eligibility
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_NUMBER: ${{ inputs.number }}
+        run: node scripts/automation/dependency-merge.mjs
+      - name: Enable auto-merge (squash) after required checks
+        if: steps.decide.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_NUMBER: ${{ inputs.number }}
+        run: gh pr merge "$TARGET_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash
