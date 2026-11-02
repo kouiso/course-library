@@ -2,7 +2,7 @@ import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify 
 import { canDistribute, collections, isSurveyGift, type Collection, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, login, message, pendingCourse, preparingMaterial } from './views';
 
-type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string };
+type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string; BASIC_AUTH_USER?: string; BASIC_AUTH_PASS?: string };
 const security = {
   'Cache-Control': 'private, no-store, max-age=0',
   'CDN-Cache-Control': 'no-store',
@@ -30,7 +30,17 @@ function configured(env: AppEnv): boolean {
       && (local ? u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname) : u.protocol === 'https:' && !u.hostname.endsWith('.invalid'))
       && !!env.SESSION_SECRET && env.SESSION_SECRET.length >= 43
       && /^[0-9a-f]{64}$/.test(env.ACCESS_PHRASE_SHA256 || '')
-      && !!env.MATERIALS && !!env.LOGIN_IP_LIMIT && !!env.LOGIN_TOTAL_LIMIT;
+      && !!env.MATERIALS && !!env.LOGIN_IP_LIMIT && !!env.LOGIN_TOTAL_LIMIT
+      && (local || (!!env.BASIC_AUTH_USER && !!env.BASIC_AUTH_PASS));
+  } catch { return false; }
+}
+// The outer site gate. Local previews keep the phrase-only flow; production requires browser credentials before any page.
+async function basicAuth(req: Request, env: AppEnv): Promise<boolean> {
+  const header = req.headers.get('Authorization');
+  if (!header || !header.startsWith('Basic ')) return false;
+  try {
+    const decoded = new TextDecoder().decode(Uint8Array.from(atob(header.slice(6).trim()), c => c.charCodeAt(0)));
+    return await equal(decoded, `${env.BASIC_AUTH_USER}:${env.BASIC_AUTH_PASS}`);
   } catch { return false; }
 }
 function sameOrigin(req: Request, env: AppEnv): boolean {
@@ -105,6 +115,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (url.origin !== env.APP_ORIGIN) return error(421, '正しいURLからアクセスしてください');
   validateManifest();
   const local = env.APP_MODE === 'local';
+  if (!local && !await basicAuth(req, env)) return response(message('認証が必要です'), 401, { 'WWW-Authenticate': 'Basic realm="course-library", charset="UTF-8"' });
   const secret = env.SESSION_SECRET!;
   const jar = cookies(req);
   const session = await verify(secret, jar.get(cookieName('course_session', local)), 'session');

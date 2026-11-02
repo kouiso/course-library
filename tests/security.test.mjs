@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-import { runtime, localPhrase } from '../scripts/runtime.mjs';
+import { runtime, localPhrase, basicHeader } from '../scripts/runtime.mjs';
 import { seed, fixtures, version } from '../scripts/fixtures.mjs';
 
 const origin = 'http://127.0.0.1:8813';
@@ -154,7 +154,7 @@ test('fixed redirects ignore user-controlled next URL; unexpected hosts are refu
   assert.equal((await mf.dispatchFetch('https://evil.example/library', { headers: { Cookie: cookie } })).status, 421);
 });
 test('missing/short secrets and invalid production origin fail closed', async () => {
-  for (const bindings of [{ SESSION_SECRET: '' }, { SESSION_SECRET: 'short' }, { ACCESS_PHRASE_SHA256: '' }, { APP_ORIGIN: 'https://setup-required.invalid' }, { APP_ORIGIN: 'http://course.example' }]) {
+  for (const bindings of [{ SESSION_SECRET: '' }, { SESSION_SECRET: 'short' }, { ACCESS_PHRASE_SHA256: '' }, { BASIC_AUTH_USER: '' }, { BASIC_AUTH_PASS: '' }, { APP_ORIGIN: 'https://setup-required.invalid' }, { APP_ORIGIN: 'http://course.example' }]) {
     const instance = runtime({ bindings });
     try { const res = await instance.dispatchFetch(origin + '/download/typescript/chapter-01'); assert.equal(res.status, 503); noCache(res); }
     finally { await instance.dispose(); }
@@ -262,24 +262,41 @@ test('Taskapp product routes are denied even with valid gift auth and existing p
     assert.equal((await req(path)).status, 401);
   }
 });
+test('production requires the Basic site gate before the phrase login', async () => {
+  const prodOrigin = 'https://course.example';
+  const instance = runtime({ bindings: { SESSION_SECRET: secret } });
+  try {
+    const denied = await instance.dispatchFetch(prodOrigin);
+    assert.equal(denied.status, 401);
+    assert.match(denied.headers.get('WWW-Authenticate'), /^Basic realm="course-library"/);
+    const wrong = await instance.dispatchFetch(prodOrigin, { headers: { Authorization: 'Basic ' + Buffer.from('test-basic-user:wrong').toString('base64') } });
+    assert.equal(wrong.status, 401);
+    for (const path of ['/library', '/download/typescript/chapter-01']) {
+      assert.equal((await instance.dispatchFetch(prodOrigin + path)).status, 401);
+    }
+    const entry = await instance.dispatchFetch(prodOrigin, { headers: { Authorization: basicHeader } });
+    assert.equal(entry.status, 200); assert.match(await entry.text(), /name="csrf"/);
+  } finally { await instance.dispose(); }
+});
 test('production auth remains secure but neither synthetic files nor unverified survey gifts are distributed', async () => {
   const prodOrigin = 'https://course.example';
   const instance = runtime({ bindings: { SESSION_SECRET: secret } });
   try {
     await seed(instance);
-    const entry = await instance.dispatchFetch(prodOrigin);
+    const authHeaders = { Authorization: basicHeader };
+    const entry = await instance.dispatchFetch(prodOrigin, { headers: authHeaders });
     assert.equal(entry.headers.get('Strict-Transport-Security'), 'max-age=31536000');
     const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
-    const res = await instance.dispatchFetch(prodOrigin + '/login', { method: 'POST', redirect: 'manual', headers: { Origin: prodOrigin, 'CF-Connecting-IP': '192.0.2.230', Cookie: headerCookie(entry, '__Host-course_login') }, body: new URLSearchParams({ csrf, phrase: localPhrase }) });
+    const res = await instance.dispatchFetch(prodOrigin + '/login', { method: 'POST', redirect: 'manual', headers: { ...authHeaders, Origin: prodOrigin, 'CF-Connecting-IP': '192.0.2.230', Cookie: headerCookie(entry, '__Host-course_login') }, body: new URLSearchParams({ csrf, phrase: localPhrase }) });
     assert.equal(res.status, 303);
     const setCookie = res.headers.getSetCookie().find(c => c.startsWith('__Host-course_session='));
     for (const attr of ['Secure', 'HttpOnly', 'SameSite=Strict', 'Path=/', 'Max-Age=14400']) assert.ok(setCookie.includes(attr));
     const cookie = setCookie.split(';')[0];
-    const pending = await instance.dispatchFetch(prodOrigin + '/courses/typescript', { headers: { Cookie: cookie } });
+    const pending = await instance.dispatchFetch(prodOrigin + '/courses/typescript', { headers: { ...authHeaders, Cookie: cookie } });
     const html = await pending.text();
     assert.match(html, /現在ダウンロードできるファイルはありません/); assert.doesNotMatch(html, /href="\/download\//);
     for (const options of [{}, { method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
-      const denied = await instance.dispatchFetch(prodOrigin + '/download/typescript/chapter-01', { ...options, headers: { ...options.headers, Cookie: cookie } });
+      const denied = await instance.dispatchFetch(prodOrigin + '/download/typescript/chapter-01', { ...options, headers: { ...options.headers, ...authHeaders, Cookie: cookie } });
       assert.equal(denied.status, 503); noCache(denied); assert.equal(denied.headers.get('Content-Disposition'), null);
     }
   } finally { await instance.dispose(); }
