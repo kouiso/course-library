@@ -2,7 +2,7 @@
 
 A small Japanese library for the TypeScript survey-response gift built with TypeScript, Cloudflare Workers, and a **private** R2 bucket. A stable entry URL, one shared access phrase, and a clear course catalogue keep delivery simple.
 
-**Status: local acceptance build, version 0.2.2. Production delivery is pending approved setup. Every downloadable file in this repository is synthetic.**
+**Status: version 0.2.2 is live at `https://course-library.kouiso.workers.dev` behind the shared access phrase. Downloads stay disabled in production until the release approval flags and real (non-synthetic) materials land. Every downloadable file in this repository and in the deployed bucket is synthetic.**
 
 ## Try locally
 
@@ -15,7 +15,7 @@ npm run check
 npm run dev
 ```
 
-Open `http://127.0.0.1:8797` and enter the **local dummy phrase** `synthetic-development-only`. Local signing keys are generated in memory for each preview. They are never production credentials. The preview binds only to the loopback interface and uses ephemeral local R2 data. The checked-in Wrangler configuration deliberately refuses production requests until secure setup is complete.
+Open `http://127.0.0.1:8797` and enter the **local dummy phrase** `synthetic-development-only`. Local signing keys are generated in memory for each preview. They are never production credentials. The preview binds only to the loopback interface and uses ephemeral local R2 data.
 
 **Distribution scope:** TypeScript is the free gift for survey respondents. Taskapp is a paid product and is never included in this gift library. Every Taskapp product URL is denied even with valid gift authentication.
 
@@ -55,7 +55,7 @@ Local Chromium visual checks also cover desktop (1440×1000), mobile viewport (3
 
 <img src="docs/screenshots/mobile-catalogue.png" alt="Mobile synthetic survey-gift library" width="300">
 
-Windows and WSL are **pending**. Real course code, PDF password compatibility, Safari, physical mobile devices, and production Cloudflare are **not yet verified**.
+Windows and WSL are **pending**. Real course code, PDF password compatibility, Safari, and physical mobile devices are **not yet verified**. Production Cloudflare is verified for the synthetic build only: login page, phrase authentication, catalogue, status page, and fail-closed download denial.
 
 `npm run check` includes the public staged-file/history scan. The local pre-push hook runs it again before publication; install it with `npm run hooks:install`. Pattern scanning supplements manual review and cannot prove that arbitrary content is safe to publish.
 
