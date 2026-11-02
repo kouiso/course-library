@@ -2,7 +2,7 @@
 
 A small Japanese library for the TypeScript survey-response gift built with TypeScript, Cloudflare Workers, and a **private** R2 bucket. A stable entry URL, one shared access phrase, and a clear course catalogue keep delivery simple.
 
-**Status: version 0.2.2 is live at `https://course-library.kouiso.workers.dev` behind the shared access phrase. Downloads stay disabled in production until the release approval flags and real (non-synthetic) materials land. Every downloadable file in this repository and in the deployed bucket is synthetic.**
+**Status: version 0.2.2 is live at `https://course-library.kouiso.workers.dev` behind an outer HTTP Basic site gate and the shared access phrase. Downloads stay disabled in production until the release approval flags and real (non-synthetic) materials land. Every downloadable file in this repository and in the deployed bucket is synthetic.**
 
 ## Try locally
 
@@ -32,7 +32,8 @@ Japanese typography, warm paper backgrounds, restrained forest and slate colours
 ```mermaid
 flowchart LR
   Reader[Survey respondent] --> Entry[Stable Worker URL]
-  Entry --> Phrase[Shared phrase + CSRF check]
+  Entry --> Basic[HTTP Basic site gate - production only]
+  Basic --> Phrase[Shared phrase + CSRF check]
   Phrase --> Cookie[Signed 4-hour HttpOnly cookie]
   Cookie --> Catalogue[TypeScript survey gift]
   Catalogue --> Policy[Approved survey-gift release]
