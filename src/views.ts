@@ -59,10 +59,18 @@ export function productLibrary(nonce: string, course: Collection): string {
   return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course');
 }
 export function lockedCourse(course: Collection, nonce: string): string {
-  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body: `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を、入口の画面で入力してください。`, action: { href: '/', label: '入口で合言葉を入力する' }, note: '一度ログアウトしてから商品用の合言葉で入り直すこともできます。', after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
+  const paid = course.distribution === 'paid-product';
+  const body = paid
+    ? `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を、入口の画面で入力してください。`
+    : `${escape(course.title)}はアンケート回答後のご案内にある合言葉を持つ方だけが開けます。ご案内の合言葉を、入口の画面で入力してください。`;
+  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body, action: { href: '/', label: '入口で合言葉を入力する' }, note: '一度ログアウトしてから別の合言葉で入り直すこともできます。', after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
 }
 export function pendingCourse(course: Collection, nonce: string): string {
-  return page(`${course.title}の準備状況`, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a>${notice({ eyebrow: 'GETTING YOUR GIFT READY', title: course.title, body: 'アンケート回答者限定の無料プレゼントです。回答後のご案内と教材の配布設定を確認しています。準備が整い次第、こちらから受け取れるようになります。', action: { href: '/library', label: '一覧に戻る' }, note: '現在ダウンロードできるファイルはありません。', art: true, after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
+  const paid = course.distribution === 'paid-product';
+  const body = paid
+    ? 'ご購入いただいた商品の教材です。配布の準備を確認しています。準備が整い次第、こちらから受け取れるようになります。'
+    : 'アンケート回答者限定の無料プレゼントです。回答後のご案内と教材の配布設定を確認しています。準備が整い次第、こちらから受け取れるようになります。';
+  return page(`${course.title}の準備状況`, `<a href="/library" class="breadcrumb">← ${paid ? '教材一覧' : 'プレゼント一覧'}へ</a>${notice({ eyebrow: paid ? 'GETTING YOUR MATERIALS READY' : 'GETTING YOUR GIFT READY', title: course.title, body, action: { href: '/library', label: '一覧に戻る' }, note: '現在ダウンロードできるファイルはありません。', art: true, after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
 }
 export function preparingMaterial(course: Collection): string {
   return page('教材の準備中', notice({ eyebrow: 'GETTING READY', title: 'この教材はただいま準備中です', body: 'ファイルの用意が整っていないため、今は保存できません。少し時間をおいてから、もう一度お試しください。ほかの教材はそのまま受け取れます。', action: { href: `/courses/${course.id}`, label: '教材ページに戻る' }, note: 'しばらくたっても変わらない場合は、配布時のご案内にある連絡先へお知らせください。', art: true }));
