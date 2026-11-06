@@ -1,6 +1,6 @@
 import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, collections, isSurveyGift, type Collection, validateManifest } from './manifest';
-import { catalogue, closed, css, guide, js, library, login, message, pendingCourse, preparingMaterial } from './views';
+import { canDistribute, canDistributeProduct, collections, isPaidProduct, isSurveyGift, phraseEnvName, type Collection, validateManifest } from './manifest';
+import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string; BASIC_AUTH_USER?: string; BASIC_AUTH_PASS?: string };
 const security = {
@@ -134,11 +134,21 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       const loginCookie = jar.get(cookieName('course_login', local));
       if (!form || !loginCookie || !await equal(csrf, loginCookie) || !await verify(secret, csrf, 'login')) return error(403, '入口からもう一度お試しください');
       const phrase = form.get('phrase') || '';
-      if (phrase.length > 256 || !await equal(await sha256(phrase), env.ACCESS_PHRASE_SHA256!)) {
+      // 合言葉はコレクションごとに別の secret を持つ。打たれた合言葉が
+      // どのコレクションのものかを全件照合し、合ったものだけを開ける。
+      const digest = phrase.length > 256 ? '' : await sha256(phrase);
+      const secrets = env as unknown as Record<string, string | undefined>;
+      const matched: string[] = [];
+      for (const c of collections) {
+        const expected = secrets[phraseEnvName(c)];
+        if (expected && digest && await equal(digest, expected)) matched.push(c.id);
+      }
+      if (!matched.length) {
         return response(login(csrf, '合言葉を確認して、もう一度入力してください。'), 401);
       }
+      const unlocked = [...new Set(matched)];
       const res = redirect('/library');
-      res.headers.append('Set-Cookie', cookie('course_session', await issue(secret, 'session', SESSION_TTL), SESSION_TTL, local));
+      res.headers.append('Set-Cookie', cookie('course_session', await issue(secret, 'session', SESSION_TTL, { unlocked }), SESSION_TTL, local));
       res.headers.append('Set-Cookie', cookie('course_login', '', 0, local));
       return res;
     }
@@ -159,7 +169,8 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   }
   if (url.pathname === '/closed') return session ? redirect('/library') : response(req.method === 'HEAD' ? null : closed());
   if (!session) return error(401, '合言葉を入力して教材を開いてください');
-  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local));
+  const unlocked = session.unlocked ?? [];
+  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local, unlocked));
   if (url.pathname === '/status') {
     const gift = collections.find(isSurveyGift);
     return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift, session.nonce)) : error(503, '配布設定の確認中です');
@@ -167,15 +178,19 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   const courseRoute = /^\/courses\/([a-z0-9-]+)$/.exec(url.pathname);
   if (courseRoute) {
     const course = collections.find(c => c.id === courseRoute[1]);
-    if (!course || !isSurveyGift(course)) return error(404, '教材が見つかりません');
-    return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, course) : pendingCourse(course, session.nonce));
+    if (!course) return error(404, '教材が見つかりません');
+    if (!unlocked.includes(course.id)) return response(req.method === 'HEAD' ? null : lockedCourse(course, session.nonce), 403);
+    if (isSurveyGift(course)) return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, course) : pendingCourse(course, session.nonce));
+    if (isPaidProduct(course)) return response(req.method === 'HEAD' ? null : canDistributeProduct(course) ? productLibrary(session.nonce, course) : pendingCourse(course, session.nonce));
+    return error(404, '教材が見つかりません');
   }
   if (url.pathname === '/guide') return response(req.method === 'HEAD' ? null : guide());
   const downloadRoute = /^\/download\/([a-z0-9-]+)\/(.+)$/.exec(url.pathname);
   if (downloadRoute) {
     const course = collections.find(c => c.id === downloadRoute[1]);
-    if (!course || !isSurveyGift(course)) return error(404, '教材が見つかりません');
-    if (!canDistribute(course, local)) return error(503, '配布設定の確認中です');
+    if (!course || !unlocked.includes(course.id)) return error(404, '教材が見つかりません');
+    const distributable = isSurveyGift(course) ? canDistribute(course, local) : isPaidProduct(course) && canDistributeProduct(course);
+    if (!distributable) return error(503, '配布設定の確認中です');
     return download(req, env, course, downloadRoute[2]!);
   }
   return error(404, 'ページが見つかりません');
