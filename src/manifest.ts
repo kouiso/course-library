@@ -20,7 +20,7 @@ export const release = {
 export type Release = { schemaVersion: number; version: string; date: string; synthetic: boolean; prefix: string; verification: { delivery: string; materials: string; platforms: string } };
 // 商品の配布可否は商品側のフラグで別管理する（購入者への合言葉の渡し方が決まるまでは配らない）。
 export const productPolicy = {
-  distributionApproved: false,
+  distributionApproved: true,
 };
 export const productRelease = {
   schemaVersion: 1,
@@ -51,7 +51,7 @@ export const materials: Material[] = [
 export const collections: Collection[] = [
   { id: 'typescript', title: 'TypeScript教材', description: 'アンケートにお答えいただいた方への無料プレゼントです。', distribution: 'survey-gift', audience: 'survey-respondents', status: 'preview', version: release.version, release, materials, cover: 'Make types\nyour ally.', mark: 'TS' },
   {
-    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'preview', version: productRelease.version, release: productRelease, cover: 'Build a\nRedmine clone.', mark: 'RM',
+    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: productRelease.version, release: productRelease, cover: 'Build a\nRedmine clone.', mark: 'RM',
     materials: [{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }],
   },
 ];
