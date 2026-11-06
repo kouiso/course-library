@@ -61,17 +61,42 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(res.status, 303);
   const course = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
   assert.equal(course.status, 200);
-  assert.match(await course.text(), /準備|配布/);
+  assert.match(await course.text(), /ソースコード一式/);
   assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
-  // 商品の合言葉で開いても、配布承認前ならダウンロードはできない。
-  assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 503);
+  // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES');
+  const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
+  assert.equal(dl.status, 200);
+  assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
+  assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
 });
 test('the gift phrase does not unlock paid products', async () => {
   const { cookie } = await loginAttempt(localPhrase);
   assert.equal((await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 404);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 200);
+});
+test('production serves the paid product to product-phrase holders behind the Basic gate', async () => {
+  const prodOrigin = 'https://course.example';
+  const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });
+  try {
+    const bucket = await instance.getR2Bucket('MATERIALS');
+    await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PROD PRODUCT BYTES');
+    const authHeaders = { Authorization: basicHeader };
+    const entry = await instance.dispatchFetch(prodOrigin, { headers: authHeaders });
+    const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+    const res = await instance.dispatchFetch(prodOrigin + '/login', { method: 'POST', redirect: 'manual', headers: { ...authHeaders, Origin: prodOrigin, 'CF-Connecting-IP': '192.0.2.231', Cookie: headerCookie(entry, '__Host-course_login') }, body: new URLSearchParams({ csrf, phrase: productPhrase }) });
+    assert.equal(res.status, 303);
+    const cookie = res.headers.getSetCookie().find(c => c.startsWith('__Host-course_session=')).split(';')[0];
+    const course = await instance.dispatchFetch(prodOrigin + '/courses/redmine-clone', { headers: { ...authHeaders, Cookie: cookie } });
+    assert.equal(course.status, 200); assert.match(await course.text(), /redmine-clone-source\.zip|ソースコード一式/);
+    const dl = await instance.dispatchFetch(prodOrigin + '/download/redmine-clone/source-zip', { headers: { ...authHeaders, Cookie: cookie } });
+    assert.equal(dl.status, 200); assert.equal(await dl.text(), 'PROD PRODUCT BYTES'); noCache(dl);
+    // 商品だけ開いた人に特典は渡らない。
+    assert.equal((await instance.dispatchFetch(prodOrigin + '/download/typescript/chapter-01', { headers: { ...authHeaders, Cookie: cookie } })).status, 404);
+  } finally { await instance.dispose(); }
 });
 test('successful login rotates session, uses secure cookies and fixed redirect', async () => {
   const a = await loginAttempt(), b = await loginAttempt();
