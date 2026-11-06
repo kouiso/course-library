@@ -1,6 +1,6 @@
 const encoder = new TextEncoder();
 export const SESSION_TTL = 4 * 60 * 60;
-export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string };
+export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[] };
 const encode = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 function decode(s: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
@@ -17,9 +17,9 @@ export async function equal(a: string, b: string): Promise<boolean> {
   const y = await crypto.subtle.digest('SHA-256', encoder.encode(b));
   return crypto.subtle.timingSafeEqual(x, y);
 }
-export async function issue(secret: string, purpose: Token['purpose'], ttl: number): Promise<string> {
+export async function issue(secret: string, purpose: Token['purpose'], ttl: number, extra?: { unlocked?: string[] }): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
-  const body = encode(encoder.encode(JSON.stringify({ purpose, iat, exp: iat + ttl, nonce: crypto.randomUUID() })));
+  const body = encode(encoder.encode(JSON.stringify({ purpose, iat, exp: iat + ttl, nonce: crypto.randomUUID(), ...extra })));
   return `${body}.${encode(new Uint8Array(await crypto.subtle.sign('HMAC', await key(secret), encoder.encode(body))))}`;
 }
 export async function verify(secret: string, value: string | undefined, purpose: Token['purpose']): Promise<Token | null> {
@@ -33,6 +33,8 @@ export async function verify(secret: string, value: string | undefined, purpose:
     if (t.purpose !== purpose || !Number.isSafeInteger(t.iat) || !Number.isSafeInteger(t.exp)
       || t.iat > now || t.exp <= now || t.exp <= t.iat || t.exp - t.iat > ttl
       || !/^[0-9a-f-]{36}$/.test(t.nonce)) return null;
+    if (t.unlocked !== undefined && (!Array.isArray(t.unlocked) || t.unlocked.length > 8
+      || t.unlocked.some(id => typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)))) return null;
     return t;
   } catch { return null; }
 }

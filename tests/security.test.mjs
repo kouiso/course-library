@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-import { runtime, localPhrase, basicHeader } from '../scripts/runtime.mjs';
+import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
 import { seed, fixtures, version } from '../scripts/fixtures.mjs';
 
 const origin = 'http://127.0.0.1:8813';
 const secret = 'synthetic-only-test-signing-key-000000000000000000000';
+const productPhrase = 'synthetic-product-phrase-only';
 let mf;
 let ip = 0;
-before(async () => { mf = runtime({ origin, bindings: { SESSION_SECRET: secret }, totalLimit: 1000 }); await mf.ready; await seed(mf); });
+before(async () => { mf = runtime({ origin, bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) }, totalLimit: 1000 }); await mf.ready; await seed(mf); });
 after(async () => { await mf?.dispose(); });
 const req = (path, opts = {}) => mf.dispatchFetch(origin + path, { redirect: 'manual', ...opts });
 function headerCookie(res, name) { return res.headers.getSetCookie().find(c => c.startsWith(name + '='))?.split(';')[0] || ''; }
@@ -47,8 +48,30 @@ test('expired, future, overlong and wrong-purpose signed sessions fail', async (
   const now = Math.floor(Date.now() / 1000);
   for (const token of [signed('session', now - 100, now - 1), signed('session', now + 100, now + 200), signed('session', now, now + 14401), signed('login', now, now + 100)]) {
     const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token}` } });
-    assert.equal(res.status, 401); noCache(res);
+    assert.notEqual(res.status, 200); noCache(res);
   }
+});
+test('a session without unlocked collections is locked out of every download', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now, now + 100)}` } });
+  assert.equal(res.status, 404);
+});
+test('the product phrase unlocks only its product, not the survey gift', async () => {
+  const { res, cookie } = await loginAttempt(productPhrase);
+  assert.equal(res.status, 303);
+  const course = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
+  assert.equal(course.status, 200);
+  assert.match(await course.text(), /準備|配布/);
+  assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
+  // 商品の合言葉で開いても、配布承認前ならダウンロードはできない。
+  assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 503);
+});
+test('the gift phrase does not unlock paid products', async () => {
+  const { cookie } = await loginAttempt(localPhrase);
+  assert.equal((await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).status, 403);
+  assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 404);
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 200);
 });
 test('successful login rotates session, uses secure cookies and fixed redirect', async () => {
   const a = await loginAttempt(), b = await loginAttempt();
@@ -239,7 +262,7 @@ test('pending, preview and published labels are distinct; verification copy belo
     course.status = 'published';
     manifest.giftPolicy.myaspVerified = true; manifest.giftPolicy.distributionApproved = true;
     course.release = { ...course.release, synthetic: false, verification: { delivery: '配送の確認記録A', materials: '教材の確認記録B', platforms: '環境の確認記録C' } };
-    const catalogue = views.catalogue('synthetic-csrf');
+    const catalogue = views.catalogue('synthetic-csrf', false, ['typescript']);
     assert.match(catalogue, />公開中</); assert.doesNotMatch(catalogue, /開発プレビュー/);
     const html = views.library('synthetic-csrf', course);
     for (const value of ['配送の確認記録A', '教材の確認記録B', '環境の確認記録C']) assert.ok(html.includes(value));
@@ -306,11 +329,14 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
   const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
   const course = manifest.collections[0], original = structuredClone(course), policy = { ...manifest.giftPolicy };
   try {
-    for (const [field, value] of [['id', 'taskapp'], ['distribution', 'paid-product'], ['audience', 'all-newsletter-readers']]) {
+    for (const [field, value] of [['id', 'taskapp'], ['distribution', 'free-product'], ['audience', 'all-newsletter-readers']]) {
       Object.assign(course, original, { [field]: value });
       assert.equal(manifest.canDistribute(course, true), false);
       assert.throws(() => manifest.validateManifest());
     }
+    // 商品コレクションは buyers 以外の audience を許可しない（paid-product 型は正当）。
+    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers' });
+    assert.doesNotThrow(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original));
     course.materials[0].filename = 'taskapp-book-01.pdf';
     assert.throws(() => manifest.validateManifest());

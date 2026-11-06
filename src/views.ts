@@ -1,4 +1,4 @@
-import { canDistribute, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, release, type Collection } from './manifest';
+import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, release, type Collection } from './manifest';
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
@@ -36,13 +36,30 @@ export function library(nonce: string, course: Collection): string {
 export function guide(): string {
   return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course');
 }
-export function catalogue(nonce: string, local = false): string {
+export function catalogue(nonce: string, local = false, unlocked: readonly string[] = []): string {
   const gifts = collections.filter(isSurveyGift);
-  return page('プレゼント教材', `<div class="catalogue-hero"><div><div class="eyebrow">THANK YOU FOR YOUR FEEDBACK</div><h1>ご協力の感謝を、<br>次の学びに。</h1><p class="lead">アンケートにお答えいただいた方へ。<br class="wide">TypeScript教材を無料プレゼントとしてお届けします。</p></div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div><div class="library-label"><h2>回答者限定プレゼント</h2><span>SURVEY GIFT</span></div>${gifts.map(c => {
-    const available = canDistribute(c, local);
+  const products = collections.filter(c => !isSurveyGift(c));
+  const giftCard = (c: Collection) => {
+    const available = canDistribute(c, local) && unlocked.includes(c.id);
     const contents = `学習の進め方 / 本編 ${chapterCount(c)}章 / 練習問題 ${exerciseCount(c)}本<span class="wide-only"> / まとめて保存</span>`;
-    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${available ? contents : '回答後のご案内と配布版を確認しています'}</div><a class="course-action" href="/courses/${c.id}">${available ? c.release?.synthetic ? 'ダミー教材を見る' : '教材を受け取る' : '配布準備状況を見る'} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
-  }).join('')}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
+    const state = unlocked.includes(c.id) ? (available ? (c.release?.synthetic ? 'ダミー教材を見る' : '教材を受け取る') : '配布準備状況を見る') : 'ギフト用の合言葉が必要です';
+    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${unlocked.includes(c.id) ? (available ? collectionStatusLabel(c.status) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${available ? contents : '回答後のご案内と配布版を確認しています'}</div><a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+  };
+  const productCard = (c: Collection) => {
+    const open = unlocked.includes(c.id);
+    const available = canDistributeProduct(c);
+    const state = !open ? '商品用の合言葉が必要です' : available ? '教材を受け取る' : '配布準備状況を見る';
+    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `ソースコード一式 / ${c.materials.length} ファイル` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+  };
+  return page('プレゼント教材', `<div class="catalogue-hero"><div><div class="eyebrow">THANK YOU FOR YOUR FEEDBACK</div><h1>ご協力の感謝を、<br>次の学びに。</h1><p class="lead">アンケートにお答えいただいた方へ。<br class="wide">TypeScript教材を無料プレゼントとしてお届けします。</p></div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div><div class="library-label"><h2>回答者限定プレゼント</h2><span>SURVEY GIFT</span></div>${gifts.map(giftCard).join('')}${products.length ? `<div class="library-label"><h2>教材（販売）</h2><span>PAID PRODUCT</span></div>${products.map(productCard).join('')}` : ''}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
+}
+export function productLibrary(nonce: string, course: Collection): string {
+  const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
+  const verification = course.release?.verification;
+  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course');
+}
+export function lockedCourse(course: Collection, nonce: string): string {
+  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body: `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を、入口の画面で入力してください。`, action: { href: '/', label: '入口で合言葉を入力する' }, note: '一度ログアウトしてから商品用の合言葉で入り直すこともできます。', after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
 }
 export function pendingCourse(course: Collection, nonce: string): string {
   return page(`${course.title}の準備状況`, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a>${notice({ eyebrow: 'GETTING YOUR GIFT READY', title: course.title, body: 'アンケート回答者限定の無料プレゼントです。回答後のご案内と教材の配布設定を確認しています。準備が整い次第、こちらから受け取れるようになります。', action: { href: '/library', label: '一覧に戻る' }, note: '現在ダウンロードできるファイルはありません。', art: true, after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
