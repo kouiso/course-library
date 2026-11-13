@@ -478,7 +478,8 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     assert.throws(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers', phraseEnv: 'ACCESS_PHRASE_SHA256_TYPESCRIPT' });
     assert.doesNotThrow(() => manifest.validateManifest());
-    Object.assign(course, structuredClone(original));
+    Object.assign(course, structuredClone(original)); delete course.phraseEnv;
+    assert.doesNotThrow(() => manifest.validateManifest());
     course.materials[0].filename = 'taskapp-book-01.pdf';
     assert.throws(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original));
@@ -492,7 +493,7 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     }
     Object.assign(manifest.giftPolicy, { myaspVerified: true, distributionApproved: true });
     assert.equal(manifest.canDistribute(course, false), true);
-  } finally { Object.assign(course, original); Object.assign(manifest.giftPolicy, policy); }
+  } finally { Object.assign(course, original); delete course.phraseEnv; Object.assign(manifest.giftPolicy, policy); }
 });
 test('zero-byte release objects return an authenticated no-store 503 without attachment metadata', async () => {
   const { cookie } = await loginAttempt();
