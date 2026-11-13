@@ -6,6 +6,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
 import { seed, fixtures, version } from '../scripts/fixtures.mjs';
 
+// views.ts reads the app version from package.json; data: modules need it as a module.
+const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const version = ${JSON.stringify(JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version)};`);
 const origin = 'http://127.0.0.1:8813';
 const secret = 'synthetic-only-test-signing-key-000000000000000000000';
 const productPhrase = 'synthetic-product-phrase-only';
@@ -71,6 +73,20 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(dl.status, 200);
   assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
+});
+test('buyers see wording for both audiences: entry, header, footer and catalogue hero', async () => {
+  const entry = await (await req('/')).text();
+  for (const limited of ['アンケート', '回答者限定', 'TypeScript教材', 'ご協力']) assert.ok(!entry.includes(limited), limited);
+  const { cookie } = await loginAttempt(productPhrase);
+  const library = await (await req('/library', { headers: { Cookie: cookie } })).text();
+  const product = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
+  for (const html of [library, product]) {
+    assert.ok(!html.includes('アンケート回答者限定'), 'header'); assert.ok(!html.includes('回答後に届いた'), 'footer');
+    assert.ok(!html.includes(version), 'gift version in footer');
+  }
+  const hero = /<div class="catalogue-hero">[\s\S]*?<\/p>/.exec(library)[0];
+  for (const limited of ['アンケート', 'ご協力', 'FEEDBACK', 'プレゼント']) assert.ok(!hero.includes(limited), limited);
+  assert.match(product, /<footer>教材ライブラリ · 0\.1\.0/);
 });
 test('the gift phrase does not unlock paid products', async () => {
   const { cookie } = await loginAttempt(localPhrase);
@@ -227,6 +243,7 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   const { cookie } = await loginAttempt();
   const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
+  assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /ご協力の感謝を、<br>次の学びに。/); assert.match(catalogue, /<title>プレゼント教材 \|/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
   assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
@@ -277,7 +294,7 @@ test('pending, preview and published labels are distinct; verification copy belo
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
   const manifestUrl = 'data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64');
   const manifest = await import(manifestUrl);
-  const viewSource = stripTypeScriptTypes(await readFile(new URL('../src/views.ts', import.meta.url), 'utf8')).replace("from './manifest'", `from ${JSON.stringify(manifestUrl)}`);
+  const viewSource = stripTypeScriptTypes(await readFile(new URL('../src/views.ts', import.meta.url), 'utf8')).replace("from './manifest'", `from ${JSON.stringify(manifestUrl)}`).replace("from '../package.json'", `from ${JSON.stringify(packageUrl)}`);
   const views = await import('data:text/javascript;base64,' + Buffer.from(viewSource).toString('base64'));
   assert.deepEqual(['pending', 'preview', 'published'].map(manifest.collectionStatusLabel), ['準備中', '開発プレビュー', '公開中']);
   const course = manifest.collections[0];
