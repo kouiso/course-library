@@ -1,6 +1,8 @@
+import { GIFT_LEVELS } from './manifest';
 const encoder = new TextEncoder();
 export const SESSION_TTL = 4 * 60 * 60;
-export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[] };
+// giftLevel はギフトの何段目まで開けたか（1〜GIFT_LEVELS）。署名の内側にだけ持つ。
+export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[]; giftLevel?: number };
 const encode = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 function decode(s: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
@@ -17,7 +19,7 @@ export async function equal(a: string, b: string): Promise<boolean> {
   const y = await crypto.subtle.digest('SHA-256', encoder.encode(b));
   return crypto.subtle.timingSafeEqual(x, y);
 }
-export async function issue(secret: string, purpose: Token['purpose'], ttl: number, extra?: { unlocked?: string[] }): Promise<string> {
+export async function issue(secret: string, purpose: Token['purpose'], ttl: number, extra?: { unlocked?: string[]; giftLevel?: number }): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const body = encode(encoder.encode(JSON.stringify({ purpose, iat, exp: iat + ttl, nonce: crypto.randomUUID(), ...extra })));
   return `${body}.${encode(new Uint8Array(await crypto.subtle.sign('HMAC', await key(secret), encoder.encode(body))))}`;
@@ -35,6 +37,7 @@ export async function verify(secret: string, value: string | undefined, purpose:
       || !/^[0-9a-f-]{36}$/.test(t.nonce)) return null;
     if (t.unlocked !== undefined && (!Array.isArray(t.unlocked) || t.unlocked.length > 8
       || t.unlocked.some(id => typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)))) return null;
+    if (t.giftLevel !== undefined && (!Number.isSafeInteger(t.giftLevel) || t.giftLevel < 1 || t.giftLevel > GIFT_LEVELS)) return null;
     return t;
   } catch { return null; }
 }
