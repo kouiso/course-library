@@ -69,3 +69,12 @@ test('a blocked paid product stops the release even when the survey gift is appr
     assert.match(result.stderr, /^Release blocked: a paid product is not ready\./m);
   });
 });
+
+test('an approved survey gift that still cannot be distributed blocks the release', async () => {
+  const edit = text => replaceOnce(text, '  myaspVerified: false,\n  distributionApproved: false,', '  myaspVerified: true,\n  distributionApproved: true,');
+  await withManifest(edit, result => {
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /^survey-gift: blocked typescript \S+ - synthetic materials/m);
+    assert.match(result.stderr, /^Release blocked: the survey gift is approved but cannot be distributed\./m);
+  });
+});

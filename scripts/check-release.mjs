@@ -59,6 +59,12 @@ if (paidBlocked) {
   console.error('Release blocked: a paid product is not ready. See the paid-product lines above for the reasons.');
   process.exit(1);
 }
+// An approved gift that still cannot be distributed is a mistake in the manifest, not a gift that is simply closed.
+const giftApproved = manifest.giftPolicy.myaspVerified && manifest.giftPolicy.distributionApproved;
+if (giftApproved && !giftReady) {
+  console.error('Release blocked: the survey gift is approved but cannot be distributed. See the survey-gift lines above for the reasons.');
+  process.exit(1);
+}
 if (!giftReady && !paidReady) {
   console.error('Release blocked: survey gift is not ready. Survey eligibility/settings, approved distribution version, and non-synthetic materials must be verified first.');
   process.exit(1);
