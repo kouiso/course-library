@@ -21,7 +21,7 @@ Open `http://127.0.0.1:8797` and enter the **local dummy phrase** `synthetic-dev
 
 The local TypeScript preview has 20 clearly synthetic PDFs (learning flow, ten chapters, exercises for chapters01–08 and10 (none for09)) and one ZIP. This is a test fixture structure, not confirmation of the actual release inventory. Real files, the approved version and the MyASP survey-response settings remain unverified.
 
-Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` intentionally fails in this state, and the optional deploy job runs this gate before deployment.
+Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` prints one `survey-gift:` and one `paid-product:` line per collection. A paid product that is not distributable always fails it (exit 1). An unapproved survey gift fails it only when no paid product is ready; with every paid product ready it exits 0 and notes that the gift stays closed. The optional deploy job runs this gate before deployment.
 
 ## Design
 

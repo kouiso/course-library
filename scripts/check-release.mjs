@@ -30,6 +30,8 @@ function productReasons(c) {
 // One line per collection. The leading word is the collection's distribution value.
 let giftCount = 0;
 let giftBlocked = false;
+let paidReady = 0;
+let paidBlocked = 0;
 for (const c of manifest.collections) {
   const version = c.version || '-';
   if (manifest.isSurveyGift(c)) {
@@ -40,13 +42,26 @@ for (const c of manifest.collections) {
       console.log(`survey-gift: blocked ${c.id} ${version} - ${giftReasons(c).join(', ') || 'not distributable'}`);
     }
   } else if (manifest.isPaidProduct(c)) {
-    // Products are reported but never change the exit code here; the release policy for them is decided separately.
-    if (manifest.canDistributeProduct(c)) console.log(`paid-product: ready ${c.id} ${version}`);
-    else console.log(`paid-product: blocked ${c.id} ${version} - ${productReasons(c).join(', ') || 'not distributable'}`);
+    if (manifest.canDistributeProduct(c)) {
+      paidReady++;
+      console.log(`paid-product: ready ${c.id} ${version}`);
+    } else {
+      paidBlocked++;
+      console.log(`paid-product: blocked ${c.id} ${version} - ${productReasons(c).join(', ') || 'not distributable'}`);
+    }
   }
 }
-if (!giftCount || giftBlocked || !manifest.giftPolicy.myaspVerified || !manifest.giftPolicy.distributionApproved) {
+const giftReady = giftCount > 0 && !giftBlocked && manifest.giftPolicy.myaspVerified && manifest.giftPolicy.distributionApproved;
+
+// Exit policy: a paid product that cannot be distributed always stops the release. An unapproved survey gift stops it
+// only when no paid product is ready; with every paid product ready the gift simply stays closed in production.
+if (paidBlocked) {
+  console.error('Release blocked: a paid product is not ready. See the paid-product lines above for the reasons.');
+  process.exit(1);
+}
+if (!giftReady && !paidReady) {
   console.error('Release blocked: survey gift is not ready. Survey eligibility/settings, approved distribution version, and non-synthetic materials must be verified first.');
   process.exit(1);
 }
-console.log('Approved survey-gift manifest is ready for a separately authorized production release.');
+if (!giftReady) console.log('Note: the survey gift is not approved and stays closed in production; only the ready paid products are released.');
+console.log('Approved manifest is ready for a separately authorized production release.');

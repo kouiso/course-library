@@ -32,12 +32,23 @@ const approveGift = text => {
   return replaceOnce(next, "distribution: 'survey-gift', audience: 'survey-respondents', status: 'preview'", "distribution: 'survey-gift', audience: 'survey-respondents', status: 'published'");
 };
 
-test('release check blocks on the unapproved survey gift and still reports the product', () => {
+test('with the survey gift unapproved and the paid product ready, the check passes and says the gift stays closed', () => {
   const result = run();
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^survey-gift: blocked typescript \S+ - .*giftPolicy\.myaspVerified is false/m);
   assert.match(result.stdout, /^paid-product: ready redmine-clone \S+$/m);
-  assert.match(result.stderr, /^Release blocked: survey gift is not ready\./m);
+  assert.match(result.stdout, /^Note: the survey gift is not approved and stays closed/m);
+  assert.doesNotMatch(result.stderr, /Release blocked/);
+});
+
+test('release check blocks when the survey gift is unapproved and no paid product is ready', async () => {
+  const edit = text => replaceOnce(text, 'export const productPolicy = {\n  distributionApproved: true,', 'export const productPolicy = {\n  distributionApproved: false,');
+  await withManifest(edit, result => {
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /^survey-gift: blocked typescript /m);
+    assert.match(result.stdout, /^paid-product: blocked redmine-clone /m);
+    assert.match(result.stderr, /^Release blocked: a paid product is not ready\./m);
+  });
 });
 
 test('release check passes when the survey gift is approved, even with a paid product present', async () => {
@@ -49,10 +60,12 @@ test('release check passes when the survey gift is approved, even with a paid pr
   });
 });
 
-test('a blocked paid product is reported but does not change the exit code', async () => {
+test('a blocked paid product stops the release even when the survey gift is approved', async () => {
   const edit = text => replaceOnce(approveGift(text), 'export const productPolicy = {\n  distributionApproved: true,', 'export const productPolicy = {\n  distributionApproved: false,');
   await withManifest(edit, result => {
-    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /^survey-gift: ready typescript \S+$/m);
     assert.match(result.stdout, /^paid-product: blocked redmine-clone \S+ - productPolicy\.distributionApproved is false$/m);
+    assert.match(result.stderr, /^Release blocked: a paid product is not ready\./m);
   });
 });
