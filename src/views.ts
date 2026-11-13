@@ -58,12 +58,14 @@ export function productLibrary(nonce: string, course: Collection): string {
   const verification = course.release?.verification;
   return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course');
 }
+// 2つ目の合言葉で入り直した時の今の動き（前の教材は閉じる）を、そのまま伝える。
+export const switchNote = '別の合言葉で入り直すと、いま開いている教材は閉じます。続けて使う時は、その教材の合言葉でもう一度入ってください。';
 export function lockedCourse(course: Collection, nonce: string): string {
   const paid = course.distribution === 'paid-product';
   const body = paid
-    ? `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を、入口の画面で入力してください。`
-    : `${escape(course.title)}はアンケート回答後のご案内にある合言葉を持つ方だけが開けます。ご案内の合言葉を、入口の画面で入力してください。`;
-  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body, action: { href: '/', label: '入口で合言葉を入力する' }, note: '一度ログアウトしてから別の合言葉で入り直すこともできます。', after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
+    ? `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を入力してください。`
+    : `${escape(course.title)}はアンケート回答後のご案内にある合言葉を持つ方だけが開けます。ご案内の合言葉を入力してください。`;
+  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body, action: { href: '/phrase', label: 'この教材の合言葉を入力する' }, note: switchNote, after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
 }
 export function pendingCourse(course: Collection, nonce: string): string {
   const paid = course.distribution === 'paid-product';
