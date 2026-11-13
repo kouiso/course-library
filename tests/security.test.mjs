@@ -352,7 +352,7 @@ test('production auth remains secure but neither synthetic files nor unverified 
 test('release policy fails closed for product mixing, wrong audiences and incomplete MyASP/distribution approval', async () => {
   const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
   const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-  const course = manifest.collections[0], original = structuredClone(course), policy = { ...manifest.giftPolicy };
+  const course = manifest.collections[0], original = structuredClone(course), policy = { ...manifest.giftPolicy }, approval = course.approval;
   try {
     for (const [field, value] of [['id', 'taskapp'], ['distribution', 'free-product'], ['audience', 'all-newsletter-readers']]) {
       Object.assign(course, original, { [field]: value });
@@ -370,13 +370,42 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     assert.throws(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original));
     course.status = 'published'; course.release.synthetic = false;
+    // 承認の旗はコレクションの中（course.approval）を見る。
     for (const [myaspVerified, distributionApproved] of [[false, false], [true, false], [false, true]]) {
-      Object.assign(manifest.giftPolicy, { myaspVerified, distributionApproved });
+      Object.assign(course.approval, { myaspVerified, distributionApproved });
       assert.equal(manifest.canDistribute(course, false), false);
     }
-    Object.assign(manifest.giftPolicy, { myaspVerified: true, distributionApproved: true });
+    Object.assign(course.approval, { myaspVerified: true, distributionApproved: true });
     assert.equal(manifest.canDistribute(course, false), true);
-  } finally { Object.assign(course, original); Object.assign(manifest.giftPolicy, policy); }
+  } finally { Object.assign(course, original, { approval }); Object.assign(manifest.giftPolicy, policy); }
+});
+test('approval lives in each collection and one decision function covers gifts and products', async () => {
+  const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  const [gift, product] = manifest.collections;
+  assert.equal(gift.approval, manifest.giftPolicy);
+  assert.equal(product.approval, manifest.productPolicy);
+  // 今の動き: ギフトはダミー教材なのでローカルだけ、商品は本番でも配れる。
+  for (const local of [true, false]) {
+    assert.equal(manifest.isDistributable(gift, local), local);
+    assert.equal(manifest.canDistribute(gift, local), local);
+    assert.equal(manifest.isDistributable(product, local), true);
+  }
+  assert.equal(manifest.canDistributeProduct(product), true);
+  assert.equal(manifest.canDistribute(product, true), false);
+  assert.equal(manifest.canDistributeProduct(gift), false);
+  // 商品を1つ止めても、別の承認を持つ商品は止まらない。
+  const second = { ...structuredClone(product), id: 'second-product', approval: { distributionApproved: false } };
+  assert.equal(manifest.canDistributeProduct(second), false);
+  assert.equal(manifest.canDistributeProduct(product), true);
+  // ギフトは MyASP の確認が無いと、配布の承認があっても本番では配らない。
+  const published = { ...structuredClone(gift), status: 'published', release: { ...gift.release, synthetic: false } };
+  published.approval = { distributionApproved: true };
+  assert.equal(manifest.isDistributable(published, false), false);
+  published.approval = { distributionApproved: true, myaspVerified: true };
+  assert.equal(manifest.isDistributable(published, false), true);
+  assert.equal(manifest.isDistributable({ ...published, status: 'pending' }, true), false);
+  assert.equal(manifest.isDistributable({ ...published, release: null }, true), false);
 });
 test('zero-byte release objects return an authenticated no-store 503 without attachment metadata', async () => {
   const { cookie } = await loginAttempt();
