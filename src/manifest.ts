@@ -102,6 +102,8 @@ export function validMaterial(m: Material): boolean {
 }
 export function validateManifest(): void {
   if (new Set(collections.map(c => c.id)).size !== collections.length) throw new Error('Duplicate collection');
+  // The gift level in a session applies to every survey gift, so only one survey gift may exist.
+  if (collections.filter(isSurveyGift).length > 1) throw new Error('Only one survey gift is supported');
   const phraseNames = collections.flatMap(c => [phraseEnvName(c), ...(isSurveyGift(c) ? Array.from({ length: GIFT_LEVELS }, (_, i) => giftLevelEnvName(c, i + 1)) : [])]);
   if (new Set(phraseNames).size !== phraseNames.length) throw new Error('Duplicate phrase setting');
   for (const c of collections) {
