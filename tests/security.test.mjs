@@ -87,6 +87,7 @@ test('buyers see wording for both audiences: entry, header, footer and catalogue
   const hero = /<div class="catalogue-hero">[\s\S]*?<\/p>/.exec(library)[0];
   for (const limited of ['アンケート', 'ご協力', 'FEEDBACK', 'プレゼント']) assert.ok(!hero.includes(limited), limited);
   assert.match(product, /<footer>教材ライブラリ · 0\.1\.0/);
+  for (const html of [entry, library, product]) assert.equal(html.split('アンケート').length - 1, 0);
 });
 test('the gift phrase does not unlock paid products', async () => {
   const { cookie } = await loginAttempt(localPhrase);
