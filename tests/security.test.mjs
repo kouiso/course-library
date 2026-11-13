@@ -66,7 +66,7 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
   const bucket = await mf.getR2Bucket('MATERIALS');
-  await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES');
+  await bucket.put('releases/redmine-clone/0.2.1/redmine-clone-source.zip', 'PRODUCT ZIP BYTES');
   const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
   assert.equal(dl.status, 200);
   assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
@@ -83,7 +83,7 @@ test('production serves the paid product to product-phrase holders behind the Ba
   const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });
   try {
     const bucket = await instance.getR2Bucket('MATERIALS');
-    await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PROD PRODUCT BYTES');
+    await bucket.put('releases/redmine-clone/0.2.1/redmine-clone-source.zip', 'PROD PRODUCT BYTES');
     const authHeaders = { Authorization: basicHeader };
     const entry = await instance.dispatchFetch(prodOrigin, { headers: authHeaders });
     const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];

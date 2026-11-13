@@ -24,14 +24,14 @@ export const productPolicy = {
 };
 export const productRelease = {
   schemaVersion: 1,
-  version: '0.1.0',
-  date: '2026-11-05',
+  version: '0.2.1',
+  date: '2026-11-10',
   synthetic: false,
-  prefix: 'releases/redmine-clone/0.1.0/',
+  prefix: 'releases/redmine-clone/0.2.1/',
   verification: {
-    delivery: 'macOS 実機と Linux コンテナで配布物のセットアップを検証しています。',
+    delivery: 'ZIP の中身が Day0 の骨格と一致することを検査で確かめています。',
     materials: 'Day0 の骨格 ZIP で、完成品の app/ は含みません。',
-    platforms: 'Windows / WSL での実走は未検証です。',
+    platforms: 'Windows と macOS の実機での実走は未検証です。',
   },
 } as const;
 export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'exercises' | 'bundle' };
