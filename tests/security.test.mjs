@@ -237,6 +237,25 @@ test('logout requires session-bound CSRF and clears the browser cookie', async (
   assert.doesNotMatch(html, /name="csrf"|<script(?! defer src="\/app\.js")/);
   assert.equal((await req('/closed', { headers: { Cookie: cookie } })).headers.get('Location'), '/library');
 });
+test('closing without a session goes to the closed page; other origins are still refused', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  // 4時間たって戻った人の Cookie は、期限切れのセッションの値になっている。
+  for (const cookie of ['', `local_course_session=${signed('session', now - 14500, now - 100)}`]) {
+    const res = await req('/logout', { method: 'POST', headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}) }, body: new URLSearchParams({ csrf: 'stale-or-missing' }) });
+    assert.equal(res.status, 303, cookie || 'no cookie'); assert.equal(res.headers.get('Location'), '/closed');
+    assert.match(res.headers.get('Set-Cookie'), /^local_course_session=; .*Max-Age=0/);
+    noCache(res);
+  }
+  assert.equal((await req('/logout', { method: 'POST', headers: { Origin: origin }, body: '' })).status, 303);
+  for (const headers of [{ Origin: 'https://evil.example' }, {}, { Origin: origin, 'Sec-Fetch-Site': 'cross-site' }]) {
+    const res = await req('/logout', { method: 'POST', headers, body: new URLSearchParams({ csrf: 'x' }) });
+    assert.equal(res.status, 403, JSON.stringify(headers)); assert.equal(res.headers.get('Set-Cookie'), null);
+  }
+  // セッションがある時は、今までどおり確認用の値が違えば 403。
+  const { cookie } = await loginAttempt();
+  assert.equal((await req('/logout', { method: 'POST', headers: { Origin: origin, Cookie: cookie }, body: new URLSearchParams({ csrf: 'bad' }) })).status, 403);
+  assert.equal((await req('/library', { headers: { Cookie: cookie } })).status, 200);
+});
 test('fixed redirects ignore user-controlled next URL; unexpected hosts are refused', async () => {
   const { cookie } = await loginAttempt();
   const res = await req('/?next=https://evil.example', { headers: { Cookie: cookie } });
