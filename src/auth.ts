@@ -1,6 +1,7 @@
 const encoder = new TextEncoder();
 export const SESSION_TTL = 4 * 60 * 60;
-// The worker's clock can read about a second behind the iat it issued itself under load; allow a small skew.
+// Under load the local runtime was observed verifying its own login/session tokens about a second
+// before their iat (cause in the runtime not isolated). Allow a small skew; exp - iat still caps lifetime.
 const CLOCK_SKEW = 60;
 export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[] };
 const encode = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
