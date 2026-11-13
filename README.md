@@ -65,7 +65,14 @@ Windows and WSL are **pending**. Real course code, PDF password compatibility, S
 
 `npm run check` includes the public staged-file/history scan. The local pre-push hook runs it again before publication; install it with `npm run hooks:install`. Pattern scanning supplements manual review and cannot prove that arbitrary content is safe to publish.
 
-Optional browser reproduction uses an already-installed official Playwright package and Chromium executable:
+Optional browser reproduction uses an already-installed official Playwright package and its Chromium. Verified working with Playwright 1.64.1 and its bundled Chromium (revision 1248):
+
+```sh
+npm run build
+npm run test:browser
+```
+
+Without environment variables, the script looks for Playwright (`playwright-core` or `playwright`) in this repository's `node_modules`, the global npm folder and the npx cache (`~/.npm/_npx`), and uses the Chromium that Playwright itself expects (normally under `~/.cache/ms-playwright`). It prints the paths it chose. If none is found, it prints what to install (for example `npm install --no-save playwright@1.64.1 && npx playwright install chromium`) and exits without downloading anything. To choose other tooling, set both paths:
 
 ```sh
 COURSE_PLAYWRIGHT_PACKAGE=/path/to/installed/playwright \
@@ -73,7 +80,7 @@ COURSE_BROWSER_EXECUTABLE=/path/to/installed/chromium \
 npm run test:browser
 ```
 
-Run `npm run build` first. This opt-in test starts one loopback test runtime, a new temporary BrowserServer, one context and one page, and closes its own handles in `finally`. It never downloads browsers or opens personal browser profiles. Screenshots and downloaded synthetic fixtures stay in ignored `artifacts/visual/`.
+On Linux, Chromium also needs its system libraries (for example NSS and NSPR; `npx playwright install-deps chromium` installs them). This opt-in test starts one loopback test runtime, a new temporary BrowserServer, one context and one page, and closes its own handles in `finally`. It never downloads browsers or opens personal browser profiles. Screenshots and downloaded synthetic fixtures stay in ignored `artifacts/visual/`.
 
 ## Delivery controls
 
