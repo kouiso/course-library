@@ -6,7 +6,7 @@ A small Japanese library for the TypeScript survey-response gift built with Type
 
 ## Try locally
 
-Requires Node.js 22.23+ and npm.
+Requires Node.js 22.23+ (`.nvmrc` pins 22.23.4) and npm. `npm run check` also needs poppler for `pdfinfo` and `pdftotext` (macOS: `brew install poppler`, Ubuntu: `apt install poppler-utils`); without them the candidate tests stop with a message naming the missing tool.
 
 ```sh
 npm ci
