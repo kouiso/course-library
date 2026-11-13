@@ -16,6 +16,7 @@
 | --- | --- | --- |
 | アクセス用の合言葉 | サイトに入る。十分にランダムな128ビット以上の値を使う | 元の値は利用者の秘密管理先。SHA-256ダイジェストだけをWorkerの`ACCESS_PHRASE_SHA256`へ |
 | セッション署名鍵 | 有効期限付きCookieを署名する。32ランダムバイト以上 | Workerの`SESSION_SECRET`と利用者の秘密管理先 |
+| 外側のBasic認証のIDとパスワード | 本番でサイトの全ページの前に入力する | Workerの`BASIC_AUTH_USER`・`BASIC_AUTH_PASS`と利用者の秘密管理先 |
 | PDFの開封パスワード | 確認済みの同一配布版のPDFを開く | 利用者の秘密管理先と、別途承認された読者向け案内。WorkerやGitHubへ保存する必要はない |
 | PDFの所有者パスワード | 暗号化コピーの管理。開封用とは別のランダム値 | 利用者の秘密管理先のみ |
 | Cloudflareデプロイトークン（継続CDを別途許可した場合だけ） | 検証済みコードをGitHubから自動配布する | `kouiso/course-library`の`production`環境シークレット。初回の手動公開には新規トークンを前提としない |
@@ -28,7 +29,7 @@ Workerは起動のたびに次の条件を確かめます（`src/index.ts`の`co
 
 | 名前 | 種類と置き場所 | 本番の条件 |
 | --- | --- | --- |
-| `APP_ORIGIN` | `wrangler.jsonc`の`vars` | `https:`のオリジンだけ（パスやID・パスワードを含めない）。ローカルは`http://localhost`か`http://127.0.0.1` |
+| `APP_ORIGIN` | `wrangler.jsonc`の`vars` | `https:`のオリジンだけ（末尾の`/`・パス・ID・パスワードを含めない。ホスト名が`.invalid`で終わる物は不可）。ローカルは`http://localhost`か`http://127.0.0.1` |
 | `APP_MODE` | `wrangler.jsonc`の`vars` | `production`。`local`はローカルの確認だけ |
 | `SESSION_SECRET` | WorkerのSecret | 43文字以上（32ランダムバイト以上をbase64urlにした値） |
 | `ACCESS_PHRASE_SHA256` | WorkerのSecret | 合言葉のSHA-256ダイジェスト。**小文字の16進64文字**（大文字や空白・改行が入ると不一致） |
@@ -43,7 +44,7 @@ Workerは起動のたびに次の条件を確かめます（`src/index.ts`の`co
 printf %s "$PHRASE" | shasum -a 256 | cut -d' ' -f1
 ```
 
-`$PHRASE`は秘密管理先から読み込んだシェル変数を指し、値を履歴に残さない方法で用意します。出力が小文字の16進64文字になっていることを確かめてから、Secretに入れます。
+`$PHRASE`は、`read -rs PHRASE`のように画面にも履歴にも残さない方法で用意したシェル変数です。`shasum`が無い環境では`sha256sum`を使います。出力が小文字の16進64文字になっていることを確かめてから、Secretに入れます。
 
 ## 初回は既存接続で手動公開する
 
