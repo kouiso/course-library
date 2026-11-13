@@ -135,7 +135,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   validateManifest();
   const misconfigured = misconfiguredProducts(env);
   const local = env.APP_MODE === 'local';
-  if (!local && !await basicAuth(req, env)) return response(message('認証が必要です'), 401, { 'WWW-Authenticate': 'Basic realm="course-library", charset="UTF-8"' });
+  if (!local && !await basicAuth(req, env)) return response(message('認証が必要です', 'ご案内にある ID とパスワードを入力してください。'), 401, { 'WWW-Authenticate': 'Basic realm="course-library", charset="UTF-8"' });
   const secret = env.SESSION_SECRET!;
   const jar = cookies(req);
   const session = await verify(secret, jar.get(cookieName('course_session', local)), 'session');

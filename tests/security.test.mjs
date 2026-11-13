@@ -451,6 +451,7 @@ test('production requires the Basic site gate before the phrase login', async ()
     const denied = await instance.dispatchFetch(prodOrigin);
     assert.equal(denied.status, 401);
     assert.match(denied.headers.get('WWW-Authenticate'), /^Basic realm="course-library"/);
+    assert.match(await denied.text(), /ご案内にある ID とパスワードを入力してください/);
     const wrong = await instance.dispatchFetch(prodOrigin, { headers: { Authorization: 'Basic ' + Buffer.from('test-basic-user:wrong').toString('base64') } });
     assert.equal(wrong.status, 401);
     for (const path of ['/library', '/download/typescript/chapter-01']) {
