@@ -22,6 +22,29 @@
 
 合言葉、PDF用パスワード、署名鍵、デプロイトークンは使い回しません。PDFの印刷やコピーは利用可能なままにします。
 
+## 本番に必須の設定値
+
+Workerは起動のたびに次の条件を確かめます（`src/index.ts`の`configured`）。1つでも欠けるか形が違うと、サイト全体が「ただいま準備中です」の503になり、原因は画面にもログにも出ません。表と`configured`の条件は1対1です。
+
+| 名前 | 種類と置き場所 | 本番の条件 |
+| --- | --- | --- |
+| `APP_ORIGIN` | `wrangler.jsonc`の`vars` | `https:`のオリジンだけ（パスやID・パスワードを含めない）。ローカルは`http://localhost`か`http://127.0.0.1` |
+| `APP_MODE` | `wrangler.jsonc`の`vars` | `production`。`local`はローカルの確認だけ |
+| `SESSION_SECRET` | WorkerのSecret | 43文字以上（32ランダムバイト以上をbase64urlにした値） |
+| `ACCESS_PHRASE_SHA256` | WorkerのSecret | 合言葉のSHA-256ダイジェスト。**小文字の16進64文字**（大文字や空白・改行が入ると不一致） |
+| `BASIC_AUTH_USER` | WorkerのSecret | 本番だけ必須。外側のBasic認証のID（空でない） |
+| `BASIC_AUTH_PASS` | WorkerのSecret | 本番だけ必須。外側のBasic認証のパスワード（空でない） |
+| `MATERIALS` | `wrangler.jsonc`の`r2_buckets` | 教材の私有R2バケットのバインディング |
+| `LOGIN_IP_LIMIT`・`LOGIN_TOTAL_LIMIT` | `wrangler.jsonc`の`ratelimits` | 合言葉の入力回数の制限のバインディング |
+
+ダイジェストの作り方（合言葉はコマンドの引数や画面に出さず、改行なしで標準入力から渡します）:
+
+```sh
+printf %s "$PHRASE" | shasum -a 256 | cut -d' ' -f1
+```
+
+`$PHRASE`は秘密管理先から読み込んだシェル変数を指し、値を履歴に残さない方法で用意します。出力が小文字の16進64文字になっていることを確かめてから、Secretに入れます。
+
 ## 初回は既存接続で手動公開する
 
 既存のCloudflare接続は、Workerのアップロード・版作成・デプロイ、R2バケット作成・オブジェクトアップロードに対応するAPIを呼べます。APIの対応と実アカウントでの書き込み許可は別なので、変更による権限テストは行いません。初回公開のために新規の継続用APIトークンを先に作る必要はありません。
