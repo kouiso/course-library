@@ -1,4 +1,4 @@
-import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
+import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
 import { canDistribute, canDistributeProduct, collections, isPaidProduct, isSurveyGift, phraseEnvName, type Collection, type Secrets, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary } from './views';
 
@@ -23,6 +23,12 @@ function response(body: BodyInit | null, status = 200, headers: HeadersInit = {}
 const error = (status: number, title: string) => response(message(title), status);
 const redirect = (to: '/closed' | '/library') => response(null, 303, { Location: to });
 const digestShape = /^[0-9a-f]{64}$/;
+// 入口の確認用の値の期限（秒）。延ばすかどうかは別の判断待ちなので、ここでは変えない。
+const LOGIN_TTL = 600;
+async function entry(secret: string, local: boolean, info = '', head = false): Promise<Response> {
+  const csrf = await issue(secret, 'login', LOGIN_TTL);
+  return response(head ? null : login(csrf, '', info), 200, { 'Set-Cookie': cookie('course_login', csrf, LOGIN_TTL, local) });
+}
 function configured(env: AppEnv): boolean {
   try {
     const u = new URL(env.APP_ORIGIN);
@@ -146,8 +152,15 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       const form = await boundedForm(req);
       const csrf = form?.get('csrf') || '';
       const loginCookie = jar.get(cookieName('course_login', local));
+      if (form && (!loginCookie || await equal(csrf, loginCookie)) && await expiredButSigned(secret, csrf, 'login')) {
+        // 入口を開いたまま期限が過ぎただけなら、合言葉は照合せずに入口を出し直す。
+        // Cookie は期限と同じ 600 秒で消えるので、Cookie が無い時もこちらへ来る。
+        // Cookie があって値が違う、または署名が不正な時は、今までどおり 403。
+        return entry(secret, local, '時間がたったので、もう一度入力してください。');
+      }
       if (!form || !loginCookie || !await equal(csrf, loginCookie) || !await verify(secret, csrf, 'login')) return error(403, '入口からもう一度お試しください');
-      const phrase = form.get('phrase') || '';
+      // 案内からコピーした時に付きやすい前後の空白（全角の空白を含む）を取り除いてから照合する。
+      const phrase = (form.get('phrase') || '').trim();
       // 合言葉はコレクションごとに別の secret を持つ。打たれた合言葉が
       // どのコレクションのものかを全件照合し、合ったものだけを開ける。
       const digest = phrase.length > 256 ? '' : await sha256(phrase);
@@ -181,8 +194,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (url.pathname === '/app.js') return response(req.method === 'HEAD' ? null : js, 200, { 'Content-Type': 'text/javascript; charset=utf-8' });
   if (url.pathname === '/') {
     if (session) return redirect('/library');
-    const csrf = await issue(secret, 'login', 600);
-    return response(req.method === 'HEAD' ? null : login(csrf), 200, { 'Set-Cookie': cookie('course_login', csrf, 600, local) });
+    return entry(secret, local, '', req.method === 'HEAD');
   }
   if (url.pathname === '/closed') return session ? redirect('/library') : response(req.method === 'HEAD' ? null : closed());
   if (!session) return error(401, '合言葉を入力して教材を開いてください');

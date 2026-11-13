@@ -38,6 +38,19 @@ export async function verify(secret: string, value: string | undefined, purpose:
     return t;
   } catch { return null; }
 }
+// 署名は正しく、期限だけが切れた値か。入口の確認用の値が時間切れになった時に、
+// 403 ではなく入口を出し直すかどうかの判定に使う。署名が不正な値は false。
+export async function expiredButSigned(secret: string, value: string | undefined, purpose: Token['purpose']): Promise<boolean> {
+  try {
+    if (!value || value.length > 1024 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) return false;
+    const [body, sig] = value.split('.');
+    if (!body || !sig || !await crypto.subtle.verify('HMAC', await key(secret), decode(sig), encoder.encode(body))) return false;
+    const t: Token = JSON.parse(new TextDecoder().decode(decode(body)));
+    const ttl = purpose === 'session' ? SESSION_TTL : 600;
+    return t.purpose === purpose && Number.isSafeInteger(t.iat) && Number.isSafeInteger(t.exp)
+      && t.exp <= Math.floor(Date.now() / 1000) && t.exp > t.iat && t.exp - t.iat <= ttl;
+  } catch { return false; }
+}
 export function cookies(req: Request): Map<string, string> {
   const result = new Map<string, string>();
   for (const item of (req.headers.get('Cookie') || '').split(';')) {

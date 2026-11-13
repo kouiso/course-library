@@ -159,15 +159,57 @@ test('login rejects missing/mismatched CSRF, cross-site origins and oversized fo
   assert.equal((await loginAttempt(localPhrase, { form: { padding: 'x'.repeat(5000) } })).res.status, 403);
   assert.equal((await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.200' }, body: new URLSearchParams({ phrase: localPhrase, csrf: 'none' }) })).status, 403);
 });
-test('expired login CSRF and duplicate form/cookie values are rejected', async () => {
+test('expired login CSRF reissues the entry; tampered and duplicate form/cookie values are rejected', async () => {
   const now = Math.floor(Date.now() / 1000), token = signed('login', now - 700, now - 100);
   const res = await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.201', Cookie: `local_course_login=${token}` }, body: new URLSearchParams({ csrf: token, phrase: localPhrase }) });
-  assert.equal(res.status, 403);
+  assert.equal(res.status, 200); assert.match(await res.text(), /時間がたったので、もう一度入力してください。/);
+  assert.equal(headerCookie(res, 'local_course_session'), '');
+  const tampered = token.slice(0, -2) + (token.endsWith('AA') ? 'BB' : 'AA');
+  assert.equal((await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.201', Cookie: `local_course_login=${tampered}` }, body: new URLSearchParams({ csrf: tampered, phrase: localPhrase }) })).status, 403);
   const { cookie } = await loginAttempt();
   assert.equal((await req('/library', { headers: { Cookie: cookie + '; ' + cookie } })).status, 401);
   const entry = await req('/'); const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
   const body = new URLSearchParams({ csrf, phrase: localPhrase }); body.append('phrase', 'other');
   assert.equal((await req('/login', { method: 'POST', headers: { Origin: origin, Cookie: headerCookie(entry, 'local_course_login'), 'CF-Connecting-IP': '192.0.2.202' }, body })).status, 403);
+});
+test('an entry left open past its 600-second limit is shown again and the phrase then works', async () => {
+  const entry = await req('/');
+  const fresh = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+  const claims = JSON.parse(Buffer.from(fresh.split('.')[0], 'base64url').toString());
+  assert.equal(claims.exp - claims.iat, 600);
+  assert.match(entry.headers.get('Set-Cookie'), /Max-Age=600/);
+  const now = Math.floor(Date.now() / 1000), expired = signed('login', now - 700, now - 100);
+  const post = (csrf, cookie, phrase = localPhrase) => req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, ...(cookie ? { Cookie: cookie } : {}) }, body: new URLSearchParams({ csrf, phrase }) });
+  // ブラウザでは Cookie も 600 秒で消えるので、Cookie が無い送信が普通の形になる。
+  for (const cookie of ['', `local_course_login=${expired}`]) {
+    const res = await post(expired, cookie, 'wrong');
+    assert.equal(res.status, 200, cookie || 'no cookie');
+    const html = await res.text();
+    assert.match(html, /role="status" class="notice">時間がたったので、もう一度入力してください。/);
+    assert.doesNotMatch(html, /role="alert"/);
+    const csrf = /name="csrf" value="([^"]+)"/.exec(html)[1];
+    assert.notEqual(csrf, expired);
+    const again = JSON.parse(Buffer.from(csrf.split('.')[0], 'base64url').toString());
+    assert.equal(again.exp - again.iat, 600);
+    assert.match(res.headers.get('Set-Cookie'), /^local_course_login=[^;]+; .*Max-Age=600/);
+    const ok = await post(csrf, headerCookie(res, 'local_course_login'));
+    assert.equal(ok.status, 303); assert.equal(ok.headers.get('Location'), '/library');
+  }
+  // Cookie の値と合わない、用途が違う、署名が不正な値は、今までどおり 403。
+  assert.equal((await post(expired, headerCookie(entry, 'local_course_login'))).status, 403);
+  assert.equal((await post(signed('session', now - 700, now - 100), '')).status, 403);
+  assert.equal((await post(expired.slice(0, -2) + (expired.endsWith('AA') ? 'BB' : 'AA'), '')).status, 403);
+  assert.equal((await post(fresh, '')).status, 403);
+});
+test('surrounding half-width and full-width spaces are removed before the phrase is compared', async () => {
+  for (const phrase of [` ${localPhrase}`, `${localPhrase} `, `\u3000${localPhrase}\u3000`, `\t ${localPhrase}\u3000\n`]) {
+    assert.equal((await loginAttempt(phrase)).res.status, 303, JSON.stringify(phrase));
+  }
+  assert.equal((await loginAttempt(` ${productPhrase}\u3000`)).res.status, 303);
+  for (const phrase of [' wrong ', '\u3000wrong', `${localPhrase}x `, '\u3000 ']) {
+    const { res } = await loginAttempt(phrase);
+    assert.equal(res.status, 401, JSON.stringify(phrase)); assert.match(await res.text(), /合言葉を確認して/);
+  }
 });
 test('IP brute-force limit is enforced by the actual platform binding', async () => {
   const entry = await req('/'); const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
