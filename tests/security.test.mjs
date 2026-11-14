@@ -63,7 +63,10 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(res.status, 303);
   const course = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
   assert.equal(course.status, 200);
-  assert.match(await course.text(), /ソースコード一式/);
+  const productHtml = await course.text();
+  assert.match(productHtml, /ソースコード一式/);
+  assert.match(productHtml, /redmine-clone-source-v0\.1\.0\.zip/);
+  assert.match(productHtml, /最初に pyproject\.toml を読んでください/);
   assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
@@ -71,7 +74,7 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES');
   const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
   assert.equal(dl.status, 200);
-  assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
+  assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source-v0.1.0.zip"');
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
 });
 test('buyers see wording for both audiences: entry, header, footer and catalogue hero', async () => {

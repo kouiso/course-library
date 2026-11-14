@@ -1,5 +1,5 @@
 import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, canDistributeProduct, collections, isPaidProduct, isSurveyGift, phraseEnvName, type Collection, validateManifest } from './manifest';
+import { canDistribute, canDistributeProduct, collections, isPaidProduct, isSurveyGift, phraseEnvName, saveName, type Collection, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string; BASIC_AUTH_USER?: string; BASIC_AUTH_PASS?: string };
@@ -79,7 +79,7 @@ async function download(req: Request, env: AppEnv, course: Collection, id: strin
   if (object.size === 0) return response(preparingMaterial(course), 503);
   const h = new Headers({
     'Content-Type': material.type,
-    'Content-Disposition': `attachment; filename="${material.filename}"`,
+    'Content-Disposition': `attachment; filename="${saveName(course, material)}"`,
     'Content-Length': String(object.size),
     'Accept-Ranges': 'bytes',
     'ETag': object.httpEtag,

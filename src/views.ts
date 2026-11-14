@@ -1,5 +1,5 @@
 import { version as appVersion } from '../package.json';
-import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, type Collection } from './manifest';
+import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, saveName, type Collection } from './manifest';
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
@@ -67,8 +67,10 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
 }
 export function productLibrary(nonce: string, course: Collection): string {
   const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
+  const zip = course.materials.find(m => m.type === 'application/zip');
+  const guidance = zip && course.release ? `<p class="muted">保存されるファイル名は ${escape(saveName(course, zip))} です。ZIPを展開したら、最初に pyproject.toml を読んでください。</p>` : '';
   const verification = course.release?.verification;
-  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
+  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${guidance}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
 }
 export function lockedCourse(course: Collection, nonce: string): string {
   const paid = course.distribution === 'paid-product';
