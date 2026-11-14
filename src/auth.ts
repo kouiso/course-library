@@ -1,5 +1,8 @@
 const encoder = new TextEncoder();
 export const SESSION_TTL = 4 * 60 * 60;
+// Under load the local runtime was observed verifying its own login/session tokens about a second
+// before their iat (cause in the runtime not isolated). Allow a small skew; exp - iat still caps lifetime.
+const CLOCK_SKEW = 60;
 export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[] };
 const encode = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 function decode(s: string): Uint8Array<ArrayBuffer> {
@@ -31,7 +34,7 @@ export async function verify(secret: string, value: string | undefined, purpose:
     const now = Math.floor(Date.now() / 1000);
     const ttl = purpose === 'session' ? SESSION_TTL : 600;
     if (t.purpose !== purpose || !Number.isSafeInteger(t.iat) || !Number.isSafeInteger(t.exp)
-      || t.iat > now || t.exp <= now || t.exp <= t.iat || t.exp - t.iat > ttl
+      || t.iat > now + CLOCK_SKEW || t.exp <= now || t.exp <= t.iat || t.exp - t.iat > ttl
       || !/^[0-9a-f-]{36}$/.test(t.nonce)) return null;
     if (t.unlocked !== undefined && (!Array.isArray(t.unlocked) || t.unlocked.length > 8
       || t.unlocked.some(id => typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)))) return null;
