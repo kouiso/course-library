@@ -30,7 +30,7 @@ Workerは起動のたびに次の条件を確かめます（`src/index.ts`の`co
 | 名前 | 種類と置き場所 | 本番の条件 |
 | --- | --- | --- |
 | `APP_ORIGIN` | `wrangler.jsonc`の`vars` | `https:`のオリジンだけ（末尾の`/`・パス・ID・パスワードを含めない。ホスト名が`.invalid`で終わる物は不可）。ローカルは`http://localhost`か`http://127.0.0.1` |
-| `APP_MODE` | `wrangler.jsonc`の`vars` | `production`。`local`はローカルの確認だけ |
+| `APP_MODE` | `wrangler.jsonc`の`vars` | `production`と書く（`local`以外はすべて本番扱い）。`local`はローカルの確認だけ |
 | `SESSION_SECRET` | WorkerのSecret | 43文字以上（32ランダムバイト以上をbase64urlにした値） |
 | `ACCESS_PHRASE_SHA256` | WorkerのSecret | 合言葉のSHA-256ダイジェスト。**小文字の16進64文字**（大文字や空白・改行が入ると不一致） |
 | `BASIC_AUTH_USER` | WorkerのSecret | 本番だけ必須。外側のBasic認証のID（空でない） |
@@ -51,7 +51,7 @@ printf %s "$PHRASE" | shasum -a 256 | cut -d' ' -f1
 既存のCloudflare接続は、Workerのアップロード・版作成・デプロイ、R2バケット作成・オブジェクトアップロードに対応するAPIを呼べます。APIの対応と実アカウントでの書き込み許可は別なので、変更による権限テストは行いません。初回公開のために新規の継続用APIトークンを先に作る必要はありません。
 
 1. 対象アカウント・新Worker・新しい私有R2を指定する。新しい権限や課金を発生させずに実行できること、契約と利用上限を先に確認する。既存接続で拒否された操作は、勝手に権限を増やさず報告する。
-2. アプリ用の秘密値の保存先を、対象WorkerのSecret型バインディング`ACCESS_PHRASE_SHA256`と`SESSION_SECRET`として確定する。合言葉の元の値や保管用コピーは、利用者が指定した既存の秘密管理先で扱う。
+2. アプリ用の秘密値の保存先を、対象WorkerのSecret型バインディング`ACCESS_PHRASE_SHA256`・`SESSION_SECRET`・`BASIC_AUTH_USER`・`BASIC_AUTH_PASS`として確定する（[本番に必須の設定値](#本番に必須の設定値)の表のSecret全部）。合言葉の元の値や保管用コピーは、利用者が指定した既存の秘密管理先で扱う。
 3. 秘密値の入力は、所有者がCloudflareの対象Workerの **Settings → Variables and Secrets → Add → Secret** へ直接入力する方法が公式に対応している。AIは変数名と対象を準備し、値はチャットで尋ねない。最後のDeployは配信開始を伴うため、その前に必要な確認を終える。
 4. ローカルの既存認証が別途確認できる場合は、非表示の対話入力や所有者だけが読める秘密ファイルによるWrangler入力も候補になる。既存コネクターにはローカル秘密ファイルを非表示のまま渡す入力欄が確認できていないため、その経路の全自動化は約束しない。実教材のローカルファイルからの大容量バイナリ転送も別途確認する。
 
