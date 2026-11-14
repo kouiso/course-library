@@ -56,6 +56,11 @@ test('a session without unlocked collections is locked out of every download', a
   const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now, now + 100)}` } });
   assert.equal(res.status, 404);
 });
+test('a session issued a few seconds ahead of the worker clock is still accepted', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now + 5, now + 100)}` } });
+  assert.equal(res.status, 404);
+});
 test('the product phrase unlocks only its product, not the survey gift', async () => {
   const { res, cookie } = await loginAttempt(productPhrase);
   assert.equal(res.status, 303);
@@ -206,6 +211,54 @@ test('missing/short secrets and invalid production origin fail closed', async ()
     const instance = runtime({ bindings });
     try { const res = await instance.dispatchFetch(origin + '/download/typescript/chapter-01'); assert.equal(res.status, 503); noCache(res); }
     finally { await instance.dispose(); }
+  }
+});
+async function productPhraseCase(productSecret) {
+  const instance = runtime({ origin, bindings: { SESSION_SECRET: secret, ...(productSecret === undefined ? {} : { ACCESS_PHRASE_SHA256_REDMINE_CLONE: productSecret }) } });
+  await instance.ready;
+  const send = (path, opts = {}) => instance.dispatchFetch(origin + path, { redirect: 'manual', ...opts });
+  const attempt = async phrase => {
+    const entry = await send('/');
+    const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+    return send('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, Cookie: headerCookie(entry, 'local_course_login') }, body: new URLSearchParams({ csrf, phrase }) });
+  };
+  return { instance, send, attempt };
+}
+test('an unset product phrase setting keeps the site and the gift working', async () => {
+  const { instance, send, attempt } = await productPhraseCase(undefined);
+  try {
+    assert.equal((await send('/')).status, 200);
+    assert.equal((await attempt(localPhrase)).status, 303);
+    const denied = await attempt(productPhrase);
+    assert.equal(denied.status, 401); assert.doesNotMatch(await denied.text(), /配布設定を確認しています/);
+  } finally { await instance.dispose(); }
+});
+test('a malformed product phrase setting closes only that product as under configuration check', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['redmine-clone'] })).toString('base64url');
+  const productSession = `local_course_session=${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  // 大文字のダイジェスト、ダイジェストにし忘れた生の合言葉、長さ違いの3通り。
+  for (const malformed of [digest(productPhrase).toUpperCase(), productPhrase, digest(productPhrase).slice(1)]) {
+    const { instance, send, attempt } = await productPhraseCase(malformed);
+    try {
+      await instance.getR2Bucket('MATERIALS').then(b => b.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES'));
+      assert.equal((await send('/')).status, 200);
+      const denied = await attempt(productPhrase);
+      assert.equal(denied.status, 401);
+      assert.match(await denied.text(), /販売中の教材は、ただいま配布設定を確認しています/);
+      assert.equal((await attempt(malformed)).status, 401);
+      const gift = await attempt(localPhrase);
+      assert.equal(gift.status, 303);
+      const giftCookie = headerCookie(gift, 'local_course_session');
+      assert.equal((await send('/courses/typescript', { headers: { Cookie: giftCookie } })).status, 200);
+      const closedPage = await send('/courses/redmine-clone', { headers: { Cookie: giftCookie } });
+      assert.equal(closedPage.status, 503); assert.match(await closedPage.text(), /配布設定の確認中です/);
+      // 設定を間違える前に入った購入者のセッションでも、閉じた商品は渡さない。
+      for (const path of ['/courses/redmine-clone', '/download/redmine-clone/source-zip']) {
+        const res = await send(path, { headers: { Cookie: productSession } });
+        assert.equal(res.status, 503, path); assert.equal(res.headers.get('Content-Disposition'), null);
+      }
+    } finally { await instance.dispose(); }
   }
 });
 test('release manifest validates all filenames and rejects unsafe filenames', async () => {
@@ -360,9 +413,17 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
       assert.throws(() => manifest.validateManifest());
     }
     // 商品コレクションは buyers 以外の audience を許可しない（paid-product 型は正当）。
-    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers' });
+    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers', phraseEnv: 'ACCESS_PHRASE_SHA256_TYPESCRIPT' });
     assert.doesNotThrow(() => manifest.validateManifest());
-    Object.assign(course, structuredClone(original));
+    // 商品の設定名がマニフェストに無い、または id と食い違う商品は、起動しない。
+    Object.assign(course, { phraseEnv: undefined });
+    assert.throws(() => manifest.validateManifest());
+    Object.assign(course, { phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE' });
+    assert.throws(() => manifest.validateManifest());
+    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers', phraseEnv: 'ACCESS_PHRASE_SHA256_TYPESCRIPT' });
+    assert.doesNotThrow(() => manifest.validateManifest());
+    Object.assign(course, structuredClone(original)); delete course.phraseEnv;
+    assert.doesNotThrow(() => manifest.validateManifest());
     course.materials[0].filename = 'taskapp-book-01.pdf';
     assert.throws(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original));
@@ -377,7 +438,7 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     }
     Object.assign(course.approval, { myaspVerified: true, distributionApproved: true });
     assert.equal(manifest.canDistribute(course, false), true);
-  } finally { Object.assign(course, original, { approval }); Object.assign(manifest.giftPolicy, policy); }
+  } finally { Object.assign(course, original, { approval }); delete course.phraseEnv; Object.assign(manifest.giftPolicy, policy); }
 });
 test('approval lives in each collection and one decision function covers gifts and products', async () => {
   const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));

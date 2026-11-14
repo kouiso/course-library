@@ -42,7 +42,14 @@ export function fixtures() {
   const files = [['typescript-learning-flow.pdf', pdf('Synthetic TypeScript learning flow')], ...chapters, ...exercises];
   return new Map([...files, ['typescript-all-materials.zip', zip(files)]]);
 }
+// The paid product keeps its real release prefix, so the local preview can open and download it.
+export const productVersion = '0.1.0';
+export function productFixtures() {
+  const readme = 'SYNTHETIC PLACEHOLDER ONLY. This ZIP is a local dummy, not the real product source.\n';
+  return new Map([['redmine-clone-source.zip', zip([['redmine-clone-source/README.txt', readme]])]]);
+}
 export async function seed(mf) {
   const bucket = await mf.getR2Bucket('MATERIALS');
   for (const [name, data] of fixtures()) await bucket.put(`releases/typescript/${version}/${name}`, data);
+  for (const [name, data] of productFixtures()) await bucket.put(`releases/redmine-clone/${productVersion}/${name}`, data);
 }
