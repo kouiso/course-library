@@ -35,7 +35,17 @@ export const productRelease = {
   },
 } as const;
 export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'exercises' | 'bundle' };
-export type Collection = { id: string; title: string; description: string; distribution: 'survey-gift' | 'paid-product'; audience: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; materials: Material[]; cover: string; mark: string };
+// 秘密の設定値（wrangler secret で置く物）。生成物の worker-configuration.d.ts には出ないので、型はここ1か所で持つ。
+// 商品を足す時は、ここに商品用の合言葉の名前を足し、マニフェストの phraseEnv に同じ名前を書く。
+export type Secrets = {
+  SESSION_SECRET?: string;
+  BASIC_AUTH_USER?: string;
+  BASIC_AUTH_PASS?: string;
+  ACCESS_PHRASE_SHA256?: string;
+  ACCESS_PHRASE_SHA256_REDMINE_CLONE?: string;
+};
+export type PhraseEnvName = Extract<keyof Secrets, `ACCESS_PHRASE_SHA256${string}`>;
+export type Collection = { id: string; title: string; description: string; distribution: 'survey-gift' | 'paid-product'; audience: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; materials: Material[]; cover: string; mark: string; phraseEnv?: PhraseEnvName };
 export const exerciseChapterIds = ['01', '02', '03', '04', '05', '06', '07', '08', '10'];
 export const materials: Material[] = [
   { id: 'learning-flow', title: '学習の進め方', filename: 'typescript-learning-flow.pdf', type: 'application/pdf', group: 'intro' },
@@ -51,7 +61,7 @@ export const materials: Material[] = [
 export const collections: Collection[] = [
   { id: 'typescript', title: 'TypeScript教材', description: 'アンケートにお答えいただいた方への無料プレゼントです。', distribution: 'survey-gift', audience: 'survey-respondents', status: 'preview', version: release.version, release, materials, cover: 'Make types\nyour ally.', mark: 'TS' },
   {
-    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: productRelease.version, release: productRelease, cover: 'Build a\nRedmine clone.', mark: 'RM',
+    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: productRelease.version, release: productRelease, cover: 'Build a\nRedmine clone.', mark: 'RM', phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE',
     materials: [{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }],
   },
 ];
@@ -64,8 +74,10 @@ export function isPaidProduct(c: Collection): boolean {
 // 合言葉ごとにどのコレクションを開けるかを、環境変数名の約束で持つ。
 // ギフトは従来どおり ACCESS_PHRASE_SHA256。商品は id ごとに
 // ACCESS_PHRASE_SHA256_REDMINE_CLONE のような別の secret を置く（未設定なら開かない）。
-export function phraseEnvName(c: Collection): string {
-  return isPaidProduct(c) ? `ACCESS_PHRASE_SHA256_${c.id.toUpperCase().replaceAll('-', '_')}` : 'ACCESS_PHRASE_SHA256';
+// 商品の名前はマニフェストの phraseEnv に明示し、型検査で Secrets の名前と突き合わせる。
+export const productPhraseEnvName = (id: string): string => `ACCESS_PHRASE_SHA256_${id.toUpperCase().replaceAll('-', '_')}`;
+export function phraseEnvName(c: Collection): PhraseEnvName | undefined {
+  return isPaidProduct(c) ? c.phraseEnv : 'ACCESS_PHRASE_SHA256';
 }
 // ギフトは段階の合言葉も持てる。N 段目（ACCESS_PHRASE_SHA256_TYPESCRIPT_0N、10 段目は _10）で 1〜N 章が開く。
 // 従来の ACCESS_PHRASE_SHA256 は 10 段目と同じ扱い（ギフト全部）。段の secret が未設定なら、その段は誰にも合わない。
@@ -108,7 +120,8 @@ export function validateManifest(): void {
   if (new Set(phraseNames).size !== phraseNames.length) throw new Error('Duplicate phrase setting');
   for (const c of collections) {
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(c.id) || (!isSurveyGift(c) && !isPaidProduct(c))) throw new Error('Not an approved collection');
-    if (isPaidProduct(c) && (c.audience !== 'buyers' || !/^[A-Z0-9_]+$/.test(phraseEnvName(c)))) throw new Error('Invalid product collection');
+    if (isPaidProduct(c) && (c.audience !== 'buyers' || c.phraseEnv !== productPhraseEnvName(c.id))) throw new Error('Invalid product collection');
+    if (!isPaidProduct(c) && c.phraseEnv !== undefined) throw new Error('Invalid gift collection');
     if (isSurveyGift(c) && c.materials.some(m => giftMaterialLevel(m) === null)) throw new Error('Gift material without a level');
     if (c.status === 'pending') {
       if (c.release || c.version || c.materials.length) throw new Error('Pending collection exposes materials');

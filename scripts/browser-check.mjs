@@ -2,15 +2,52 @@
 // this script never downloads a browser or opens a personal browser profile.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { runtime, localPhrase } from './runtime.mjs';
 import { seed, fixtures, version } from './fixtures.mjs';
 
-const playwrightPackage = process.env.COURSE_PLAYWRIGHT_PACKAGE;
-const executablePath = process.env.COURSE_BROWSER_EXECUTABLE;
-if (!playwrightPackage || !executablePath) throw new Error('Set COURSE_PLAYWRIGHT_PACKAGE and COURSE_BROWSER_EXECUTABLE to already-installed official tooling.');
-const { chromium } = createRequire(import.meta.url)(playwrightPackage);
+const load = createRequire(import.meta.url);
+// Without the two variables, look for an already-installed Playwright in this repository,
+// the global npm folder and the npx cache, and use the Chromium that matches it.
+function installedPlaywright() {
+  const roots = [resolve('node_modules'), join(dirname(dirname(process.execPath)), 'lib', 'node_modules'), join(dirname(process.execPath), 'node_modules')];
+  const npx = join(homedir(), '.npm', '_npx');
+  const cached = existsSync(npx) ? readdirSync(npx).map(d => join(npx, d, 'node_modules')) : [];
+  const found = [];
+  for (const [order, root] of [...roots, ...cached].entries()) {
+    for (const name of ['playwright-core', 'playwright']) {
+      const dir = join(root, name);
+      if (!existsSync(join(dir, 'package.json'))) continue;
+      try {
+        const version = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version;
+        const browser = load(dir).chromium.executablePath();
+        if (browser && existsSync(browser)) found.push({ order, dir, version, browser });
+      } catch { /* Not a usable Playwright package. */ }
+    }
+  }
+  const newer = (a, b) => b.version.localeCompare(a.version, undefined, { numeric: true });
+  return found.sort((a, b) => (a.order < roots.length || b.order < roots.length ? a.order - b.order : newer(a, b)))[0];
+}
+let playwrightPackage = process.env.COURSE_PLAYWRIGHT_PACKAGE;
+let executablePath = process.env.COURSE_BROWSER_EXECUTABLE;
+if (!playwrightPackage || !executablePath) {
+  const found = installedPlaywright();
+  if (!found && !playwrightPackage) {
+    console.error('No installed Playwright with its Chromium was found. This check never downloads browsers.\nInstall them yourself, for example: npm install --no-save playwright@1.64.1 && npx playwright install chromium\nOr set COURSE_PLAYWRIGHT_PACKAGE and COURSE_BROWSER_EXECUTABLE to already-installed official tooling.');
+    process.exit(1);
+  }
+  playwrightPackage ||= found.dir;
+  executablePath ||= found?.browser || load(playwrightPackage).chromium.executablePath();
+}
+if (!existsSync(executablePath)) {
+  console.error(`Chromium was not found at ${executablePath}. Install it with the matching Playwright (npx playwright install chromium) or set COURSE_BROWSER_EXECUTABLE.`);
+  process.exit(1);
+}
+console.log(JSON.stringify({ event: 'browser-tooling', playwright: playwrightPackage, chromium: executablePath }));
+const { chromium } = load(playwrightPackage);
 const origin = 'http://127.0.0.1:8813';
 const folder = resolve('artifacts/visual');
 await mkdir(folder, { recursive: true });
@@ -69,17 +106,31 @@ try {
   await screenshot('desktop-wrong-phrase');
   checkpoint('Incorrect phrase: accessible inline error, no authentication.');
 
-  let releaseLogin;
+  let releaseLogin, reachedLogin;
   const gate = new Promise(resolveGate => { releaseLogin = resolveGate; });
-  await page.route('**/login', async route => { await gate; await route.continue(); });
-  await page.getByLabel('アクセス用の合言葉').fill(localPhrase);
-  await page.getByRole('button', { name: '教材ページを開く' }).click({ noWaitAfter: true });
-  assert.equal(await page.getByRole('button', { name: '確認しています…' }).isDisabled(), true);
-  assert.equal(await page.locator('form').getAttribute('aria-busy'), 'true');
-  await screenshot('desktop-submitting');
-  releaseLogin();
+  const held = new Promise(resolveHeld => { reachedLogin = resolveHeld; });
+  await page.route('**/login', async route => { reachedLogin(); await gate; await route.continue(); });
+  // While the submission is held, Chromium answers no screenshot or DOM query, so the submitting state
+  // is recorded at the moment of sending and read after the release. The hold is released even on failure.
+  try {
+    await page.waitForLoadState('load');
+    await page.getByLabel('アクセス用の合言葉').fill(localPhrase);
+    await page.evaluate(() => {
+      const form = document.querySelector('form[action="/login"]');
+      form.addEventListener('submit', () => {
+        const button = form.querySelector('button');
+        sessionStorage.setItem('submitting', JSON.stringify({ disabled: button.disabled, busy: form.getAttribute('aria-busy'), label: button.textContent }));
+      });
+    });
+    await page.getByRole('button', { name: '教材ページを開く' }).click({ noWaitAfter: true });
+    await Promise.race([held, new Promise((_, reject) => setTimeout(() => reject(new Error('The login submission was not sent.')), 8000))]);
+  } finally { releaseLogin(); }
   await page.waitForURL(origin + '/library');
   await page.unroute('**/login');
+  const submitting = JSON.parse(await page.evaluate(() => sessionStorage.getItem('submitting')) || '{}');
+  assert.equal(submitting.disabled, true);
+  assert.equal(submitting.busy, 'true');
+  assert.match(submitting.label, /確認しています…/);
   await noOverflow();
   await screenshot('desktop-catalogue');
   assert.equal(await page.getByRole('link', { name: /Taskapp/ }).count(), 0);
@@ -145,12 +196,14 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(origin + '/library');
   await noOverflow();
-  assert.equal(await page.locator('.course-card').evaluate(card => {
-    const bounds = card.getBoundingClientRect();
-    const body = card.querySelector('.course-body').getBoundingClientRect();
-    const action = card.querySelector('.course-action').getBoundingClientRect();
-    return body.top >= bounds.top && body.bottom <= bounds.bottom + 1 && action.bottom <= bounds.bottom + 1;
-  }), true, 'Mobile gift title, description and action must fit inside the card without clipping');
+  for (const title of ['TypeScript教材', 'Redmineクローン教材']) {
+    assert.equal(await page.locator('.course-card').filter({ has: page.getByRole('heading', { name: title }) }).evaluate(card => {
+      const bounds = card.getBoundingClientRect();
+      const body = card.querySelector('.course-body').getBoundingClientRect();
+      const action = card.querySelector('.course-action').getBoundingClientRect();
+      return body.top >= bounds.top && body.bottom <= bounds.bottom + 1 && action.bottom <= bounds.bottom + 1;
+    }), true, `Mobile ${title} title, description and action must fit inside the card without clipping`);
+  }
   await screenshot('mobile-catalogue');
   await page.getByRole('link', { name: 'ダミー教材を見る' }).click();
   await noOverflow();
