@@ -15,7 +15,12 @@ npm run check
 npm run dev
 ```
 
-Open `http://127.0.0.1:8797` and enter the **local dummy phrase** `synthetic-development-only`. Local signing keys are generated in memory for each preview. They are never production credentials. The preview binds only to the loopback interface and uses ephemeral local R2 data.
+Open `http://127.0.0.1:8797` and enter one of the two **local dummy phrases** (the preview also prints both):
+
+- `synthetic-development-only` opens the TypeScript survey gift (synthetic PDFs and ZIP).
+- `synthetic-product-development-only` opens the paid product page; its ZIP is a local dummy that contains only a placeholder text file.
+
+Neither is a production phrase. Local signing keys are generated in memory for each preview. They are never production credentials. The preview binds only to the loopback interface and uses ephemeral local R2 data.
 
 **Distribution scope:** TypeScript is the free gift for survey respondents. Taskapp is a paid product and is never included in this gift library. Every Taskapp product URL is denied even with valid gift authentication.
 
