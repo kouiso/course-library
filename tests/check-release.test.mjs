@@ -32,12 +32,23 @@ const approveGift = text => {
   return replaceOnce(next, "distribution: 'survey-gift', audience: 'survey-respondents', status: 'preview'", "distribution: 'survey-gift', audience: 'survey-respondents', status: 'published'");
 };
 
-test('release check blocks on the unapproved survey gift and still reports the product', () => {
+test('with the survey gift unapproved and the paid product ready, the check passes and says the gift stays closed', () => {
   const result = run();
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^survey-gift: blocked typescript \S+ - .*giftPolicy\.myaspVerified is false/m);
   assert.match(result.stdout, /^paid-product: ready redmine-clone \S+$/m);
-  assert.match(result.stderr, /^Release blocked: survey gift is not ready\./m);
+  assert.match(result.stdout, /^Note: the survey gift stay closed in production/m);
+  assert.doesNotMatch(result.stderr, /Release blocked/);
+});
+
+test('release check blocks when the survey gift is unapproved and no paid product is ready', async () => {
+  const edit = text => replaceOnce(text, 'export const productPolicy = {\n  distributionApproved: true,', 'export const productPolicy = {\n  distributionApproved: false,');
+  await withManifest(edit, result => {
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /^survey-gift: blocked typescript /m);
+    assert.match(result.stdout, /^paid-product: blocked redmine-clone /m);
+    assert.match(result.stderr, /^Release blocked: no collection is distributable \(survey gift and paid product blocked\)\./m);
+  });
 });
 
 test('release check passes when the survey gift is approved, even with a paid product present', async () => {
@@ -53,6 +64,30 @@ test('a blocked paid product is reported but does not change the exit code', asy
   const edit = text => replaceOnce(approveGift(text), 'export const productPolicy = {\n  distributionApproved: true,', 'export const productPolicy = {\n  distributionApproved: false,');
   await withManifest(edit, result => {
     assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^survey-gift: ready typescript \S+$/m);
     assert.match(result.stdout, /^paid-product: blocked redmine-clone \S+ - productPolicy\.distributionApproved is false$/m);
+    assert.match(result.stdout, /^Note: .*stay closed in production/m);
+    assert.doesNotMatch(result.stderr, /Release blocked/);
+  });
+});
+
+test('one paid product ready and one blocked, with the survey gift unapproved, passes and reports both', async () => {
+  const second = "  {\n    id: 'second-product', title: 'Second', description: 'Second product.', distribution: 'paid-product', audience: 'buyers', status: 'pending', version: null, release: null, cover: 'Second', mark: 'SP',\n    materials: [],\n  },\n];\nexport function isSurveyGift";
+  const edit = text => replaceOnce(text, '];\nexport function isSurveyGift', second);
+  await withManifest(edit, result => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^paid-product: ready redmine-clone \S+$/m);
+    assert.match(result.stdout, /^paid-product: blocked second-product /m);
+    assert.match(result.stdout, /^Note: .*stay closed in production/m);
+    assert.doesNotMatch(result.stderr, /Release blocked/);
+  });
+});
+
+test('an approved survey gift that still cannot be distributed blocks the release', async () => {
+  const edit = text => replaceOnce(text, '  myaspVerified: false,\n  distributionApproved: false,', '  myaspVerified: true,\n  distributionApproved: true,');
+  await withManifest(edit, result => {
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /^survey-gift: blocked typescript \S+ - synthetic materials/m);
+    assert.match(result.stderr, /^Release blocked: the survey gift is approved but cannot be distributed\./m);
   });
 });
