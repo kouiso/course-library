@@ -56,6 +56,11 @@ test('a session without unlocked collections is locked out of every download', a
   const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now, now + 100)}` } });
   assert.equal(res.status, 404);
 });
+test('a session issued a few seconds ahead of the worker clock is still accepted', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now + 5, now + 100)}` } });
+  assert.equal(res.status, 404);
+});
 test('the product phrase unlocks only its product, not the survey gift', async () => {
   const { res, cookie } = await loginAttempt(productPhrase);
   assert.equal(res.status, 303);

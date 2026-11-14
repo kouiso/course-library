@@ -6,7 +6,7 @@ A small Japanese library for the TypeScript survey-response gift built with Type
 
 ## Try locally
 
-Requires Node.js 22.23+ and npm.
+Requires Node.js 22.23+ (`.nvmrc` pins 22.23.4) and npm. `npm run check` also needs poppler for `pdfinfo` and `pdftotext` (macOS: `brew install poppler`, Ubuntu: `apt install poppler-utils`); without them the candidate tests stop with a message naming the missing tool.
 
 ```sh
 npm ci
@@ -26,7 +26,7 @@ Neither is a production phrase. Local signing keys are generated in memory for e
 
 The local TypeScript preview has 20 clearly synthetic PDFs (learning flow, ten chapters, exercises for chapters01–08 and10 (none for09)) and one ZIP. This is a test fixture structure, not confirmation of the actual release inventory. Real files, the approved version and the MyASP survey-response settings remain unverified.
 
-Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` intentionally fails in this state, and the optional deploy job runs this gate before deployment.
+Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` prints one `survey-gift:` and one `paid-product:` line per collection. It fails (exit 1) only when no collection, gift or paid product, can be distributed, and the message names which side is blocked. A blocked collection is still reported on its own line; when something else is ready it exits 0 and a Note says the blocked collections stay closed in production. An approved survey gift that cannot be distributed also fails. The optional deploy job runs this gate before deployment.
 
 ## Design
 
