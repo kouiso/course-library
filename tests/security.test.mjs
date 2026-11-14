@@ -66,7 +66,7 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   const productHtml = await course.text();
   assert.match(productHtml, /ソースコード一式/);
   assert.match(productHtml, /redmine-clone-source-v0\.1\.0\.zip/);
-  assert.match(productHtml, /教材の Day 3 の手順どおりに進めてください/);
+  assert.match(productHtml, /Day 3 の手順は <code>redmine-clone\.zip<\/code> という名前で書かれています。保存したファイルの名前を <code>redmine-clone\.zip<\/code> に変えてから、Day 3 の手順どおりに進めてください。/);
   assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
