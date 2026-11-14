@@ -53,21 +53,19 @@ for (const c of manifest.collections) {
 }
 const giftReady = giftCount > 0 && !giftBlocked && manifest.giftPolicy.myaspVerified && manifest.giftPolicy.distributionApproved;
 
-// Exit policy: a paid product that cannot be distributed always stops the release. An unapproved survey gift stops it
-// only when no paid product is ready; with every paid product ready the gift simply stays closed in production.
-if (paidBlocked) {
-  console.error('Release blocked: a paid product is not ready. See the paid-product lines above for the reasons.');
-  process.exit(1);
-}
-// An approved gift that still cannot be distributed is a mistake in the manifest, not a gift that is simply closed.
+// Exit policy: the release is blocked only when no collection (gift or paid product) can be distributed.
+// A blocked collection is reported on its own line and simply stays closed in production while the others ship.
+// An approved survey gift that still cannot be distributed is a mistake in the manifest, so it stops the release.
 const giftApproved = manifest.giftPolicy.myaspVerified && manifest.giftPolicy.distributionApproved;
 if (giftApproved && !giftReady) {
   console.error('Release blocked: the survey gift is approved but cannot be distributed. See the survey-gift lines above for the reasons.');
   process.exit(1);
 }
 if (!giftReady && !paidReady) {
-  console.error('Release blocked: survey gift is not ready. Survey eligibility/settings, approved distribution version, and non-synthetic materials must be verified first.');
+  const blocked = [giftCount > 0 && 'survey gift', paidBlocked > 0 && 'paid product'].filter(Boolean).join(' and ') || 'no collection';
+  console.error(`Release blocked: no collection is distributable (${blocked} blocked). See the blocked lines above for the reasons.`);
   process.exit(1);
 }
-if (!giftReady) console.log('Note: the survey gift is not approved and stays closed in production; only the ready paid products are released.');
+const closed = [!giftReady && 'the survey gift', paidBlocked > 0 && `${paidBlocked} paid product(s)`].filter(Boolean);
+if (closed.length) console.log(`Note: ${closed.join(' and ')} stay closed in production because they are blocked; only the ready collections are released.`);
 console.log('Approved manifest is ready for a separately authorized production release.');
