@@ -22,3 +22,8 @@ before は親の先端、after はそのブランチの先端。
 - fix/45 は本番の動き（外側の認証あり）を再現するため、本番設定のまま画面を取り込んだ。この画面は CSS も認証の外で 401 になるので、装飾なしの素の表示になる（本番でも同じ）。
 - fix/48 の「10分過ぎ」は、同じ署名鍵で期限切れの確認用の値を作って送った。実際に10分は待っていない。
 - 画面にはアプリの表示だけが映る。ローカルのパスも実際の合言葉も無い。
+
+## 追加: 1440 幅（desktop1440 = 1440x900）
+fix/50 と fix/56 の課題が 1440px と 390px を求めるため、デスクトップだけ 1440x900 で撮り直した。同じ方法、同じ前後の先端。mobile（390x844）は上の画像を使う。
+- fix/50-key-screen-button: `fix-50-key-screen-button-locked-<before|after>-desktop1440.png`（鍵の画面）、`fix-50-key-screen-button-<before|after>-desktop1440.png`（主ボタンを押した後）
+- fix/56-product-page: `fix-56-product-page-<before|after>-desktop1440.png`（商品ページ）
