@@ -65,7 +65,14 @@ Windows and WSL are **pending**. Real course code, PDF password compatibility, S
 
 `npm run check` includes the public staged-file/history scan. The local pre-push hook runs it again before publication; install it with `npm run hooks:install`. Pattern scanning supplements manual review and cannot prove that arbitrary content is safe to publish.
 
-Optional browser reproduction uses an already-installed official Playwright package and Chromium executable:
+Optional browser reproduction uses an already-installed official Playwright package and its Chromium. Verified working with Playwright 1.64.1 and its bundled Chromium (revision 1248):
+
+```sh
+npm run build
+npm run test:browser
+```
+
+Without environment variables, the script looks for Playwright (`playwright-core` or `playwright`) in this repository's `node_modules`, the global npm folder and the npx cache (`~/.npm/_npx`), and uses the Chromium that Playwright itself expects (normally under `~/.cache/ms-playwright`). It prints the paths it chose. If none is found, it prints what to install (for example `npm install --no-save playwright@1.64.1 && npx playwright install chromium`) and exits without downloading anything. To choose other tooling, set both paths:
 
 ```sh
 COURSE_PLAYWRIGHT_PACKAGE=/path/to/installed/playwright \
@@ -73,7 +80,11 @@ COURSE_BROWSER_EXECUTABLE=/path/to/installed/chromium \
 npm run test:browser
 ```
 
-Run `npm run build` first. This opt-in test starts one loopback test runtime, a new temporary BrowserServer, one context and one page, and closes its own handles in `finally`. It never downloads browsers or opens personal browser profiles. Screenshots and downloaded synthetic fixtures stay in ignored `artifacts/visual/`.
+On Linux, Chromium also needs its system libraries (for example NSS and NSPR; `npx playwright install-deps chromium` installs them). This opt-in test starts one loopback test runtime, a new temporary BrowserServer, one context and one page, and closes its own handles in `finally`. It never downloads browsers or opens personal browser profiles. Screenshots and downloaded synthetic fixtures stay in ignored `artifacts/visual/`.
+
+When to run it: run `npm run test:browser` whenever a change touches what a visitor sees on screen (the key screen, the library or product pages, buttons, wording, layout, styles), and before publishing such a change. It is not part of `npm run check`, the pre-push hook or CI, so nothing runs it for you. CI deliberately does not run it: no workflow of this repository has run in GitHub Actions yet (only Dependabot updates have), so the Chromium download time and cost are unmeasured, and the check needs a locally installed browser. If you later want it in CI, measure a real run first and then change `.github/workflows/verify.yml`.
+
+Finding the tooling: the script reads two paths from the environment and downloads nothing. `COURSE_PLAYWRIGHT_PACKAGE` is the directory of an installed official `playwright` package (for example a global or other-project `node_modules/playwright`). `COURSE_BROWSER_EXECUTABLE` is the path to an installed Chromium or Chrome binary (for example the one under Playwright's browser cache, or the system Chrome). If you have neither, install them yourself outside this repository first (`npm install playwright` in a scratch directory, then `npx playwright install chromium` there) and point the two variables at the results. Setting both variables always works. If they are not set, the script either finds an already-installed Playwright with its matching Chromium by itself (once automatic discovery from issue #52 is merged) or stops with an error that names them; it never downloads browsers.
 
 ## Delivery controls
 

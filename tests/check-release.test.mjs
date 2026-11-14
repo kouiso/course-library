@@ -72,7 +72,7 @@ test('a blocked paid product is reported but does not change the exit code', asy
 });
 
 test('one paid product ready and one blocked, with the survey gift unapproved, passes and reports both', async () => {
-  const second = "  {\n    id: 'second-product', title: 'Second', description: 'Second product.', distribution: 'paid-product', audience: 'buyers', status: 'pending', version: null, release: null, cover: 'Second', mark: 'SP',\n    materials: [],\n  },\n];\nexport function isSurveyGift";
+  const second = "  {\n    id: 'second-product', title: 'Second', description: 'Second product.', distribution: 'paid-product', audience: 'buyers', status: 'pending', version: null, release: null, cover: 'Second', mark: 'SP', phraseEnv: 'ACCESS_PHRASE_SHA256_SECOND_PRODUCT',\n    materials: [],\n  },\n];\nexport function isSurveyGift";
   const edit = text => replaceOnce(text, '];\nexport function isSurveyGift', second);
   await withManifest(edit, result => {
     assert.equal(result.status, 0, result.stderr);
