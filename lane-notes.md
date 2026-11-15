@@ -1,3 +1,11 @@
+HANDOFF 2026-11-15T10:12Z (PAUSE from managing session; no subagent running; nothing unpushed; do not resume before a RESUME message)
+- done since RESUME: PR #93 fix round finished and pushed by an opus member: head 26060bc (0f4c1dc test escape + 26060bc docs). All 7 findings of the FAILED review (https://github.com/kouiso/course-library/pull/93#issuecomment-6891943126) answered; LOCAL-CHECK 98/0 with test:browser and release:ready exit 0: https://github.com/kouiso/course-library/pull/93#issuecomment-6892757954 ; evidence/35-26060bc.png; PR body matches 26060bc; CodeRabbit threads r4577718140 r4577718131 r4577718146 resolved, r4577718124 r4577718153 (Taskapp) answered and left open on purpose.
+- half done: the last independent review of #93 at 26060bc was stopped by this PAUSE before it posted anything (no REVIEW comment at 26060bc exists). Its temp worktree /tmp/rv93b may remain in the container; it holds no work.
+- new since the fix: CodeRabbit re-reviewed 26060bc and opened 3 minor threads on docs/OPERATIONS.md:57 ("Start distributing a product" step 1): local preview binds a phrase only for redmine-clone (scripts/dev.mjs); the unknown-id tests use `taskapp`, which would clash if a product with that id is added; one release-check test edits only the existing product's flag. All three concern ADDING a product, not #35's criterion (version raise). Judge them in the review: if valid, they are wants for a doc sentence each, not a reason to hold #93.
+- next step after RESUME: ONE fresh opus reviewer of #93 at 26060bc (same brief as the stopped one: whole PR, re-run version raise / filename change / flag=false / escape test in a temp worktree, judge the 3 new CodeRabbit threads). PASS -> GATE (head 26060bc) + merge commit with expectedHeadSha, then close #21 with a reason if its criteria hold, then HANDOFF + DONE-FOR-NOW. FAIL -> this was the last round: park #93 (and #35) with the exact must-level findings under needs owner / for main session, then HANDOFF + DONE-FOR-NOW.
+- open pull requests: #93 (above) | #84 handoff of 2026-11-14 and #85 notes: never merge, never close (managing-session order).
+- owner rule for this period: 「現在の起票されているPRの解消を全て達成してから新規タスクに臨む。」 — start no new issue, branch or feature.
+
 RESUME 2026-11-15T09:54Z | lead opus, members opus/sonnet, no fable | owner rule: 現在の起票されているPRの解消を全て達成してから新規タスクに臨む | next: #93 fix round, then one fresh reviewer
 HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subagent running; nothing unpushed; do not resume before a RESUME message)
 - done today (18 merges into codex/initial-implementation, each with REVIEW, LOCAL-CHECK, evidence image and GATE on the PR): #81 #68 #72 (previous lane) | #74 #75 #76 #77 #78 #79 #80 (handoff stack) | #86 design conformance over the 12 boards | #87 typed secrets (closed #23) | #88 #86 follow-ups | #89 release check correctness | #90 gift level follow-ups | #91 level-aware counts | #92 SETUP product phrase. Default head: 4118b5a.
@@ -14,7 +22,7 @@ HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subag
 - 課題 review band: ready (the lane's PR work is done except #93) — for the managing session to place.
 - not done, by rule: no manager audit yet (scene c); model note: lead and subagents ran on fable from 08:16Z by the owner's relayed order until this PAUSE.
 
-STATE RUNNING 2026-11-15T09:54Z | RESUMED (side-personal) | rule: settle every open PR, no new work | open: #93 (fix round), #84 #85 (never merge)
+STATE PAUSED 2026-11-15T10:12Z | PAUSE from managing session (allowance guard) | open work PR 1 (#93, fix round done, last review not finished) | waits for RESUME
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
