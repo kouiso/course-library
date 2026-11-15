@@ -453,6 +453,40 @@ test('a malformed product phrase setting closes only that product as under confi
     } finally { await instance.dispose(); }
   }
 });
+test('a product phrase setting that repeats another collection\'s digest closes that product; one phrase never opens two collections', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['redmine-clone'] })).toString('base64url');
+  const productSession = `local_course_session=${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  const unlockedOf = res => JSON.parse(Buffer.from(headerCookie(res, 'local_course_session').split('=')[1].split('.')[0], 'base64url').toString()).unlocked;
+  const levelPhrase = 'synthetic-gift-level-shared';
+  // ギフトの合言葉と同じ、ギフトの段の合言葉と同じ、の2通り。
+  for (const [shared, extra] of [[localPhrase, {}], [levelPhrase, { ACCESS_PHRASE_SHA256_TYPESCRIPT_03: digest(levelPhrase) }]]) {
+    const instance = runtime({ origin, bindings: { SESSION_SECRET: secret, ...extra, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(shared) }, totalLimit: 1000 });
+    const send = (path, opts = {}) => instance.dispatchFetch(origin + path, { redirect: 'manual', ...opts });
+    try {
+      await instance.getR2Bucket('MATERIALS').then(b => b.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES'));
+      assert.equal((await send('/')).status, 200);
+      const entry = await send('/');
+      const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+      const res = await send('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, Cookie: headerCookie(entry, 'local_course_login') }, body: new URLSearchParams({ csrf, phrase: shared }) });
+      assert.equal(res.status, 303, shared);
+      assert.deepEqual(unlockedOf(res), ['typescript'], shared);
+      const cookie = headerCookie(res, 'local_course_session');
+      assert.equal((await send('/courses/typescript', { headers: { Cookie: cookie } })).status, 200);
+      for (const path of ['/courses/redmine-clone', '/download/redmine-clone/source-zip']) {
+        const closedRes = await send(path, { headers: { Cookie: productSession } });
+        assert.equal(closedRes.status, 503, path); assert.equal(closedRes.headers.get('Content-Disposition'), null);
+        assert.match(await closedRes.text(), /配布設定の確認中です/);
+      }
+    } finally { await instance.dispose(); }
+  }
+  // ギフトの中での重なり（10 段目が従来の合言葉と同じ）は、商品を閉じない。
+  const instance = runtime({ origin, bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_TYPESCRIPT_10: digest(localPhrase), ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) }, totalLimit: 1000 });
+  try {
+    const res = await instance.dispatchFetch(origin + '/courses/redmine-clone', { redirect: 'manual', headers: { Cookie: productSession } });
+    assert.equal(res.status, 200);
+  } finally { await instance.dispose(); }
+});
 test('release manifest validates all filenames and rejects unsafe filenames', async () => {
   const source = await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8');
   const js = stripTypeScriptTypes(source);
@@ -734,6 +768,61 @@ test('approval lives in each collection and one decision function covers gifts a
   assert.equal(manifest.isDistributable(published, false), true);
   assert.equal(manifest.isDistributable({ ...published, status: 'pending' }, true), false);
   assert.equal(manifest.isDistributable({ ...published, release: null }, true), false);
+});
+test('validateManifest stops a second survey gift, a repeated phrase setting and a gift material without a level', async () => {
+  const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  const [gift, product] = manifest.collections;
+  const allowed = [...manifest.giftPolicy.allowedCourseIds], materials = [...gift.materials], phraseEnv = product.phraseEnv;
+  assert.doesNotThrow(() => manifest.validateManifest());
+  try {
+    // ギフトの段はセッションに1つだけなので、ギフトは1つに限る。
+    manifest.giftPolicy.allowedCourseIds = [...allowed, 'typescript-two'];
+    manifest.collections.push({ ...structuredClone(gift), id: 'typescript-two', approval: { myaspVerified: false, distributionApproved: false } });
+    assert.throws(() => manifest.validateManifest(), /Only one survey gift is supported/);
+    manifest.collections.pop(); manifest.giftPolicy.allowedCourseIds = allowed;
+    assert.doesNotThrow(() => manifest.validateManifest());
+    // 商品の設定名がギフトの合言葉や段の合言葉と同じ名前なら起動しない。
+    for (const name of ['ACCESS_PHRASE_SHA256', 'ACCESS_PHRASE_SHA256_TYPESCRIPT_01', 'ACCESS_PHRASE_SHA256_TYPESCRIPT_10']) {
+      product.phraseEnv = name;
+      assert.throws(() => manifest.validateManifest(), /Duplicate phrase setting/, name);
+    }
+    product.phraseEnv = phraseEnv;
+    assert.doesNotThrow(() => manifest.validateManifest());
+    // 段の決まらない教材がギフトにあると起動しない。
+    gift.materials.push({ id: 'appendix', title: '付録', filename: 'typescript-appendix.pdf', type: 'application/pdf', group: 'books' });
+    assert.throws(() => manifest.validateManifest(), /Gift material without a level/);
+  } finally {
+    manifest.giftPolicy.allowedCourseIds = allowed; gift.materials.splice(0, gift.materials.length, ...materials); product.phraseEnv = phraseEnv;
+    manifest.collections.splice(2);
+  }
+  assert.doesNotThrow(() => manifest.validateManifest());
+});
+test('two collections never share one approval object, and a missing approval fails closed without throwing', async () => {
+  const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  const [gift, product] = manifest.collections;
+  const approval = product.approval;
+  try {
+    // 商品にギフトの承認を付けると、ギフトを承認した時に商品も開く。同じオブジェクトの共有は起動しない。
+    product.approval = manifest.giftPolicy;
+    assert.throws(() => manifest.validateManifest(), /Shared approval/);
+    // 値が同じでも別のオブジェクトなら共有ではない。
+    product.approval = { ...manifest.giftPolicy };
+    assert.doesNotThrow(() => manifest.validateManifest());
+    product.approval = undefined;
+    assert.equal(manifest.isApproved(product), false);
+    assert.equal(manifest.isDistributable(product, false), false);
+    assert.equal(manifest.canDistributeProduct(product), false);
+    // 真偽値の true 以外は承認として扱わない。
+    product.approval = { distributionApproved: 'false' };
+    assert.equal(manifest.canDistributeProduct(product), false);
+    const published = { ...structuredClone(gift), status: 'published', release: { ...gift.release, synthetic: false }, approval: undefined };
+    assert.equal(manifest.isDistributable(published, false), false);
+    assert.equal(manifest.canDistribute(published, true), false);
+  } finally { product.approval = approval; }
+  assert.equal(manifest.canDistributeProduct(product), true);
+  assert.doesNotThrow(() => manifest.validateManifest());
 });
 test('zero-byte release objects return an authenticated no-store 503 without attachment metadata', async () => {
   const { cookie } = await loginAttempt();

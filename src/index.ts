@@ -44,12 +44,21 @@ function configured(env: AppEnv): boolean {
 // 商品用の合言葉は、未設定ならその商品が閉じたままになるだけで、全体は動かす。
 // 設定済みで形（小文字の16進64文字）が違う商品は、全体を 503 にせず、その商品だけを設定確認中として閉じる。
 // 1つの設定の間違いで、ギフトや他の商品を持つ人まで入れなくしないため。
+// 商品の合言葉が、別のコレクションの合言葉（ギフトの合言葉・ギフトの段の合言葉・他の商品）と同じダイジェストなら、
+// 1つの合言葉で2つのコレクションが開いてしまう。これも設定の間違いとして、その商品を設定確認中で閉じる。
+// ギフトの中での重なり（段の合言葉が従来の合言葉と同じ等）は、同じギフトが開くだけなので問わない。
 function misconfiguredProducts(env: AppEnv): Set<string> {
   const ids = new Set<string>();
+  const digests = (c: Collection): string[] => {
+    const names = [phraseEnvName(c), ...(isSurveyGift(c) ? giftLevelEnvNames : [])];
+    return names.map(name => (name ? env[name] : undefined) || '').filter(value => digestShape.test(value));
+  };
   for (const c of collections) {
+    if (!isPaidProduct(c)) continue;
     const name = phraseEnvName(c);
     const value = name ? env[name] : undefined;
-    if (isPaidProduct(c) && value && !digestShape.test(value)) ids.add(c.id);
+    if (!value) continue;
+    if (!digestShape.test(value) || collections.some(other => other !== c && digests(other).includes(value))) ids.add(c.id);
   }
   return ids;
 }

@@ -46,6 +46,8 @@ printf %s "$PHRASE" | shasum -a 256 | cut -d' ' -f1
 
 `$PHRASE`は、`read -rs PHRASE`のように画面にも履歴にも残さない方法で用意したシェル変数です。`shasum`が無い環境では`sha256sum`を使います。出力が小文字の16進64文字になっていることを確かめてから、Secretに入れます。
 
+商品用の合言葉のダイジェストは、ほかのコレクションの合言葉（ギフトの`ACCESS_PHRASE_SHA256`・ギフトの段の合言葉・ほかの商品の合言葉）と別の値にします。同じ値だと1つの合言葉で2つのコレクションが開くので、Workerはその商品を、形の違う設定と同じく「配布設定の確認中です」として閉じます（サイト全体とギフトは動きます）。ギフトの中での重なり（段の合言葉と`ACCESS_PHRASE_SHA256`が同じ等）は、同じギフトが開くだけなので閉じません。
+
 ## 初回は既存接続で手動公開する
 
 既存のCloudflare接続は、Workerのアップロード・版作成・デプロイ、R2バケット作成・オブジェクトアップロードに対応するAPIを呼べます。APIの対応と実アカウントでの書き込み許可は別なので、変更による権限テストは行いません。初回公開のために新規の継続用APIトークンを先に作る必要はありません。
@@ -77,4 +79,4 @@ PDF暗号化ツールは現在の公式版を使い、秘密値を引数に置�
 
 Sources: [API token permission scopes](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Worker roles](https://developers.cloudflare.com/workers/authorization/workers/), [binding permissions](https://developers.cloudflare.com/workers/authorization/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [GitHub environment secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [qpdf Job JSON](https://qpdf.readthedocs.io/en/stable/qpdf-job.html).
 
-本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。共有合言葉だけで回答者本人を個別確認する仕組みはありません。MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`は、ギフトも商品も1つも配れない状態のときだけ失敗（終了コード1）し、どちら側が止まっているかをメッセージに出します。配れない物は1行ずつ報告し、ほかに配れる物があれば成功（終了コード0）して、配れない物は本番で閉じたままである旨（`Note: … stay closed in production …`）を表示します。ギフトを承認済みにしたのに配れない状態（合成教材のまま・公開中でない等）は失敗します。
+本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。共有合言葉だけで回答者本人を個別確認する仕組みはありません。MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`は、ギフトも商品も1つも配れない状態のときだけ失敗（終了コード1）し、どちら側が止まっているかをメッセージに出します。配れない物は1行ずつ報告し、ほかに配れる物があれば成功（終了コード0）して、配れない物は本番で閉じたままである旨（`Note: … stays closed in production …`、閉じる物が2つ以上なら`stay`）を表示します。承認の旗は各コレクションの`approval`から読みます（Workerの判定と同じ`isApproved`）。ギフトを承認済みにしたのに配れない状態（合成教材のまま・公開中でない等）は失敗します。
