@@ -1,8 +1,8 @@
 # Course Library
 
-A small Japanese library for the TypeScript survey-response gift built with TypeScript, Cloudflare Workers, and a **private** R2 bucket. A stable entry URL, one shared access phrase, and a clear course catalogue keep delivery simple.
+A small Japanese course library built with TypeScript, Cloudflare Workers, and a **private** R2 bucket. It delivers two kinds of material: the free TypeScript gift for survey respondents and paid products for buyers (currently `redmine-clone`). A stable entry URL, a separate access phrase for each collection, and a clear course catalogue keep delivery simple.
 
-**Status: version 0.2.2 is live at `https://course-library.kouiso.workers.dev` behind an outer HTTP Basic site gate and the shared access phrase. Downloads stay disabled in production until the release approval flags and real (non-synthetic) materials land. Every downloadable file in this repository and in the deployed bucket is synthetic.**
+**Status: version 0.2.2 is live at `https://course-library.kouiso.workers.dev` behind an outer HTTP Basic site gate and the access phrases. The survey gift stays closed in production until its approval flags and real (non-synthetic) materials land. The paid product `redmine-clone` is published and approved in `src/manifest.ts`; production opens it only to people who enter its product phrase, which needs the product phrase secret described in the [setup guide](docs/SETUP.md#商品の合言葉任意). Every downloadable file generated in this repository is synthetic; real materials are never committed.**
 
 ## Try locally
 
@@ -22,11 +22,11 @@ Open `http://127.0.0.1:8797` and enter one of the two **local dummy phrases** (t
 
 Neither is a production phrase. Local signing keys are generated in memory for each preview. They are never production credentials. The preview binds only to the loopback interface and uses ephemeral local R2 data.
 
-**Distribution scope:** TypeScript is the free gift for survey respondents. Taskapp is a paid product and is never included in this gift library. Every Taskapp product URL is denied even with valid gift authentication.
+**Distribution scope:** The library distributes two kinds of material. The free gift for survey respondents is the TypeScript course. Paid products for buyers (currently `redmine-clone`) are separate collections, each with its own phrase, release prefix and approval flag. A paid product is never part of the free gift: a gift phrase never opens a product, a product phrase never opens the gift, and a URL whose collection id is not in the manifest is denied even with valid authentication. The outer HTTP Basic site gate stays in place after distribution starts. How buyers receive their phrase is decided by the operator and is deliberately not written in this public repository.
 
 The local TypeScript preview has 20 clearly synthetic PDFs (learning flow, ten chapters, exercises for chapters01–08 and10 (none for09)) and one ZIP. This is a test fixture structure, not confirmation of the actual release inventory. Real files, the approved version and the MyASP survey-response settings remain unverified.
 
-Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` prints one `survey-gift:` and one `paid-product:` line per collection. It fails (exit 1) only when no collection, gift or paid product, can be distributed, and the message names which side is blocked. A blocked collection is still reported on its own line; when something else is ready it exits 0 and a Note says the blocked collections stay closed in production. An approved survey gift that cannot be distributed also fails. The optional deploy job runs this gate before deployment.
+For the survey gift, production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. A paid product is distributed in production when its release is non-synthetic, its status is `published` and its own approval flag is true (`productPolicy.distributionApproved` for `redmine-clone`, currently true); the steps are in [Distribute a paid product](docs/OPERATIONS.md#distribute-a-paid-product). `npm run release:ready` prints one `survey-gift:` and one `paid-product:` line per collection. It fails (exit 1) only when no collection, gift or paid product, can be distributed, and the message names which side is blocked. A blocked collection is still reported on its own line; when something else is ready it exits 0 and a Note says the blocked collections stay closed in production. An approved survey gift that cannot be distributed also fails. The optional deploy job runs this gate before deployment.
 
 ## Design
 
@@ -36,12 +36,12 @@ Japanese typography, warm paper backgrounds, restrained forest and slate colours
 
 ```mermaid
 flowchart LR
-  Reader[Survey respondent] --> Entry[Stable Worker URL]
+  Reader[Survey respondent or buyer] --> Entry[Stable Worker URL]
   Entry --> Basic[HTTP Basic site gate - production only]
-  Basic --> Phrase[Shared phrase + CSRF check]
+  Basic --> Phrase[Phrase of one collection + CSRF check]
   Phrase --> Cookie[Signed 4-hour HttpOnly cookie]
-  Cookie --> Catalogue[TypeScript survey gift]
-  Catalogue --> Policy[Approved survey-gift release]
+  Cookie --> Catalogue[Collection opened by that phrase - gift or paid product]
+  Catalogue --> Policy[Approved release of that collection]
   Policy --> Gate[Authenticated GET / HEAD / Range]
   Gate --> R2[Private R2 binding]
   R2 --> Stream[Streamed attachment · no-store]
@@ -53,7 +53,7 @@ For the first release, use the concise [Japanese setup guide](docs/SETUP.md). It
 
 ## Verification
 
-Verified locally on macOS with Node 22.23.4: strict type checking, Worker dry-run bundle, and real workerd/Miniflare tests with local R2 and native rate-limit bindings. These tests cover anonymous direct downloads (including HEAD and Range), invalid/expired authentication, cache isolation, filename validation, CSRF, brute-force limits, and byte-for-byte downloads of all 21 TypeScript synthetic files, denial of legacy Taskapp product URLs and product/recipient manifest mixing, and fail-closed production release approval.
+Verified locally on macOS with Node 22.23.4: strict type checking, Worker dry-run bundle, and real workerd/Miniflare tests with local R2 and native rate-limit bindings. These tests cover anonymous direct downloads (including HEAD and Range), invalid/expired authentication, cache isolation, filename validation, CSRF, brute-force limits, and byte-for-byte downloads of all 21 TypeScript synthetic files, the product phrase opening only its product and the gift phrase opening only the gift, denial of URLs whose collection id is not in the manifest, product/recipient manifest mixing, and fail-closed production release approval.
 
 Local Chromium visual checks also cover desktop (1440×1000), mobile viewport (390×844), keyboard focus, wrong-phrase errors, submitting feedback, attachment bytes, missing or empty downloads, pending distribution settings, repeated login/logout and anonymous HEAD/Range denial. Screenshots below contain only synthetic materials. These are Chromium viewport checks on a Mac, not physical-device certification.
 
