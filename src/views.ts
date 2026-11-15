@@ -1,5 +1,5 @@
 import { version as appVersion } from '../package.json';
-import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, release, type Collection } from './manifest';
+import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, release, saveName, type Collection } from './manifest';
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
@@ -66,8 +66,10 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
 }
 export function productLibrary(nonce: string, course: Collection): string {
   const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
+  const zip = course.materials.find(m => m.type === 'application/zip');
+  const guidance = zip && course.release ? `<p>保存されるファイル名は ${escape(saveName(course, zip))} です。教材の Day 3 の手順は <code>redmine-clone.zip</code> という名前で書かれています。保存したファイルの名前を <code>redmine-clone.zip</code> に変えてから、Day 3 の手順どおりに進めてください。</p>` : '';
   const verification = course.release?.verification;
-  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
+  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${guidance}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
 }
 // 2つ目の合言葉で入り直した時の今の動き（前の教材は閉じる）を、そのまま伝える。
 export const switchNote = '別の合言葉で入り直すと、いま開いている教材は閉じます。続けて使う時は、その教材の合言葉でもう一度入ってください。';

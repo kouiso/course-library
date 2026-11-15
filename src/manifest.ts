@@ -38,6 +38,12 @@ export const productRelease = {
     platforms: 'Windows と macOS の実機での実走は未検証です。',
   },
 } as const;
+// 保存される時のファイル名。有料商品の ZIP だけ版を入れる（R2 のキーは filename のまま）。ギフトの PDF/ZIP は変えない。
+export function saveName(course: Collection, material: Material): string {
+  return course.distribution === 'paid-product' && course.release && material.filename.endsWith('.zip')
+    ? material.filename.replace(/\.zip$/, `-v${course.release.version}.zip`)
+    : material.filename;
+}
 export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'exercises' | 'bundle' };
 // 秘密の設定値（wrangler secret で置く物）。生成物の worker-configuration.d.ts には出ないので、型はここ1か所で持つ。
 // 商品を足す時は、ここに商品用の合言葉の名前を足し、マニフェストの phraseEnv に同じ名前を書く。

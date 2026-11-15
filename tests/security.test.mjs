@@ -68,7 +68,10 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(res.status, 303);
   const course = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
   assert.equal(course.status, 200);
-  assert.match(await course.text(), /ソースコード一式/);
+  const productHtml = await course.text();
+  assert.match(productHtml, /ソースコード一式/);
+  assert.ok(productHtml.includes(`redmine-clone-source-v${productVersion}.zip`));
+  assert.match(productHtml, /Day 3 の手順は <code>redmine-clone\.zip<\/code> という名前で書かれています。保存したファイルの名前を <code>redmine-clone\.zip<\/code> に変えてから、Day 3 の手順どおりに進めてください。/);
   assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
@@ -76,7 +79,7 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES');
   const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
   assert.equal(dl.status, 200);
-  assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
+  assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-source-v${productVersion}.zip"`);
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
 });
 test('buyers read product wording in the library hero and the product footer; entry, header and footer keep the design copy', async () => {
