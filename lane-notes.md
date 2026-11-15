@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T07:32Z | merged today 13 (#81 #68 #72 #74-#80 #86 #87) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: #86 follow-ups PR
+STATE RUNNING 2026-11-15T07:48Z | merged today 14 (#81 #68 #72 #74-#80 #86 #87 #88) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: release check correctness PR
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -111,6 +111,10 @@ MEMBER 2026-11-15T07:42Z opus implementer: #23 typed secrets (branch fix/23-type
 DECIDED | #87 gift level setting names spell TYPESCRIPT, guarded by a startup check against the gift id | reason: one gift only; drift closes the site at startup; reviewer judged sound | revert: build giftLevelEnvNames from the gift id
 MEMBER 2026-11-15T07:32Z opus implementer: #86 follow-ups (11)(12)(13) in one PR (branch fix/86-followups)
 remaining lane follow-ups after this PR: (1) duplicate hash = broken config, (3) 61 s test, (4) grammar "the survey gift stay", (5) manifest.ts delivery sentence claims a check the repo lacks, (6) check-release reads policies directly / shared approval object / approval ?. === true, (7) bundle box below level 10, SETUP lacks _01.._10 settings, validateManifest checks untested, (9) per-product guidance copy, (10) release-meta grey
+
+88 | LAND | opus implementer + fresh opus review PASS (must 0 want 0 nit 1); CodeRabbit no actionable comments | ac41f84 | local 89/0, test:browser pass | https://github.com/kouiso/course-library/pull/88#issuecomment-6891211817 | merged fa9f35a (follow-ups 11 12 13 done)
+MEMBER 2026-11-15T07:48Z opus implementer: release check correctness (follow-ups 1 4 5 6, validateManifest tests from 7) branch fix/release-check-correctness
+remaining after it: (3) 61 s test, (7) bundle box below level 10 + SETUP _01.._10 settings, (9) per-product guidance copy (only when a 2nd ZIP product exists), (10) release-meta grey (nit)
 
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
