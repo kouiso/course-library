@@ -75,6 +75,9 @@ HOUR 2026-11-15T06:36Z | merged 4 (#74 #75 #76 #77) | closed 4 issues by merge (
 design boards fetched from the design page to /home/user/design (12 boards); tools/design-compare.cjs reproduces the 28c4c27 baseline on default 37e0d30
 MEMBER 2026-11-15T06:35Z opus implementer: #78 rework per manager decision (design copy on entry/header/footer; land buyer-only hero, hidden locked-gift description, per-course footer version; Refs #42 #43 #24)
 
+78 | FIX->review | opus implementer: default merged, entry/header/footer back to design copy, buyer-only hero + locked-gift description hidden + per-course footer version; retargeted; title changed to match diff | 7d02779 | local 83/0, fail-before 2 | https://github.com/kouiso/course-library/pull/78#issuecomment-6890449785 | design 12/12 identical (evidence/design-78-7d02779/)
+follow-up (8) for the manager (JUDGE, after stack 2): buyer-only library still shows survey wording outside #78 scope: header 「アンケート回答者限定」 (design), section label 「回答者限定プレゼント / SURVEY GIFT」, locked gift meta 「回答後のご案内と配布版を確認しています」, library footer gift version 0.2.2-synthetic
+
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
 - #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
