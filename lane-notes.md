@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T08:18Z | merged today 17 (#81 #68 #72 #74-#80 #86-#91) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: docs product phrase PR (last agent item)
+STATE RUNNING 2026-11-15T08:40Z | merged today 18 (#81 #68 #72 #74-#80 #86-#92) | open work PRs 0 (+ #84 #85 never merge) | open issues 9 | in work: #35 (docs to the decided scope)
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -140,13 +140,17 @@ MODEL 2026-11-15T08:16Z | lead switched to fable; subagents spawned from now use
 92 | FIX->review | opus implementer (docs SETUP product phrase); fresh fable review FAIL at b32482f (must 2: unset row claimed the product never opens although earlier sessions stay open 4 h; duplicate sentence false for product-vs-product) | fixed by lead in 75121ad (docs wording only) | local 98/0 | https://github.com/kouiso/course-library/pull/92#issuecomment-6891638276 | second fresh fable reviewer running (one fix round rule: a second FAIL parks it)
 DECIDED | product phrase not added to the first-deploy secret list in SETUP | reason: that list is the owner's distribution procedure (#35 / #21) | revert: add the row when #35 is decided
 
+92 | LAND | fix round by lead (75121ad) + second fresh fable review PASS (must 0 want 1 = stale PR body, fixed) | 75121ad | local 98/0 | https://github.com/kouiso/course-library/pull/92#issuecomment-6891706086 | merged 4118b5a (follow-up 15 done)
+CYCLE 2 T=2026-11-15T08:36Z | PRs 2 (#84 #85, never merge) | issues 9 (#21 #24 #25 #35 #42 #43 #46 #47 #55) | ledger rows 0
+CORRECTION 2026-11-15T08:40Z | #35 was parked as OWNER by the previous lane and carried over by this lane. It is not: its two dependencies are closed and the owner answered all four points on #34 on 2026-11-14 (https://github.com/kouiso/course-library/issues/34#issuecomment-6877495479). #35 moved to agent work; #21 (parent) closes after it. Cause: the sort trusted the handoff line instead of reading the dependency issue. Check added: before parking an item as OWNER, read the comments of every issue it names as its decision.
+MEMBER 2026-11-15T08:40Z fable implementer: #35 docs to the decided scope + product distribution procedure in OPERATIONS (branch docs/35-decided-scope)
+
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
 - #47 | Show products the visitor does not own in the library? (A) hide (B) show with a link to the sales page (needs the URL) | default: current (shown, no link)
 - #46 | depends on #47; restyle locked cards and put open ones first | waits for #47
 - #55 | /status: (A) remove (B) keep but not for non-gift sessions | default: unchanged
-- #35 / #21 | scope of what the library distributes, outer Basic auth, how buyers get the phrase -> then docs rewrite | owner-only facts (production / distribution)
-- #24 #25 | parent stories; close when #42 #43 #55 / #46 #47 are settled
+- #24 #25 | parent stories; close when #42 #43 #55 / #46 #47 are settled (re-checked 08:40Z: #55 #47 carry no decision comment; #46 waits on #47)
 - (8) buyer-only library still shows the survey section label, locked gift meta line, gift footer version — same question as #42 #43
 - #27 option: extend the 600 s entry token? default: no
 - ASK (from #92 review) | Removing the product phrase setting leaves product sessions opened earlier able to download until their 4-hour expiry, while a malformed value closes them at once. Should an unset setting also close existing product sessions? yes/no/don't know | read: src/index.ts misconfiguredProducts (skips empty values), PR #92 review | the code is consistent either way; it is a distribution-stop policy | on "don't know": unchanged (documented in SETUP by #92)
