@@ -78,6 +78,11 @@ MEMBER 2026-11-15T06:35Z opus implementer: #78 rework per manager decision (desi
 78 | FIX->review | opus implementer: default merged, entry/header/footer back to design copy, buyer-only hero + locked-gift description hidden + per-course footer version; retargeted; title changed to match diff | 7d02779 | local 83/0, fail-before 2 | https://github.com/kouiso/course-library/pull/78#issuecomment-6890449785 | design 12/12 identical (evidence/design-78-7d02779/)
 follow-up (8) for the manager (JUDGE, after stack 2): buyer-only library still shows survey wording outside #78 scope: header 「アンケート回答者限定」 (design), section label 「回答者限定プレゼント / SURVEY GIFT」, locked gift meta 「回答後のご案内と配布版を確認しています」, library footer gift version 0.2.2-synthetic
 
+78 | LAND | fresh opus review PASS (must 0 want 0 nit 2) | 7d02779 | local 83/0 | https://github.com/kouiso/course-library/pull/78#issuecomment-6890490302 | merged 0939f72 (#42 #43 #24 stay open)
+79 | review | default merged (no conflict), body rewritten (stale stack note, before/after product page), retargeted | d16ee63 | local 84/0 | design: only Course 1440 download rows differ (#58 align-items:center) | reviewer running
+80 | FINISH | #79 head merged (import unions; test hardcoded v0.1.0 -> productVersion since product is 0.2.1) | 0801779 | local 84/0 | design 12/12 identical to #79; product page shows save-name guidance | #57 decision cited: issuecomment-6877992536, Closes #57 stands
+DECIDED | #57 counts as decided (two answers recorded on the issue under the owner account, 2026-11-14 13:29Z) | reason: 5.2b source citation | revert: change #80 to Refs #57 and reopen #57
+
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
 - #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
