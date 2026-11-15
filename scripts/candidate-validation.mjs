@@ -4,7 +4,14 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
-const run = promisify(execFile);
+const exec = promisify(execFile);
+// pdfinfo and pdftotext come from poppler. A missing tool is named instead of surfacing a bare spawn ENOENT.
+async function run(tool, args, opts) {
+  try { return await exec(tool, args, opts); } catch (error) {
+    if (error && error.code === 'ENOENT') throw new Error(`missing-tool: ${tool} was not found. Install poppler (macOS: brew install poppler, Ubuntu: apt install poppler-utils).`);
+    throw error;
+  }
+}
 export const normalize = value => String(value).normalize('NFC').replace(/[\u202a-\u202e\u2066-\u2069]/g, '').replace(/\s+/g, '').toLowerCase();
 const digest = value => createHash('sha256').update(value).digest('hex');
 const versions = text => [...new Set([...text.matchAll(/(?:version|ver\.?|v)\s*[:.]?\s*(\d+\.\d+\.\d+)/gi)].map(m => m[1]))];
