@@ -6,6 +6,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
 import { seed, fixtures, version, productVersion } from '../scripts/fixtures.mjs';
 
+// views.ts reads the app version from package.json; data: modules need it as a module.
+const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const version = ${JSON.stringify(JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version)};`);
 const origin = 'http://127.0.0.1:8813';
 const secret = 'synthetic-only-test-signing-key-000000000000000000000';
 const productPhrase = 'synthetic-product-phrase-only';
@@ -76,6 +78,26 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(dl.status, 200);
   assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
+});
+test('buyers read product wording in the library hero and the product footer; entry, header and footer keep the design copy', async () => {
+  const entry = await (await req('/')).text();
+  assert.match(entry, /<title>プレゼント教材を受け取る \|/); assert.match(entry, /<div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS<\/div>/);
+  assert.match(entry, /<h2>TypeScript教材を受け取る<\/h2>/); assert.match(entry, /アンケートへのご協力、ありがとうございます。/);
+  assert.match(entry, /<span class="brand-note">アンケート回答者限定<\/span>/);
+  assert.match(entry, new RegExp(`<footer>教材ライブラリ · ${version.replaceAll('.', '\\.')}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`));
+  const { cookie } = await loginAttempt(productPhrase);
+  const library = await (await req('/library', { headers: { Cookie: cookie } })).text();
+  const product = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
+  const hero = /<div class="catalogue-hero">[\s\S]*?<\/p>/.exec(library)[0];
+  for (const limited of ['アンケート', 'ご協力', 'FEEDBACK', 'プレゼント', '回答']) assert.ok(!hero.includes(limited), limited);
+  assert.match(hero, /<div class="eyebrow">YOUR LIBRARY<\/div><h1>ご購入の教材を、<br>手元に。<\/h1>/); assert.match(library, /<title>教材一覧 \|/);
+  // The locked survey gift card carries no survey description for buyers.
+  assert.ok(!library.includes('アンケートにお答えいただいた方への無料プレゼントです。'), 'locked gift description');
+  assert.match(library, /<h2>TypeScript教材<\/h2><div class="course-meta">/);
+  // The product page footer shows the product version, never the gift version.
+  const footer = /<footer>[\s\S]*?<\/footer>/.exec(product)[0];
+  assert.ok(footer.startsWith(`<footer>教材ライブラリ · ${productVersion}<br>`), footer); assert.ok(!footer.includes(version), 'gift version in product footer');
+  assert.match(product, /<span class="brand-note">アンケート回答者限定<\/span>/);
 });
 test('the gift phrase does not unlock paid products', async () => {
   const { cookie } = await loginAttempt(localPhrase);
@@ -436,9 +458,15 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   const { cookie } = await loginAttempt();
   const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
+  assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /ご協力の感謝を、<br>次の学びに。/); assert.match(catalogue, /<title>プレゼント教材 \|/);
+  assert.match(catalogue, /<div class="eyebrow">THANK YOU FOR YOUR FEEDBACK<\/div><h1>ご協力の感謝を、<br>次の学びに。<\/h1><p class="lead">アンケートにお答えいただいた方へ。<br class="wide">TypeScript教材を無料プレゼントとしてお届けします。<\/p>/);
+  assert.match(catalogue, /<h2>TypeScript教材<\/h2><p>アンケートにお答えいただいた方への無料プレゼントです。<\/p>/);
+  assert.ok(catalogue.includes(`<footer>教材ライブラリ · ${version}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`), 'gift library footer');
+  assert.match(catalogue, /<span class="brand-note">アンケート回答者限定<\/span>/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
   assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
+  assert.ok(course.includes(`<footer>教材ライブラリ · ${version}<br>`), 'gift course footer');
   assert.equal((course.match(/href="\/download\/typescript\//g) || []).length, 21);
 });
 test('aggregate login limiter rejects attempts spread across IP addresses', async () => {
@@ -486,7 +514,7 @@ test('pending, preview and published labels are distinct; verification copy belo
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
   const manifestUrl = 'data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64');
   const manifest = await import(manifestUrl);
-  const viewSource = stripTypeScriptTypes(await readFile(new URL('../src/views.ts', import.meta.url), 'utf8')).replace("from './manifest'", `from ${JSON.stringify(manifestUrl)}`);
+  const viewSource = stripTypeScriptTypes(await readFile(new URL('../src/views.ts', import.meta.url), 'utf8')).replace("from './manifest'", `from ${JSON.stringify(manifestUrl)}`).replace("from '../package.json'", `from ${JSON.stringify(packageUrl)}`);
   const views = await import('data:text/javascript;base64,' + Buffer.from(viewSource).toString('base64'));
   assert.deepEqual(['pending', 'preview', 'published'].map(manifest.collectionStatusLabel), ['準備中', '開発プレビュー', '公開中']);
   const course = manifest.collections[0];
@@ -497,6 +525,17 @@ test('pending, preview and published labels are distinct; verification copy belo
     manifest.giftPolicy.myaspVerified = true; manifest.giftPolicy.distributionApproved = true;
     course.release = { ...course.release, synthetic: false, verification: { delivery: '配送の確認記録A', materials: '教材の確認記録B', platforms: '環境の確認記録C' } };
     const catalogue = views.catalogue('synthetic-csrf', false, ['typescript']);
+    // Gift only keeps the gift hero; gift plus product uses the neutral hero; product only uses the product hero.
+    assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /<title>プレゼント教材 \|/);
+    const mixed = views.catalogue('synthetic-csrf', false, ['typescript', 'redmine-clone']);
+    assert.match(mixed, /<div class="eyebrow">YOUR LIBRARY<\/div><h1>次の学びを、<br>ひとつずつ。<\/h1>/); assert.match(mixed, /アンケートにお答えいただいた方への無料プレゼントです。/);
+    const bought = views.catalogue('synthetic-csrf', false, ['redmine-clone']);
+    assert.match(bought, /<h1>ご購入の教材を、<br>手元に。<\/h1>/); assert.doesNotMatch(bought, /アンケートにお答えいただいた方への/);
+    // A course without its own version falls back to the app version, never the gift version.
+    const product = manifest.collections.find(c => c.id === 'redmine-clone');
+    const unversioned = views.productLibrary('synthetic-csrf', { ...product, version: null });
+    const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+    assert.ok(unversioned.includes(`<footer>教材ライブラリ · ${appVersion}<br>`)); assert.ok(!/<footer>[^<]*synthetic/.test(unversioned));
     assert.match(catalogue, />公開中</); assert.doesNotMatch(catalogue, /開発プレビュー/);
     const html = views.library('synthetic-csrf', course);
     for (const value of ['配送の確認記録A', '教材の確認記録B', '環境の確認記録C']) assert.ok(html.includes(value));
