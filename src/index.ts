@@ -1,6 +1,6 @@
 import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
 import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvName, isPaidProduct, isSurveyGift, phraseEnvName, type Collection, type Secrets, validateManifest } from './manifest';
-import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary } from './views';
+import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary, switchNote } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string } & Secrets;
 const security = {
@@ -213,6 +213,11 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (url.pathname === '/') {
     if (session) return redirect('/library');
     return entry(secret, local, '', req.method === 'HEAD');
+  }
+  // 鍵の画面の主ボタンの行き先。ログイン中でも、別の合言葉の入力欄を出す。
+  // 入り直すと、今のセッションは打った合言葉の教材だけのセッションに置き換わる。
+  if (url.pathname === '/phrase') {
+    return entry(secret, local, session ? switchNote : '', req.method === 'HEAD');
   }
   if (url.pathname === '/closed') return session ? redirect('/library') : response(req.method === 'HEAD' ? null : closed());
   if (!session) return error(401, '合言葉を入力して教材を開いてください');

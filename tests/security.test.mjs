@@ -331,6 +331,31 @@ test('closing without a session goes to the closed page; other origins are still
   assert.equal((await req('/logout', { method: 'POST', headers: { Origin: origin, Cookie: cookie }, body: new URLSearchParams({ csrf: 'bad' }) })).status, 403);
   assert.equal((await req('/library', { headers: { Cookie: cookie } })).status, 200);
 });
+test('the locked page primary button leads to a phrase field, and re-entering closes the previous collection', async () => {
+  const { cookie } = await loginAttempt(localPhrase);
+  const locked = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
+  assert.equal(locked.status, 403);
+  const html = await locked.text();
+  const href = /<section class="card status-card"[^>]*>.*?<a class="button" href="([^"]+)">/.exec(html)[1];
+  assert.equal(href, '/phrase');
+  assert.match(html, /別の合言葉で入り直すと、いま開いている教材は閉じます。/);
+  assert.doesNotMatch(html, /ログアウトしてから別の合言葉で入り直すこともできます/);
+  assert.equal((await req('/', { headers: { Cookie: cookie } })).headers.get('Location'), '/library');
+  const entry = await req(href, { headers: { Cookie: cookie } });
+  assert.equal(entry.status, 200); noCache(entry);
+  const form = await entry.text();
+  assert.match(form, /<input id="phrase" type="password" name="phrase"/);
+  assert.match(form, /別の合言葉で入り直すと、いま開いている教材は閉じます。/);
+  const csrf = /name="csrf" value="([^"]+)"/.exec(form)[1];
+  const res = await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, Cookie: `${cookie}; ${headerCookie(entry, 'local_course_login')}` }, body: new URLSearchParams({ csrf, phrase: productPhrase }) });
+  assert.equal(res.status, 303);
+  const next = headerCookie(res, 'local_course_session');
+  assert.equal((await req('/courses/redmine-clone', { headers: { Cookie: next } })).status, 200);
+  // 今の動きのまま: 入り直すと、前に開けた教材は閉じる。
+  assert.equal((await req('/courses/typescript', { headers: { Cookie: next } })).status, 403);
+  const anonymous = await req(href);
+  assert.equal(anonymous.status, 200); assert.doesNotMatch(await anonymous.text(), /いま開いている教材は閉じます/);
+});
 test('fixed redirects ignore user-controlled next URL; unexpected hosts are refused', async () => {
   const { cookie } = await loginAttempt();
   const res = await req('/?next=https://evil.example', { headers: { Cookie: cookie } });
