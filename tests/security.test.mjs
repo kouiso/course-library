@@ -210,6 +210,42 @@ test('below level 10 the learning page drops the bundle heading, link and ZIP no
   assert.ok(full.includes('<h2>まとめて手元に</h2><a class="download bundle" href="/download/typescript/all-materials">'));
   assert.ok(full.includes('<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p>'));
 });
+test('the library gift card and the learning page headings count only what the session level opens', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const token = extra => {
+    const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['typescript'], ...extra })).toString('base64url');
+    return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  };
+  const both = text => `<span class="wide-only">${text}</span><span class="narrow-only">${text}</span>`;
+  // [段, カードの内訳, 教材ページの見出し]。段の無いセッションは何も開けないので、内訳の行も 01〜03 の欄も出ない。
+  const cases = [
+    [{}, null, []],
+    [{ giftLevel: 1 }, both('学習の進め方 / 本編 1章 / 練習問題 1本'), ['まずは学習の進め方から', '本編 1章', '練習問題 1本']],
+    [{ giftLevel: 3 }, both('学習の進め方 / 本編 3章 / 練習問題 3本'), ['まずは学習の進め方から', '本編 3章', '練習問題 3本']],
+    [{ giftLevel: 9 }, both('学習の進め方 / 本編 9章 / 練習問題 8本'), ['まずは学習の進め方から', '本編 9章', '練習問題 8本']],
+    [{ giftLevel: 10 }, '<span class="wide-only">学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存</span><span class="narrow-only">学習の進め方 / 本編 10章 / 練習問題 9本</span>', ['まずは学習の進め方から', '本編 10章', '練習問題 9本', 'まとめて手元に']],
+  ];
+  for (const [extra, meta, headings] of cases) {
+    const label = JSON.stringify(extra);
+    const cookie = `local_course_session=${token(extra)}`;
+    const library = await req('/library', { headers: { Cookie: cookie } });
+    assert.equal(library.status, 200, label);
+    const card = /<article class="course-card">[\s\S]*?<\/article>/.exec(await library.text())[0];
+    assert.deepEqual([...card.matchAll(/<div class="course-meta">([\s\S]*?)<\/div>/g)].map(m => m[1]), meta === null ? [] : [meta], label);
+    if (!extra.giftLevel || extra.giftLevel < 10) assert.doesNotMatch(card, /まとめて保存/, label);
+    const course = await req('/courses/typescript', { headers: { Cookie: cookie } });
+    assert.equal(course.status, 200, label);
+    const html = await course.text();
+    assert.deepEqual([...html.matchAll(/<main[\s\S]*?<\/main>/g)].flatMap(m => [...m[0].matchAll(/<h2>([^<]*)<\/h2>/g)].map(h => h[1])), headings, label);
+    // 見出しの数と、ページから保存できるリンクの数が一致する。
+    const count = group => (html.match(new RegExp(`href="/download/typescript/${group}-`, 'g')) || []).length;
+    if (extra.giftLevel) {
+      assert.ok(html.includes(`<h2>本編 ${count('chapter')}章</h2>`), label); assert.ok(html.includes(`<h2>練習問題 ${count('exercise')}本</h2>`), label);
+    } else {
+      assert.equal(count('chapter') + count('exercise'), 0, label); assert.doesNotMatch(html, /本編 0章|練習問題 0本|まずは学習の進め方から/, label);
+    }
+  }
+});
 test('production serves the paid product to product-phrase holders behind the Basic gate', async () => {
   const prodOrigin = 'https://course.example';
   const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });

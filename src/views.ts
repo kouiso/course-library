@@ -1,5 +1,5 @@
 import { version as appVersion } from '../package.json';
-import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, release, saveName, type Collection } from './manifest';
+import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, openedCollection, release, saveName, type Collection } from './manifest';
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
@@ -39,24 +39,30 @@ function missingExercises(course: Collection): string {
 export function library(nonce: string, course: Collection): string {
   const verification = course.release?.verification;
   // まとめ ZIP は 10 段目だけで開く。開けないセッションには見出し・リンク・ZIP の案内を出さず、確認範囲の文だけを残す。
-  const bundle = links(course, 'bundle');
-  return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1>${lead('学習の進め方を確認したら、本編と練習問題へ。', '手元に保存して、ひとつずつ進めましょう。')}${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${links(course, 'intro')}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section><section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${links(course, 'books')}</div></section><section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead wide-only">学んだ内容を手を動かして確かめましょう。${missingExercises(course)}</p>${missingExercises(course) ? `<p class="lead narrow-only">${missingExercises(course)}</p>` : ''}<div class="book-grid">${links(course, 'exercises')}</div></section><section class="card bundle-card">${bundle ? `<h2>まとめて手元に</h2>${bundle}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p>` : ''}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion, true);
+  // 01〜03 の欄も同じく、段で1つも開けない欄は見出しごと出さない（段の無いセッションでは3つとも出ない）。
+  const [intro, books, exercises, bundle] = ['intro', 'books', 'exercises', 'bundle'].map(group => links(course, group));
+  return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1>${lead('学習の進め方を確認したら、本編と練習問題へ。', '手元に保存して、ひとつずつ進めましょう。')}${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}${intro ? `<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${intro}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section>` : ''}${books ? `<section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${books}</div></section>` : ''}${exercises ? `<section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead wide-only">学んだ内容を手を動かして確かめましょう。${missingExercises(course)}</p>${missingExercises(course) ? `<p class="lead narrow-only">${missingExercises(course)}</p>` : ''}<div class="book-grid">${exercises}</div></section>` : ''}<section class="card bundle-card">${bundle ? `<h2>まとめて手元に</h2>${bundle}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p>` : ''}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion, true);
 }
 export function guide(): string {
   return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course');
 }
-export function catalogue(nonce: string, local = false, unlocked: readonly string[] = []): string {
+// giftLevel はセッションの段。カードの数は、段で開ける教材（openedCollection）から数える。
+export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0): string {
   const gifts = collections.filter(isSurveyGift);
   const products = collections.filter(c => !isSurveyGift(c));
   // A released gift reads as the board's badge; the synthetic preview keeps its preview label so it is never taken for the real gift.
   const giftBadge = (c: Collection) => (c.release?.synthetic ? collectionStatusLabel(c.status) : '受け取れます');
   const giftCard = (c: Collection) => {
     const available = canDistribute(c, local) && unlocked.includes(c.id);
-    const parts = `学習の進め方 / 本編 ${chapterCount(c)}章 / 練習問題 ${exerciseCount(c)}本`;
-    const contents = variants(`${parts} / まとめて保存`, parts);
+    // 開ける物が無い項目は書かない。まとめて保存は 10 段目だけ。段の無いセッションでは内訳の行ごと出さない。
+    const opened = openedCollection(c, giftLevel);
+    const has = (group: string) => opened.materials.some(m => m.group === group);
+    const parts = [has('intro') ? '学習の進め方' : '', has('books') ? `本編 ${chapterCount(opened)}章` : '', has('exercises') ? `練習問題 ${exerciseCount(opened)}本` : ''].filter(Boolean).join(' / ');
+    const contents = parts ? variants(has('bundle') ? `${parts} / まとめて保存` : parts, parts) : '';
+    const meta = available ? contents : '回答後のご案内と配布版を確認しています';
     const state = unlocked.includes(c.id) ? (available ? (c.release?.synthetic ? 'ダミー教材を見る' : '教材を受け取る') : '配布準備状況を見る') : 'ギフト用の合言葉が必要です';
     // The survey description is shown only to those who opened the gift, so buyers read no survey wording.
-    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${unlocked.includes(c.id) ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${unlocked.includes(c.id) ? `<p>${escape(c.description)}</p>` : ''}<div class="course-meta">${available ? contents : '回答後のご案内と配布版を確認しています'}</div><a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${unlocked.includes(c.id) ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${unlocked.includes(c.id) ? `<p>${escape(c.description)}</p>` : ''}${meta ? `<div class="course-meta">${meta}</div>` : ''}<a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
   const productCard = (c: Collection) => {
     const open = unlocked.includes(c.id);
