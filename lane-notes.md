@@ -83,6 +83,12 @@ follow-up (8) for the manager (JUDGE, after stack 2): buyer-only library still s
 80 | FINISH | #79 head merged (import unions; test hardcoded v0.1.0 -> productVersion since product is 0.2.1) | 0801779 | local 84/0 | design 12/12 identical to #79; product page shows save-name guidance | #57 decision cited: issuecomment-6877992536, Closes #57 stands
 DECIDED | #57 counts as decided (two answers recorded on the issue under the owner account, 2026-11-14 13:29Z) | reason: 5.2b source citation | revert: change #80 to Refs #57 and reopen #57
 
+79 | LAND | fresh opus review PASS (must 0 want 2 nit 1); wants: body wording fixed, design want decided (below) | d16ee63 | local 84/0 | https://github.com/kouiso/course-library/pull/79#issuecomment-6890590063 | merged 1685dd2 (closes #56 #58)
+DECIDED | #79 keeps .download align-items:center although the Course 1440 board has none | reason: measured board vs app offset is 1px either way (reviewer table), #58 asks for centring explicitly | revert: drop align-items:center from .download
+DECIDED | reopened #42 #43 (closed 06:41Z as completed with no reason; completion criteria unmet because entry/header/footer keep the design copy) | reason: rules W7 close only with a written reason | revert: close again with a reason once the owner ASK is answered
+closed with reason: #44 (met by #78), #22 (release:ready exit 0 on 1685dd2, gift blocked / product released), #27 (#74), #28 (#76 + #51 decision), #30 (test:browser passes end to end without env vars on 1685dd2)
+issue sort 07:10Z: OWNER #42 #43 (design copy vs issue) #46 #47 (#25) #55 (#24) #35 #21 (scope decision) | agent: #23 (index.ts:169 reads env as Record again since #72 -> follow-up 2 Secrets type), #32 closes after #80 | parents waiting on children: #24 #25 #21
+
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
 - #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
