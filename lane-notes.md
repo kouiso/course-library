@@ -58,6 +58,7 @@ HANDOFF 2026-11-15 (cleanup hearing; lane handed to the personal-account manager
   #84 handoff PR of the previous lane, #85 notes PR: never merge or close
 - planned next after the PRs: design conformance PR over the 12 boards, #30, follow-ups 1-7, closing parent stories that are fully met (list above)
 - could not be pushed: nothing
+- note: this block was written before this lane saw the personal-account session's commits 2eea4f9..0688c25 ("stack 1 landed"); where the two differ about #74-#77, the personal-account lines are the current state
 
 MOVED to personal account 2026-11-15T05:05Z
 START 2026-11-15T05:05Z | lead opus | one subagent at a time | handoff: HANDOFF 01:40Z above, next #74
