@@ -83,6 +83,25 @@ export const productPhraseEnvName = (id: string): string => `ACCESS_PHRASE_SHA25
 export function phraseEnvName(c: Collection): PhraseEnvName | undefined {
   return isPaidProduct(c) ? c.phraseEnv : 'ACCESS_PHRASE_SHA256';
 }
+// ギフトは段階の合言葉も持てる。N 段目（ACCESS_PHRASE_SHA256_TYPESCRIPT_0N、10 段目は _10）で 1〜N 章が開く。
+// 従来の ACCESS_PHRASE_SHA256 は 10 段目と同じ扱い（ギフト全部）。段の secret が未設定なら、その段は誰にも合わない。
+export const GIFT_LEVELS = 10;
+export function giftLevelEnvName(c: Collection, level: number): string {
+  return `ACCESS_PHRASE_SHA256_${c.id.toUpperCase().replaceAll('-', '_')}_${String(level).padStart(2, '0')}`;
+}
+// どの教材が何段目で開くか: 学習の進め方は 1 段目、第 N 章と練習問題 N は N 段目、まとめ ZIP は 10 段目。
+export function giftMaterialLevel(m: Material): number | null {
+  if (m.id === 'learning-flow') return 1;
+  if (m.group === 'bundle') return GIFT_LEVELS;
+  const match = /^(?:chapter|exercise)-(\d{2})$/.exec(m.id);
+  const level = match ? Number(match[1]) : 0;
+  return level >= 1 && level <= GIFT_LEVELS ? level : null;
+}
+export function canOpenMaterial(c: Collection, m: Material, giftLevel: number): boolean {
+  if (!isSurveyGift(c)) return true;
+  const level = giftMaterialLevel(m);
+  return level !== null && level <= giftLevel;
+}
 // 配布してよいかの判定はこの関数1つに集める。配布の種類ごとの条件もここに書く。
 // local はローカル実行かどうか。ダミー教材（synthetic）のギフトはローカルでだけ配る。
 export function isDistributable(c: Collection, local: boolean): boolean {
@@ -107,10 +126,15 @@ export function validMaterial(m: Material): boolean {
 }
 export function validateManifest(): void {
   if (new Set(collections.map(c => c.id)).size !== collections.length) throw new Error('Duplicate collection');
+  // The gift level in a session applies to every survey gift, so only one survey gift may exist.
+  if (collections.filter(isSurveyGift).length > 1) throw new Error('Only one survey gift is supported');
+  const phraseNames = collections.flatMap(c => [phraseEnvName(c), ...(isSurveyGift(c) ? Array.from({ length: GIFT_LEVELS }, (_, i) => giftLevelEnvName(c, i + 1)) : [])]);
+  if (new Set(phraseNames).size !== phraseNames.length) throw new Error('Duplicate phrase setting');
   for (const c of collections) {
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(c.id) || (!isSurveyGift(c) && !isPaidProduct(c))) throw new Error('Not an approved collection');
     if (isPaidProduct(c) && (c.audience !== 'buyers' || c.phraseEnv !== productPhraseEnvName(c.id))) throw new Error('Invalid product collection');
     if (!isPaidProduct(c) && c.phraseEnv !== undefined) throw new Error('Invalid gift collection');
+    if (isSurveyGift(c) && c.materials.some(m => giftMaterialLevel(m) === null)) throw new Error('Gift material without a level');
     if (c.status === 'pending') {
       if (c.release || c.version || c.materials.length) throw new Error('Pending collection exposes materials');
       continue;

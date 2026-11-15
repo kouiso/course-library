@@ -83,6 +83,73 @@ test('the gift phrase does not unlock paid products', async () => {
   assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 404);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 200);
 });
+test('gift level phrases open chapters 1..N only, level 10 and the legacy phrase open all, unset levels never match', async () => {
+  const levelPhrase = n => `synthetic-gift-level-${n}`;
+  const pad = n => String(n).padStart(2, '0');
+  const bindings = { SESSION_SECRET: secret };
+  for (const n of [1, 3, 9, 10]) bindings[`ACCESS_PHRASE_SHA256_TYPESCRIPT_${pad(n)}`] = digest(levelPhrase(n));
+  const instance = runtime({ origin, bindings, totalLimit: 1000 });
+  try {
+    await instance.ready; await seed(instance);
+    const get = (path, cookie, options = {}) => instance.dispatchFetch(origin + path, { redirect: 'manual', ...options, headers: { Cookie: cookie, ...options.headers } });
+    async function levelLogin(phrase) {
+      const entry = await instance.dispatchFetch(origin + '/');
+      assert.equal(entry.status, 200);
+      const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+      const res = await instance.dispatchFetch(origin + '/login', { method: 'POST', redirect: 'manual', headers: { Origin: origin, 'CF-Connecting-IP': `198.51.100.${++ip}`, Cookie: headerCookie(entry, 'local_course_login') }, body: new URLSearchParams({ csrf, phrase }) });
+      return { res, cookie: headerCookie(res, 'local_course_session') };
+    }
+    // 未設定の段（2 段目）の合言葉は誰にも合わず、サイト全体も 503 にならない。
+    assert.equal((await levelLogin(levelPhrase(2))).res.status, 401);
+    for (const n of [1, 3, 9]) {
+      const { res, cookie } = await levelLogin(levelPhrase(n));
+      assert.equal(res.status, 303, `level ${n}`);
+      const ok = await get(`/download/typescript/chapter-${pad(n)}`, cookie);
+      assert.equal(ok.status, 200, `chapter ${n}`);
+      assert.deepEqual(Buffer.from(await ok.arrayBuffer()), fixtures().get(`typescript-chapter-${pad(n)}.pdf`));
+      assert.equal((await get('/download/typescript/learning-flow', cookie)).status, 200);
+      for (const options of [{}, { method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
+        const denied = await get(`/download/typescript/chapter-${pad(n + 1)}`, cookie, options);
+        assert.equal(denied.status, 403, `chapter ${n + 1}`); noCache(denied); assert.equal(denied.headers.get('Content-Disposition'), null);
+      }
+      assert.equal((await get('/download/typescript/all-materials', cookie)).status, 403);
+      const page = await get('/courses/typescript', cookie);
+      assert.equal(page.status, 200);
+      const html = await page.text();
+      assert.ok(html.includes(`/download/typescript/chapter-${pad(n)}"`)); assert.ok(!html.includes(`/download/typescript/chapter-${pad(n + 1)}"`));
+      assert.equal((await get('/courses/redmine-clone', cookie)).status, 403);
+      if (n === 3) {
+        assert.equal((await get('/download/typescript/exercise-03', cookie)).status, 200);
+        assert.equal((await get('/download/typescript/exercise-04', cookie)).status, 403);
+      }
+    }
+    for (const phrase of [levelPhrase(10), localPhrase]) {
+      const { res, cookie } = await levelLogin(phrase);
+      assert.equal(res.status, 303);
+      for (const [name, bytes] of fixtures()) {
+        const id = name.replace('typescript-', '').replace(/\.(pdf|zip)$/, '');
+        const dl = await get('/download/typescript/' + id, cookie);
+        assert.equal(dl.status, 200, `${phrase === localPhrase ? 'legacy' : 'level 10'} ${id}`);
+        assert.deepEqual(Buffer.from(await dl.arrayBuffer()), bytes);
+      }
+    }
+  } finally { await instance.dispose(); }
+});
+test('session gift levels are signed, bounded and fail closed when missing', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const token = extra => {
+    const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['typescript'], ...extra })).toString('base64url');
+    return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  };
+  for (const giftLevel of [0, 11, -1, 1.5, '10', null]) {
+    const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({ giftLevel })}` } });
+    assert.equal(res.status, 401, String(giftLevel));
+  }
+  // 段を持たないセッションはギフトの章を開けない（全部開ける扱いにしない）。
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({})}` } })).status, 403);
+  assert.equal((await req('/download/typescript/chapter-02', { headers: { Cookie: `local_course_session=${token({ giftLevel: 1 })}` } })).status, 403);
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({ giftLevel: 1 })}` } })).status, 200);
+});
 test('production serves the paid product to product-phrase holders behind the Basic gate', async () => {
   const prodOrigin = 'https://course.example';
   const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });
