@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T08:10Z | merged today 16 (#81 #68 #72 #74-#80 #86-#90) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: gift level counts PR
+STATE RUNNING 2026-11-15T08:18Z | merged today 17 (#81 #68 #72 #74-#80 #86-#91) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: docs product phrase PR (last agent item)
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -129,6 +129,11 @@ follow-ups (14) /library gift card shows 「本編 10章 / 練習問題 9本 / �
 90 | LAND | opus implementer (decision B) + fresh opus review PASS (must 0 want 1 nit 1); want = body line (want 3 already in #89) fixed | 15811e2 | local 97/0, test:browser pass | https://github.com/kouiso/course-library/pull/90#issuecomment-6891435372 | merged 82e0758 (follow-up 7 done)
 MEMBER 2026-11-15T08:10Z opus implementer: follow-up (14) + 「本編 0章」: level-aware counts on /library card and learning page (branch fix/gift-level-counts)
 remaining after it: (15) ACCESS_PHRASE_SHA256_REDMINE_CLONE missing from SETUP tables (docs) | nits: SETUP rules "malformed matches nobody" / "highest level wins" untested; level-aware breadcrumb/test:browser position checks
+
+91 | LAND | opus implementer + fresh opus review PASS (must 0 want 0 nit 2, PR text only) | e8870c0 | local 98/0, test:browser pass | https://github.com/kouiso/course-library/pull/91#issuecomment-6891543195 | merged 9e085a8 (follow-up 14 + 「本編 0章」 done)
+DECIDED | sessions with no gift level (pre-level cookies, expire within 4 h) get no new copy | reason: transient; new copy is a product call with no source | revert: add a sentence on the learning page
+MEMBER 2026-11-15T08:18Z opus implementer: follow-up (15) docs SETUP product phrase setting (branch docs/product-phrase-setting)
+HOUR 2026-11-15T08:18Z | merged 5 since 07:42 (#87 #88 #89 #90 #91) | closed 1 issue (#23 via #87) | fixed 0 | blocked: none | skipped (-ux): 0 | remaining nits (no action): SETUP rules untested (malformed matches nobody / highest level wins), browser-position checks, release-meta grey
 
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
