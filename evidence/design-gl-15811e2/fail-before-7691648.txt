@@ -1,0 +1,31 @@
+TAP version 13
+# (node:2053) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: below level 10 the learning page drops the bundle heading, link and ZIP note but keeps the verification sentences; level 10 keeps the whole bundle box
+not ok 1 - below level 10 the learning page drops the bundle heading, link and ZIP note but keeps the verification sentences; level 10 keeps the whole bundle box
+  ---
+  duration_ms: 593.276345
+  type: 'test'
+  location: '/home/user/wgl/tests/security.test.mjs:189:1'
+  failureType: 'testCodeFailure'
+  error: '{}'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<section class="card bundle-card"><h2>まとめて手元に</h2><p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p><p class="muted">MacのローカルWorkerとChromiumで配布機能を検証しています。 この画面の教材はダミーです。実教材と配布版は未検証です。 Windows / WSLと実教材のPDFリーダー互換性は未検証です。</p></section>'
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/wgl/tests/security.test.mjs:207:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1305.748673

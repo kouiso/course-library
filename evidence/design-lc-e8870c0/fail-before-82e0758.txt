@@ -1,0 +1,59 @@
+$ base 82e0758: node --test --test-name-pattern='count only what the session level opens' tests/security.test.mjs (head test file)
+not ok 1 - the library gift card and the learning page headings count only what the session level opens
+# tests 1
+# pass 0
+# fail 1
+
+$ base 82e0758: what each level renders
+level none: /library card meta = ["| 学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存 | 学習の進め方 / 本編 10章 / 練習問題 9本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 0章","練習問題 0本"] | links chapter 0 exercise 0
+level 1: /library card meta = ["| 学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存 | 学習の進め方 / 本編 10章 / 練習問題 9本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 1章","練習問題 1本"] | links chapter 1 exercise 1
+level 3: /library card meta = ["| 学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存 | 学習の進め方 / 本編 10章 / 練習問題 9本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 3章","練習問題 3本"] | links chapter 3 exercise 3
+level 9: /library card meta = ["| 学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存 | 学習の進め方 / 本編 10章 / 練習問題 9本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 9章","練習問題 8本"] | links chapter 9 exercise 8
+level 10: /library card meta = ["| 学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存 | 学習の進め方 / 本編 10章 / 練習問題 9本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 10章","練習問題 9本","まとめて手元に"] | links chapter 10 exercise 9
+
+$ head: what each level renders
+level none: /library card meta = ["ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = [] | links chapter 0 exercise 0
+level 1: /library card meta = ["| 学習の進め方 / 本編 1章 / 練習問題 1本 | 学習の進め方 / 本編 1章 / 練習問題 1本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 1章","練習問題 1本"] | links chapter 1 exercise 1
+level 3: /library card meta = ["| 学習の進め方 / 本編 3章 / 練習問題 3本 | 学習の進め方 / 本編 3章 / 練習問題 3本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 3章","練習問題 3本"] | links chapter 3 exercise 3
+level 9: /library card meta = ["| 学習の進め方 / 本編 9章 / 練習問題 8本 | 学習の進め方 / 本編 9章 / 練習問題 8本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 9章","練習問題 8本"] | links chapter 9 exercise 8
+level 10: /library card meta = ["| 学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存 | 学習の進め方 / 本編 10章 / 練習問題 9本 |","ご購入時にお渡しする商品用の合言葉で開きます"] | learning page h2 = ["まずは学習の進め方から","本編 10章","練習問題 9本","まとめて手元に"] | links chapter 10 exercise 9
+TAP version 13
+# (node:16146) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: the library gift card and the learning page headings count only what the session level opens
+not ok 1 - the library gift card and the learning page headings count only what the session level opens
+  ---
+  duration_ms: 608.365997
+  type: 'test'
+  location: 'lc-base/tests/security.test.mjs:213:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {}
+    + actual - expected
+    
+    + [
+    +   '<span class="wide-only">学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存</span><span class="narrow-only">学習の進め方 / 本編 10章 / 練習問題 9本</span>'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: '<span class="wide-only">学習の進め方 / 本編 10章 / 練習問題 9本 / まとめて保存</span><span class="narrow-only">学習の進め方 / 本編 10章 / 練習問題 9本</span>'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://lc-base/tests/security.test.mjs:234:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1319.818961

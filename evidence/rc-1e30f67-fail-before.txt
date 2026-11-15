@@ -1,0 +1,19 @@
+$ node --test tests/check-release.test.mjs tests/security.test.mjs (head 1e30f67 tests on base fa9f35a)
+not ok 1 - with the survey gift unapproved and the paid product ready, the check passes and says the gift stays closed
+not ok 4 - a blocked paid product is reported but does not change the exit code
+not ok 5 - one paid product ready and one blocked, with the survey gift unapproved, passes and reports both
+not ok 7 - the release check reads the approval held by the survey gift itself, not giftPolicy
+not ok 8 - a published product without an approval is reported as blocked instead of crashing the check
+not ok 9 - two blocked paid products are counted in the plural
+not ok 10 - a product that shares the gift approval object stops the release check
+not ok 41 - a product phrase setting that repeats another collection's digest closes that product; one phrase never opens two collections
+not ok 60 - two collections never share one approval object, and a missing approval fails closed without throwing
+# tests 62
+# pass 53
+# fail 9
+# cancelled 0
+
+mutation (head 1e30f67, one #72 check removed at a time; test: validateManifest stops a second survey gift ...)
+removed check 'Only one survey gift is supported': # pass 0 # fail 1 
+removed check 'Duplicate phrase setting': # pass 0 # fail 1 
+removed check 'Gift material without a level': # pass 0 # fail 1 

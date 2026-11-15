@@ -1,0 +1,360 @@
+TAP version 13
+# (node:1621) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: only the learning page drops the footer bookmark sentence on mobile
+not ok 1 - only the learning page drops the footer bookmark sentence on mobile
+  ---
+  duration_ms: 533.227513
+  type: 'test'
+  location: '/home/user/wfu/tests/security.test.mjs:502:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'course'
+    - 'course learning'
+             ^
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'course learning'
+  actual: 'course'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/wfu/tests/security.test.mjs:507:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: PC and mobile copy never both show: the width queries leave no gap
+not ok 2 - PC and mobile copy never both show: the width queries leave no gap
+  ---
+  duration_ms: 11.017687
+  type: 'test'
+  location: '/home/user/wfu/tests/security.test.mjs:514:1'
+  failureType: 'testCodeFailure'
+  error: '(min-width:721px) | (max-width:720px) | (prefers-reduced-motion:reduce)'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/wfu/tests/security.test.mjs:518:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: locked and pending screens line the breadcrumb up with the card
+not ok 3 - locked and pending screens line the breadcrumb up with the card
+  ---
+  duration_ms: 5.021023
+  type: 'test'
+  location: '/home/user/wfu/tests/security.test.mjs:522:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /\.status \.breadcrumb\{width:min\(690px,100%\);[^}]*align-self:center/. Input:
+    
+    ':root{color-scheme:light;--paper:#f4f6f1;--ink:#1f3341;--muted:#536875;--line:#d9e3e4;--accent:#11675d;--accent-dark:#0b4a43;--pale:#c9d8cf;--field:#82969c;--error:#9b231f;--error-bg:#fbeaea;--busy:#4d7f78}\n' +
+      '*{box-sizing:border-box}\n' +
+      'body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/normal system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}\n' +
+      'a{color:var(--accent)}a:hover{color:var(--accent-dark)}\n' +
+      'a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #c07424;outline-offset:4px}\n' +
+      'header{background:#fff;border-bottom:1px solid var(--line);padding:22px 72px;display:flex;align-items:baseline;gap:14px}\n' +
+      '.brand{font-weight:800;letter-spacing:.12em;color:var(--ink);text-decoration:none;font-size:16px}\n' +
+      '.brand-note{font-size:12px;color:var(--muted)}\n' +
+      'main{flex:1;width:100%}\n' +
+      'footer{padding:28px 24px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--line);line-height:1.8}\n' +
+      '.note-short{display:none}\n' +
+      'h1{margin:0;font-size:48px;line-height:1.5;letter-spacing:.025em;font-weight:800}\n' +
+      'h2{margin:0;font-size:21px}\n' +
+      'p{margin:0}\n' +
+      '.eyebrow{color:var(--accent);font-size:12px;letter-spacing:.18em;font-weight:800}\n' +
+      '.lead{color:var(--muted);line-height:1.9}\n' +
+      '.muted{font-size:13px;color:var(--muted);line-height:1.8}\n' +
+      '.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:12px}\n' +
+      '.button{align-self:flex-start;margin-top:8px;padding:13px 22px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}\n' +
+      '.button:hover{background:var(--accent-dark);color:#fff}\n' +
+      '.spine{display:block;border-radius:4px 4px 2px 2px}.spine.ink{background:var(--ink)}.spine.forest{background:var(--accent)}.spine.pale{background:var(--pale)}.spine.dashed{border:2px dashed var(--field);border-radius:3px}\n' +
+      '.entry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:72px;align-items:center;width:min(1200px,100% - 48px);margin:0 auto;padding:88px 0}\n' +
+      '.entry-copy{display:flex;flex-direction:column;gap:20px}\n' +
+      '.shelf{margin-top:28px;display:flex;align-items:flex-end;gap:10px;height:180px}\n' +
+      '.shelf .spine.ink{width:46px;height:150px}.shelf .spine.forest{width:38px;height:170px}.shelf .spine.pale{width:52px;height:132px}\n' +
+      '.shelf-book{width:148px;height:162px;background:#fff;border:1px solid var(--line);border-radius:6px 14px 14px 6px;box-shadow:inset 10px 0 0 var(--accent);display:flex;flex-direction:column;justify-content:center;padding-left:26px;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.5}\n' +
+      '.shelf-book b,.cover-book b{color:var(--accent);font-weight:inherit}\n' +
+      '.login-card{padding:40px;gap:0}\n' +
+      '.login-card h2{margin:0 0 10px}\n' +
+      '.login-card form{display:flex;flex-direction:column}\n' +
+      '.error{margin:6px 0 4px;padding:12px 14px;border-radius:8px;background:var(--error-bg);color:var(--error);font-size:15px;line-height:1.7}\n' +
+      'label{font-weight:600;margin-top:12px;font-size:15px}\n' +
+      '.error+form label{margin-top:14px}\n' +
+      'input[type=password]{margin-top:8px;padding:14px;border:1px solid var(--field);border-radius:8px;font:inherit;font-size:16px;width:100%}\n' +
+      'input[aria-invalid=true]{border:2px solid var(--error)}\n' +
+      'button{margin-top:22px;padding:15px 20px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-size:16px;font-weight:700;display:flex;justify-content:space-between;cursor:pointer;width:100%}\n' +
+      'button:disabled{background:var(--busy);cursor:wait;align-items:center}\n' +
+      '.spinner{width:24px;height:24px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}\n' +
+      '@keyframes spin{to{transform:rotate(360deg)}}\n' +
+      '.form-note{margin-top:18px}.busy-note{display:none;margin-top:18px}\n' +
+      'form[aria-busy=true] .form-note{display:none}form[aria-busy=true] .busy-note{display:block}\n' +
+      'form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:var(--paper);color:var(--muted)}\n' +
+      '.library{width:min(1120px,100% - 48px);margin:0 auto;padding:72px 0;display:flex;flex-direction:column;gap:40px}\n' +
+      '.catalogue-hero{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:56px;align-items:center}\n' +
+      '.catalogue-hero>div:first-child{display:flex;flex-direction:column;gap:18px}\n' +
+      '.library h1{font-size:46px;letter-spacing:0}\n' +
+      '.hero-art{display:flex;justify-content:center;align-items:center;gap:24px}\n' +
+      '.cover-book{width:210px;height:270px;background:#fff;border:1px solid var(--line);border-radius:8px 22px 22px 8px;box-shadow:inset 14px 0 0 var(--ink);display:flex;flex-direction:column;justify-content:space-between;padding:30px 26px 26px 44px}\n' +
+      '.cover-book div{font-size:18px;font-weight:800;letter-spacing:.08em;line-height:1.5}\n' +
+      '.cover-book span{font-size:10px;letter-spacing:.16em;color:var(--muted)}\n' +
+      '.art-tag{padding:10px 16px;background:var(--ink);color:#fff;border-radius:999px;font-size:13px}\n' +
+      '.library-label{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}\n' +
+      '.library-label span{font-size:12px;letter-spacing:.16em;color:var(--muted)}\n' +
+      '.course-card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}\n' +
+      '.course-cover{background:var(--accent);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:320px}\n' +
+      '.cover-title{display:contents}.cover-title span{font-size:11px;letter-spacing:.18em}\n' +
+      '.course-cover strong{font-size:26px;line-height:1.4}\n' +
+      '.cover-mark{align-self:flex-end;width:60px;height:60px;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800}\n' +
+      '.course-body{grid-column:span 2;padding:34px 40px;display:flex;flex-direction:column;gap:12px}\n' +
+      '.badge{align-self:flex-start;padding:4px 12px;border-radius:999px;background:#e3f0ea;color:var(--accent-dark);font-size:12px;font-weight:700}\n' +
+      '.course-body h2{font-size:24px}\n' +
+      '.course-body p{color:var(--muted);line-height:1.8}\n' +
+      '.course-meta{font-size:14px;color:var(--muted)}\n' +
+      '.course-action{margin-top:10px;align-self:flex-start;padding:13px 22px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}\n' +
+      '.course-action:hover{background:var(--accent-dark);color:#fff}\n' +
+      '.version{font-size:11px;color:var(--muted)}\n' +
+      '.course{width:min(920px,100% - 48px);margin:0 auto;padding:56px 0;display:flex;flex-direction:column;gap:24px}\n' +
+      '.course h1{font-size:44px;letter-spacing:0}\n' +
+      '.course li,.course .card>p{line-height:1.8}\n' +
+      '.course .card .lead,.course .card .muted,.logout .muted{line-height:normal}\n' +
+      '.bundle-card{gap:10px}\n' +
+      '.breadcrumb{font-size:14px;align-self:flex-start}\n' +
+      '.notice{line-height:1.8;padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}\n' +
+      '.section-title{display:flex;align-items:baseline;gap:16px}.section-title b{color:var(--accent);font-size:14px}\n' +
+      '.download{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}\n' +
+      '.download:hover{background:#eaf5ed}\n' +
+      '.download small{white-space:nowrap;color:var(--muted)}\n' +
+      '.download.bundle{background:#edf5eb}\n' +
+      '.book-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}\n' +
+      '.text-link{font-size:15px;align-self:flex-start}\n' +
+      '.logout{width:min(460px,100%);margin:16px auto 0;text-align:center;display:flex;flex-direction:column;gap:10px}\n' +
+      '.logout .secondary{margin:0;justify-content:center;background:transparent;color:var(--accent);border:1px solid var(--accent)}\n' +
+      '.logout .secondary:disabled{color:var(--busy);border-color:var(--busy)}\n' +
+      '.logout .secondary .spinner{display:none}\n' +
+      '.status{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:56px}\n' +
+      '.status .breadcrumb{width:min(690px,100%);margin-bottom:16px}\n' +
+      '.status-card{width:min(690px,100%);padding:44px;gap:16px}\n' +
+      '.status-card h1{font-size:30px;letter-spacing:0}\n' +
+      '.status-card .muted{margin-top:6px;line-height:normal}\n' +
+      '.waiting{display:flex;align-items:flex-end;gap:8px;height:72px}\n' +
+      '.waiting .spine{border-radius:3px}.waiting .ink{width:22px;height:64px}.waiting .forest{width:18px;height:72px}.waiting .dashed{width:22px;height:56px}\n' +
+      'ol,ul{margin:0;padding-left:22px}li{margin:10px 0}\n' +
+      '.release-meta{margin:12px 0 0;color:var(--muted)}\n' +
+      '@media(min-width:721px){\n' +
+      '.narrow-only{display:none}\n' +
+      '.login-card:not(:has(.error,form[aria-busy=true])),.login-card:not(:has(.error,form[aria-busy=true])) form{gap:4px}\n' +
+      '}\n' +
+      '@media(max-width:720px){\n' +
+      'header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:2px}\n' +
+      '.brand{font-size:15px}\n' +
+      'footer{padding:20px 18px}\n' +
+      'main.status+footer{line-height:normal}\n' +
+      'main.course+footer br,main.course+footer .note-short{display:none}\n' +
+      '.note-long,.wide-only{display:none}.note-short{display:inline}\n' +
+      'h1,.library h1,.course h1{font-size:30px;letter-spacing:0}\n' +
+      'h2{font-size:19px}\n' +
+      '.eyebrow{font-size:11px;letter-spacing:.16em}\n' +
+      '.lead{font-size:15px;line-height:1.8}\n' +
+      '.card{border-radius:14px;padding:22px 18px;gap:10px}\n' +
+      '.button,.course-action{align-self:stretch;min-height:52px;padding:14px 18px;display:flex;justify-content:center;align-items:center}\n' +
+      '.course-action{justify-content:space-between;margin-top:8px}\n' +
+      '.entry{display:flex;flex-direction:column;gap:14px;align-items:stretch;width:100%;padding:32px 18px}\n' +
+      '.entry-copy{gap:14px}\n' +
+      '.shelf{display:none}\n' +
+      '.login-card{margin-top:10px;padding:22px 18px;gap:0}\n' +
+      '.login-card h2{margin-bottom:6px}\n' +
+      '.error{font-size:14px;padding:12px}\n' +
+      '.error+form label{margin-top:12px}\n' +
+      'button{margin-top:18px;min-height:52px;padding:14px 18px;align-items:center}\n' +
+      '.form-note,.busy-note{margin-top:14px}\n' +
+      '.library{width:100%;padding:32px 18px;gap:16px}\n' +
+      '.catalogue-hero{display:flex;flex-direction:column;gap:16px;align-items:stretch}\n' +
+      '.catalogue-hero>div:first-child{gap:16px}\n' +
+      '.hero-art{margin:12px 0}\n' +
+      '.cover-book{width:160px;height:206px;border-radius:6px 18px 18px 6px;box-shadow:inset 11px 0 0 var(--ink);padding:22px 18px 18px 32px}\n' +
+      '.cover-book div{font-size:15px}.cover-book span{font-siz'... 1626 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    :root{color-scheme:light;--paper:#f4f6f1;--ink:#1f3341;--muted:#536875;--line:#d9e3e4;--accent:#11675d;--accent-dark:#0b4a43;--pale:#c9d8cf;--field:#82969c;--error:#9b231f;--error-bg:#fbeaea;--busy:#4d7f78}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/normal system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+    a{color:var(--accent)}a:hover{color:var(--accent-dark)}
+    a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #c07424;outline-offset:4px}
+    header{background:#fff;border-bottom:1px solid var(--line);padding:22px 72px;display:flex;align-items:baseline;gap:14px}
+    .brand{font-weight:800;letter-spacing:.12em;color:var(--ink);text-decoration:none;font-size:16px}
+    .brand-note{font-size:12px;color:var(--muted)}
+    main{flex:1;width:100%}
+    footer{padding:28px 24px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--line);line-height:1.8}
+    .note-short{display:none}
+    h1{margin:0;font-size:48px;line-height:1.5;letter-spacing:.025em;font-weight:800}
+    h2{margin:0;font-size:21px}
+    p{margin:0}
+    .eyebrow{color:var(--accent);font-size:12px;letter-spacing:.18em;font-weight:800}
+    .lead{color:var(--muted);line-height:1.9}
+    .muted{font-size:13px;color:var(--muted);line-height:1.8}
+    .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:12px}
+    .button{align-self:flex-start;margin-top:8px;padding:13px 22px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}
+    .button:hover{background:var(--accent-dark);color:#fff}
+    .spine{display:block;border-radius:4px 4px 2px 2px}.spine.ink{background:var(--ink)}.spine.forest{background:var(--accent)}.spine.pale{background:var(--pale)}.spine.dashed{border:2px dashed var(--field);border-radius:3px}
+    .entry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:72px;align-items:center;width:min(1200px,100% - 48px);margin:0 auto;padding:88px 0}
+    .entry-copy{display:flex;flex-direction:column;gap:20px}
+    .shelf{margin-top:28px;display:flex;align-items:flex-end;gap:10px;height:180px}
+    .shelf .spine.ink{width:46px;height:150px}.shelf .spine.forest{width:38px;height:170px}.shelf .spine.pale{width:52px;height:132px}
+    .shelf-book{width:148px;height:162px;background:#fff;border:1px solid var(--line);border-radius:6px 14px 14px 6px;box-shadow:inset 10px 0 0 var(--accent);display:flex;flex-direction:column;justify-content:center;padding-left:26px;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.5}
+    .shelf-book b,.cover-book b{color:var(--accent);font-weight:inherit}
+    .login-card{padding:40px;gap:0}
+    .login-card h2{margin:0 0 10px}
+    .login-card form{display:flex;flex-direction:column}
+    .error{margin:6px 0 4px;padding:12px 14px;border-radius:8px;background:var(--error-bg);color:var(--error);font-size:15px;line-height:1.7}
+    label{font-weight:600;margin-top:12px;font-size:15px}
+    .error+form label{margin-top:14px}
+    input[type=password]{margin-top:8px;padding:14px;border:1px solid var(--field);border-radius:8px;font:inherit;font-size:16px;width:100%}
+    input[aria-invalid=true]{border:2px solid var(--error)}
+    button{margin-top:22px;padding:15px 20px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-size:16px;font-weight:700;display:flex;justify-content:space-between;cursor:pointer;width:100%}
+    button:disabled{background:var(--busy);cursor:wait;align-items:center}
+    .spinner{width:24px;height:24px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .form-note{margin-top:18px}.busy-note{display:none;margin-top:18px}
+    form[aria-busy=true] .form-note{display:none}form[aria-busy=true] .busy-note{display:block}
+    form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:var(--paper);color:var(--muted)}
+    .library{width:min(1120px,100% - 48px);margin:0 auto;padding:72px 0;display:flex;flex-direction:column;gap:40px}
+    .catalogue-hero{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:56px;align-items:center}
+    .catalogue-hero>div:first-child{display:flex;flex-direction:column;gap:18px}
+    .library h1{font-size:46px;letter-spacing:0}
+    .hero-art{display:flex;justify-content:center;align-items:center;gap:24px}
+    .cover-book{width:210px;height:270px;background:#fff;border:1px solid var(--line);border-radius:8px 22px 22px 8px;box-shadow:inset 14px 0 0 var(--ink);display:flex;flex-direction:column;justify-content:space-between;padding:30px 26px 26px 44px}
+    .cover-book div{font-size:18px;font-weight:800;letter-spacing:.08em;line-height:1.5}
+    .cover-book span{font-size:10px;letter-spacing:.16em;color:var(--muted)}
+    .art-tag{padding:10px 16px;background:var(--ink);color:#fff;border-radius:999px;font-size:13px}
+    .library-label{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+    .library-label span{font-size:12px;letter-spacing:.16em;color:var(--muted)}
+    .course-card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+    .course-cover{background:var(--accent);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:320px}
+    .cover-title{display:contents}.cover-title span{font-size:11px;letter-spacing:.18em}
+    .course-cover strong{font-size:26px;line-height:1.4}
+    .cover-mark{align-self:flex-end;width:60px;height:60px;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
+    .course-body{grid-column:span 2;padding:34px 40px;display:flex;flex-direction:column;gap:12px}
+    .badge{align-self:flex-start;padding:4px 12px;border-radius:999px;background:#e3f0ea;color:var(--accent-dark);font-size:12px;font-weight:700}
+    .course-body h2{font-size:24px}
+    .course-body p{color:var(--muted);line-height:1.8}
+    .course-meta{font-size:14px;color:var(--muted)}
+    .course-action{margin-top:10px;align-self:flex-start;padding:13px 22px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}
+    .course-action:hover{background:var(--accent-dark);color:#fff}
+    .version{font-size:11px;color:var(--muted)}
+    .course{width:min(920px,100% - 48px);margin:0 auto;padding:56px 0;display:flex;flex-direction:column;gap:24px}
+    .course h1{font-size:44px;letter-spacing:0}
+    .course li,.course .card>p{line-height:1.8}
+    .course .card .lead,.course .card .muted,.logout .muted{line-height:normal}
+    .bundle-card{gap:10px}
+    .breadcrumb{font-size:14px;align-self:flex-start}
+    .notice{line-height:1.8;padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}
+    .section-title{display:flex;align-items:baseline;gap:16px}.section-title b{color:var(--accent);font-size:14px}
+    .download{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
+    .download:hover{background:#eaf5ed}
+    .download small{white-space:nowrap;color:var(--muted)}
+    .download.bundle{background:#edf5eb}
+    .book-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}
+    .text-link{font-size:15px;align-self:flex-start}
+    .logout{width:min(460px,100%);margin:16px auto 0;text-align:center;display:flex;flex-direction:column;gap:10px}
+    .logout .secondary{margin:0;justify-content:center;background:transparent;color:var(--accent);border:1px solid var(--accent)}
+    .logout .secondary:disabled{color:var(--busy);border-color:var(--busy)}
+    .logout .secondary .spinner{display:none}
+    .status{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:56px}
+    .status .breadcrumb{width:min(690px,100%);margin-bottom:16px}
+    .status-card{width:min(690px,100%);padding:44px;gap:16px}
+    .status-card h1{font-size:30px;letter-spacing:0}
+    .status-card .muted{margin-top:6px;line-height:normal}
+    .waiting{display:flex;align-items:flex-end;gap:8px;height:72px}
+    .waiting .spine{border-radius:3px}.waiting .ink{width:22px;height:64px}.waiting .forest{width:18px;height:72px}.waiting .dashed{width:22px;height:56px}
+    ol,ul{margin:0;padding-left:22px}li{margin:10px 0}
+    .release-meta{margin:12px 0 0;color:var(--muted)}
+    @media(min-width:721px){
+    .narrow-only{display:none}
+    .login-card:not(:has(.error,form[aria-busy=true])),.login-card:not(:has(.error,form[aria-busy=true])) form{gap:4px}
+    }
+    @media(max-width:720px){
+    header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:2px}
+    .brand{font-size:15px}
+    footer{padding:20px 18px}
+    main.status+footer{line-height:normal}
+    main.course+footer br,main.course+footer .note-short{display:none}
+    .note-long,.wide-only{display:none}.note-short{display:inline}
+    h1,.library h1,.course h1{font-size:30px;letter-spacing:0}
+    h2{font-size:19px}
+    .eyebrow{font-size:11px;letter-spacing:.16em}
+    .lead{font-size:15px;line-height:1.8}
+    .card{border-radius:14px;padding:22px 18px;gap:10px}
+    .button,.course-action{align-self:stretch;min-height:52px;padding:14px 18px;display:flex;justify-content:center;align-items:center}
+    .course-action{justify-content:space-between;margin-top:8px}
+    .entry{display:flex;flex-direction:column;gap:14px;align-items:stretch;width:100%;padding:32px 18px}
+    .entry-copy{gap:14px}
+    .shelf{display:none}
+    .login-card{margin-top:10px;padding:22px 18px;gap:0}
+    .login-card h2{margin-bottom:6px}
+    .error{font-size:14px;padding:12px}
+    .error+form label{margin-top:12px}
+    button{margin-top:18px;min-height:52px;padding:14px 18px;align-items:center}
+    .form-note,.busy-note{margin-top:14px}
+    .library{width:100%;padding:32px 18px;gap:16px}
+    .catalogue-hero{display:flex;flex-direction:column;gap:16px;align-items:stretch}
+    .catalogue-hero>div:first-child{gap:16px}
+    .hero-art{margin:12px 0}
+    .cover-book{width:160px;height:206px;border-radius:6px 18px 18px 6px;box-shadow:inset 11px 0 0 var(--ink);padding:22px 18px 18px 32px}
+    .cover-book div{font-size:15px}.cover-book span{font-size:9px;letter-spacing:.14em}
+    .art-tag{display:none}
+    .library-label{padding-bottom:10px}.library-label span{font-size:11px;letter-spacing:.14em}
+    .course-card{display:flex;flex-direction:column;border-radius:14px}
+    .course-cover{flex-direction:row;align-items:flex-end;min-height:194px;padding:22px}
+    .cover-title{display:flex;flex-direction:column;gap:18px}.cover-title span{font-size:10px;letter-spacing:.16em}
+    .course-cover{justify-content:space-between}
+    .course-cover strong{font-size:22px}
+    .cover-mark{width:50px;height:50px;border-radius:9px;align-self:auto;flex:none}
+    .course-body{padding:22px 18px;gap:10px}
+    .course-body h2{font-size:20px}.course-body p{font-size:15px}.course-meta{font-size:13px}
+    .course{width:100%;padding:28px 18px;gap:16px}
+    .breadcrumb{min-height:44px;display:flex;align-items:center}
+    .section-title{gap:12px}.section-title b{font-size:13px}
+    .course .card .lead{font-size:14px}
+    .course .card .muted,.logout .muted{line-height:1.8}
+    .download{min-height:48px;padding:12px;align-items:center}
+    .book-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .logout{margin-top:8px}
+    .logout .secondary{min-height:52px}
+    .status{display:block;padding:36px 18px}
+    .status .breadcrumb{margin-bottom:8px}
+    .status-card{padding:26px 20px;gap:14px}
+    .status-card .button{margin-top:6px}
+    .status-card .muted{margin-top:0;line-height:1.8}
+    .status-card h1{font-size:24px}
+    .waiting{gap:7px;height:60px}.waiting .ink{width:18px;height:52px}.waiting .forest{width:15px;height:60px}.waiting .dashed{width:18px;height:46px}
+    }
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}.spinner{animation:none}}
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/wfu/tests/security.test.mjs:525:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 0
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1176.716959
