@@ -137,6 +137,9 @@ HOUR 2026-11-15T08:18Z | merged 5 since 07:42 (#87 #88 #89 #90 #91) | closed 1 i
 
 MODEL 2026-11-15T08:16Z | lead switched to fable; subagents spawned from now use model fable (one alive at a time unchanged). The docs implementer already running was started on opus before the order and is left to finish.
 
+92 | FIX->review | opus implementer (docs SETUP product phrase); fresh fable review FAIL at b32482f (must 2: unset row claimed the product never opens although earlier sessions stay open 4 h; duplicate sentence false for product-vs-product) | fixed by lead in 75121ad (docs wording only) | local 98/0 | https://github.com/kouiso/course-library/pull/92#issuecomment-6891638276 | second fresh fable reviewer running (one fix round rule: a second FAIL parks it)
+DECIDED | product phrase not added to the first-deploy secret list in SETUP | reason: that list is the owner's distribution procedure (#35 / #21) | revert: add the row when #35 is decided
+
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
 - #47 | Show products the visitor does not own in the library? (A) hide (B) show with a link to the sales page (needs the URL) | default: current (shown, no link)
@@ -146,6 +149,7 @@ MODEL 2026-11-15T08:16Z | lead switched to fable; subagents spawned from now use
 - #24 #25 | parent stories; close when #42 #43 #55 / #46 #47 are settled
 - (8) buyer-only library still shows the survey section label, locked gift meta line, gift footer version — same question as #42 #43
 - #27 option: extend the 600 s entry token? default: no
+- ASK (from #92 review) | Removing the product phrase setting leaves product sessions opened earlier able to download until their 4-hour expiry, while a malformed value closes them at once. Should an unset setting also close existing product sessions? yes/no/don't know | read: src/index.ts misconfiguredProducts (skips empty values), PR #92 review | the code is consistent either way; it is a distribution-stop policy | on "don't know": unchanged (documented in SETUP by #92)
 - any approval flag change, any deploy: owner only
 
 ## for main session
