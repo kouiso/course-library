@@ -4,9 +4,11 @@ export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', 
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
 // A course or product page passes its own version, so a buyer never sees the gift version.
-export function page(title: string, body: string, layout: Layout = 'status', version: string = release.version): string {
+// `learning` marks the gift's learning page: its mobile board has no bookmark sentence in the footer.
+// /guide and the product page share the course layout but have no board, so they keep the sentence.
+export function page(title: string, body: string, layout: Layout = 'status', version: string = release.version, learning = false): string {
   const note = layout === 'status' ? '' : '<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span><span class="note-short">ご案内のURLをブックマークしてご利用ください。</span>';
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a><span class="brand-note">アンケート回答者限定</span></header><main class="${layout}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a><span class="brand-note">アンケート回答者限定</span></header><main class="${layout}${learning ? ' learning' : ''}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
 }
 // PC and mobile boards word or break some lines differently; each variant is its own text, the other one is hidden.
 const variants = (wide: string, narrow: string) => `<span class="wide-only">${wide}</span><span class="narrow-only">${narrow}</span>`;
@@ -36,7 +38,7 @@ function missingExercises(course: Collection): string {
 }
 export function library(nonce: string, course: Collection): string {
   const verification = course.release?.verification;
-  return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1>${lead('学習の進め方を確認したら、本編と練習問題へ。', '手元に保存して、ひとつずつ進めましょう。')}${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${links(course, 'intro')}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section><section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${links(course, 'books')}</div></section><section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead wide-only">学んだ内容を手を動かして確かめましょう。${missingExercises(course)}</p>${missingExercises(course) ? `<p class="lead narrow-only">${missingExercises(course)}</p>` : ''}<div class="book-grid">${links(course, 'exercises')}</div></section><section class="card bundle-card"><h2>まとめて手元に</h2>${links(course, 'bundle')}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p><p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
+  return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1>${lead('学習の進め方を確認したら、本編と練習問題へ。', '手元に保存して、ひとつずつ進めましょう。')}${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${links(course, 'intro')}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section><section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${links(course, 'books')}</div></section><section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead wide-only">学んだ内容を手を動かして確かめましょう。${missingExercises(course)}</p>${missingExercises(course) ? `<p class="lead narrow-only">${missingExercises(course)}</p>` : ''}<div class="book-grid">${links(course, 'exercises')}</div></section><section class="card bundle-card"><h2>まとめて手元に</h2>${links(course, 'bundle')}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p><p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion, true);
 }
 export function guide(): string {
   return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course');
@@ -106,6 +108,7 @@ export function message(title: string, body = '', action = { href: '/', label: '
 // The input becomes read-only, not disabled, because disabled fields are left out of the submission.
 export const js = `for(const form of document.querySelectorAll('form')){form.addEventListener('submit',()=>{const button=form.querySelector('button');if(button){button.dataset.label=button.innerHTML;button.textContent='確認しています…';const spinner=document.createElement('span');spinner.className='spinner';spinner.setAttribute('aria-hidden','true');button.append(spinner);button.disabled=true;form.setAttribute('aria-busy','true');}for(const input of form.querySelectorAll('input[type=password]'))input.readOnly=true;});}window.addEventListener('pageshow',()=>{for(const form of document.querySelectorAll('form')){form.removeAttribute('aria-busy');for(const input of form.querySelectorAll('input[type=password]'))input.readOnly=false;const button=form.querySelector('button');if(button?.dataset.label){button.innerHTML=button.dataset.label;delete button.dataset.label;button.disabled=false;}}});`;
 // Values follow the reviewed design boards (PC 1440 / mobile 390). No external fonts or images.
+// The PC block is the exact negation of the mobile query: min-width:721px would miss a zoomed width such as 720.5px.
 export const css = `:root{color-scheme:light;--paper:#f4f6f1;--ink:#1f3341;--muted:#536875;--line:#d9e3e4;--accent:#11675d;--accent-dark:#0b4a43;--pale:#c9d8cf;--field:#82969c;--error:#9b231f;--error-bg:#fbeaea;--busy:#4d7f78}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/normal system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
@@ -191,7 +194,7 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .logout .secondary:disabled{color:var(--busy);border-color:var(--busy)}
 .logout .secondary .spinner{display:none}
 .status{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:56px}
-.status .breadcrumb{width:min(690px,100%);margin-bottom:16px}
+.status .breadcrumb{width:min(690px,100%);margin-bottom:16px;align-self:center}
 .status-card{width:min(690px,100%);padding:44px;gap:16px}
 .status-card h1{font-size:30px;letter-spacing:0}
 .status-card .muted{margin-top:6px;line-height:normal}
@@ -199,7 +202,7 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .waiting .spine{border-radius:3px}.waiting .ink{width:22px;height:64px}.waiting .forest{width:18px;height:72px}.waiting .dashed{width:22px;height:56px}
 ol,ul{margin:0;padding-left:22px}li{margin:10px 0}
 .release-meta{margin:12px 0 0;color:var(--muted)}
-@media(min-width:721px){
+@media not all and (max-width:720px){
 .narrow-only{display:none}
 .login-card:not(:has(.error,form[aria-busy=true])),.login-card:not(:has(.error,form[aria-busy=true])) form{gap:4px}
 }
@@ -208,7 +211,7 @@ header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:2px}
 .brand{font-size:15px}
 footer{padding:20px 18px}
 main.status+footer{line-height:normal}
-main.course+footer br,main.course+footer .note-short{display:none}
+main.learning+footer br,main.learning+footer .note-short{display:none}
 .note-long,.wide-only{display:none}.note-short{display:inline}
 h1,.library h1,.course h1{font-size:30px;letter-spacing:0}
 h2{font-size:19px}
