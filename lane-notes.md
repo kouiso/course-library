@@ -1,4 +1,19 @@
-STATE RUNNING 2026-11-15T08:40Z | merged today 18 (#81 #68 #72 #74-#80 #86-#92) | open work PRs 0 (+ #84 #85 never merge) | open issues 9 | in work: #35 (docs to the decided scope)
+HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subagent running; nothing unpushed; do not resume before a RESUME message)
+- done today (18 merges into codex/initial-implementation, each with REVIEW, LOCAL-CHECK, evidence image and GATE on the PR): #81 #68 #72 (previous lane) | #74 #75 #76 #77 #78 #79 #80 (handoff stack) | #86 design conformance over the 12 boards | #87 typed secrets (closed #23) | #88 #86 follow-ups | #89 release check correctness | #90 gift level follow-ups | #91 level-aware counts | #92 SETUP product phrase. Default head: 4118b5a.
+- issues closed with a written reason: #44 #22 #27 #28 #30 #32, by merge: #48 #49 #29 #45 #56 #58 #57 #23; reopened #42 #43 (had been closed without a reason, criteria unmet).
+- half done: PR #93 (docs/35-decided-scope, head 472b7bc, Closes #35) = issue #35, docs to the scope the owner decided on #34. Independent review FAILED (must 2, want 3, nit 2): https://github.com/kouiso/course-library/pull/93#issuecomment-6891943126 . The fix round was stopped by this PAUSE after one edit:
+  - pushed, not on the PR branch: wip/docs/35-decided-scope-20261115 (f351a3f) = tests/security.test.mjs ~112, expected verification sentences escaped like the page (want 4). `npm run check` NOT run on it.
+  - not started: must 1 docs/OPERATIONS.md ~35 ~75 ~78 (remove "set distributionApproved to false" from the version-raise steps; state truthfully that with the flag false 15 tests and release:ready fail; fix the "failure means the manifest edit is inconsistent" sentence) | must 2 docs/OPERATIONS.md ~76 (a filename change also needs scripts/fixtures.mjs:54 and tests/security.test.mjs literals ~73 79 82 254) | want docs/OPERATIONS.md ~57 (second product: 6 tests in tests/check-release.test.mjs need updating) | want docs/SETUP.md ~116 (scope the MyASP sentence to the free gift) | nits OPERATIONS ~50 + README ~29 (release:ready also exits non-zero when validateManifest throws), OPERATIONS ~86-88 (what is withheld is the channel and timing).
+  - 5 CodeRabbit threads on #93 are unanswered: r4577718140 r4577718131 r4577718146 are valid (same as the findings above; answer and resolve after the fix), r4577718124 r4577718153 ask to list Taskapp (owner question below; answer, leave unresolved).
+- next step after RESUME: finish the #93 fix round on docs/35-decided-scope (cherry-pick f351a3f, do the items above, verify each by running the checks, new LOCAL-CHECK image evidence/35-<sha>.png, update the PR body, reply on the threads), then ONE fresh reviewer. A second FAIL parks #93 and #35 (one fix round rule). After #93 lands: close #21 (parent) with a reason, manager audit (scene c) of a sample of today's merges, then STATE DONE-WAITING.
+- open pull requests: #93 (above) | #84 handoff of 2026-11-14 and #85 notes: never merge, never close.
+- open issues (9): #35 (in #93) #21 (parent of #35) | owner-waiting, see "needs owner": #42 #43 #46 #47 #55 #24 #25.
+- branches pushed today and merged: fix/design-conformance fix/23-typed-secrets fix/86-followups fix/release-check-correctness fix/72-gift-level-followups fix/gift-level-counts docs/product-phrase-setting (+ the handoff stack branches). Not merged: docs/35-decided-scope, wip/docs/35-decided-scope-20261115, notes/course-library.
+- container (lost when the container is reclaimed; everything that matters is pushed): worktrees /home/user/w35 (PR #93 branch, clean) and one per merged PR; design boards /home/user/design (re-fetch from the design page); scratch copy scratchpad/s35 holds only temporary test edits, never to be committed.
+- 課題 review band: ready (the lane's PR work is done except #93) — for the managing session to place.
+- not done, by rule: no manager audit yet (scene c); model note: lead and subagents ran on fable from 08:16Z by the owner's relayed order until this PAUSE.
+
+STATE PAUSED 2026-11-15T08:57Z | PAUSE from managing session side-personal (allowance guard) | merged today 18 | open work PR 1 (#93, review FAIL, fix round half done) | waits for RESUME
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -164,4 +179,7 @@ MEMBER 2026-11-15T08:40Z fable implementer: #35 docs to the decided scope + prod
 - any approval flag change, any deploy: owner only
 
 ## for main session
+- PAUSED 2026-11-15T08:57Z on the order of side-personal; HANDOFF block at the top of this file.
+- 課題 review band: ready after #93 (see HANDOFF).
+- allowance: one subagent at a time throughout; fable used for lead + 4 subagent runs between 08:16Z and 08:57Z.
 - first message carried no plan rows (LEDGER); lane works open PRs and issues from the handoff.
