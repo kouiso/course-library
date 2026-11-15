@@ -123,6 +123,9 @@ follow-up (3) 61 s test: DONE-ALREADY — full suite 10.6 s on 7691648, longest 
 MEMBER 2026-11-15T08:02Z opus implementer: follow-up (7) gift level: empty bundle box below level 10 + SETUP _01.._10 (branch fix/72-gift-level-followups)
 not startable: (9) per-product guidance copy -> only when a 2nd ZIP product exists | (10) release-meta grey: nit, no board for the product page -> no action
 
+DECIDED | below gift level 10 the learning page drops only the bundle parts of 「まとめて手元に」 and keeps the release verification sentences in the card (option B) | reason: hiding the whole box would remove the only place those true environment notes show for PDF-only sessions; no new copy | revert: hide the whole card below level 10
+follow-ups (14) /library gift card shows 「本編 10章 / 練習問題 9本 / まとめて保存」 below level 10 | (15) ACCESS_PHRASE_SHA256_REDMINE_CLONE missing from SETUP tables
+
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
 - #47 | Show products the visitor does not own in the library? (A) hide (B) show with a link to the sales page (needs the URL) | default: current (shown, no link)
