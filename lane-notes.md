@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T05:16Z | merged today 7 (#81 #68 #72 #74 #75 #76 #77) | open PRs workable 3 (#78 FIX, #79 #80 FINISH) | open issues 19
+STATE RUNNING 2026-11-15T07:20Z | merged today 11 (#81 #68 #72 #74-#80) | open work PRs 0 (+ #84 #85 never merge) | open issues 12 | in work: design conformance PR
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -88,6 +88,11 @@ DECIDED | #79 keeps .download align-items:center although the Course 1440 board 
 DECIDED | reopened #42 #43 (closed 06:41Z as completed with no reason; completion criteria unmet because entry/header/footer keep the design copy) | reason: rules W7 close only with a written reason | revert: close again with a reason once the owner ASK is answered
 closed with reason: #44 (met by #78), #22 (release:ready exit 0 on 1685dd2, gift blocked / product released), #27 (#74), #28 (#76 + #51 decision), #30 (test:browser passes end to end without env vars on 1685dd2)
 issue sort 07:10Z: OWNER #42 #43 (design copy vs issue) #46 #47 (#25) #55 (#24) #35 #21 (scope decision) | agent: #23 (index.ts:169 reads env as Record again since #72 -> follow-up 2 Secrets type), #32 closes after #80 | parents waiting on children: #24 #25 #21
+
+80 | LAND | fresh opus review PASS (must 0 want 1 nit 3); want: rename sentence source -> body cites commit 6c705a2 record (unzip failed with the versioned name) | 0801779 | local 84/0 | https://github.com/kouiso/course-library/pull/80#issuecomment-6890678663 | merged e98f770 (closes #57); #32 closed with reason
+DECIDED | #80 keeps the "rename to redmine-clone.zip" sentence | reason: commit 6c705a2 records the observed unzip failure with the versioned name; #57 (2) points to Day 3; (1) still holds at save time | revert: remove the sentence from productLibrary()
+follow-ups (from #79/#80 reviews): (9) product guidance copy is hardcoded for redmine-clone -> move to manifest when a 2nd ZIP product exists | (10) release-meta still grey (nit)
+MEMBER 2026-11-15T07:20Z opus implementer: design conformance PR over the 12 boards (branch fix/design-conformance); not-in-design elements kept and listed
 
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
