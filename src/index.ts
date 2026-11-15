@@ -152,10 +152,12 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       const form = await boundedForm(req);
       const csrf = form?.get('csrf') || '';
       const loginCookie = jar.get(cookieName('course_login', local));
-      if (form && (!loginCookie || await equal(csrf, loginCookie)) && await expiredButSigned(secret, csrf, 'login')) {
+      // 同じ名前の Cookie が重なると cookies() は値を空にする。空の値は「無い」と区別して 403 側へ回す。
+      const hasLoginCookie = jar.has(cookieName('course_login', local));
+      if (form && (!hasLoginCookie || (!!loginCookie && await equal(csrf, loginCookie))) && await expiredButSigned(secret, csrf, 'login')) {
         // 入口を開いたまま期限が過ぎただけなら、合言葉は照合せずに入口を出し直す。
         // Cookie は期限と同じ 600 秒で消えるので、Cookie が無い時もこちらへ来る。
-        // Cookie があって値が違う、または署名が不正な時は、今までどおり 403。
+        // Cookie があって値が違う（空や重複を含む）、または署名が不正な時は、今までどおり 403。
         return entry(secret, local, '時間がたったので、もう一度入力してください。');
       }
       if (!form || !loginCookie || !await equal(csrf, loginCookie) || !await verify(secret, csrf, 'login')) return error(403, '入口からもう一度お試しください');
