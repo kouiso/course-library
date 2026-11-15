@@ -1,6 +1,8 @@
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { createHash, randomBytes } from 'node:crypto';
 export const localPhrase = 'synthetic-development-only';
+// Local-only dummy phrase for the paid product card. Never a production value.
+export const localProductPhrase = 'synthetic-product-development-only';
 export const basicUser = 'test-basic-user';
 export const basicPass = 'test-basic-pass';
 export const basicHeader = 'Basic ' + Buffer.from(`${basicUser}:${basicPass}`).toString('base64');
