@@ -1,3 +1,4 @@
+RESUME 2026-11-15T09:54Z | lead opus, members opus/sonnet, no fable | owner rule: 現在の起票されているPRの解消を全て達成してから新規タスクに臨む | next: #93 fix round, then one fresh reviewer
 HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subagent running; nothing unpushed; do not resume before a RESUME message)
 - done today (18 merges into codex/initial-implementation, each with REVIEW, LOCAL-CHECK, evidence image and GATE on the PR): #81 #68 #72 (previous lane) | #74 #75 #76 #77 #78 #79 #80 (handoff stack) | #86 design conformance over the 12 boards | #87 typed secrets (closed #23) | #88 #86 follow-ups | #89 release check correctness | #90 gift level follow-ups | #91 level-aware counts | #92 SETUP product phrase. Default head: 4118b5a.
 - issues closed with a written reason: #44 #22 #27 #28 #30 #32, by merge: #48 #49 #29 #45 #56 #58 #57 #23; reopened #42 #43 (had been closed without a reason, criteria unmet).
@@ -13,7 +14,7 @@ HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subag
 - 課題 review band: ready (the lane's PR work is done except #93) — for the managing session to place.
 - not done, by rule: no manager audit yet (scene c); model note: lead and subagents ran on fable from 08:16Z by the owner's relayed order until this PAUSE.
 
-STATE PAUSED 2026-11-15T08:57Z | PAUSE from managing session side-personal (allowance guard) | merged today 18 | open work PR 1 (#93, review FAIL, fix round half done) | waits for RESUME
+STATE RUNNING 2026-11-15T09:54Z | RESUMED (side-personal) | rule: settle every open PR, no new work | open: #93 (fix round), #84 #85 (never merge)
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
