@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T07:20Z | merged today 11 (#81 #68 #72 #74-#80) | open work PRs 0 (+ #84 #85 never merge) | open issues 12 | in work: design conformance PR
+STATE RUNNING 2026-11-15T07:42Z | merged today 12 (#81 #68 #72 #74-#80 #86) | open work PRs 0 (+ #84 #85 never merge) | open issues 12 | in work: #23 typed secrets
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -101,6 +101,11 @@ DECIDED | #86: login card spacing follows each board as drawn (Main 4px, LoginSt
 DECIDED | #86: synthetic labels 「開発プレビュー」「ダミー教材を見る」「ダミー教材をまとめて保存」 stay | reason: board copy would present dummy material as the real gift (pass line b/g); released state uses board copy (test) | revert: none needed once real materials ship
 DECIDED | #86: product card badge 「公開中」 stays | reason: no board shows a product card | revert: use 受け取れます in productCard
 next after #86: #23 fix (src/index.ts:169 `env as unknown as Record` -> typed lookup via Secrets incl. gift level names ACCESS_PHRASE_SHA256_TYPESCRIPT_01..10)
+
+86 | LAND | fresh opus review PASS (must 0 want 1 nit 1); want recorded in body (mobile footer bookmark sentence also hidden on /guide and product page) | b06e5fb | local 85/0, test:browser pass | https://github.com/kouiso/course-library/pull/86#issuecomment-6890935675 | merged b0fb40f
+follow-ups from #86: (11) mobile footer bookmark sentence: scope the hiding to the board screen only (Course) -> /guide and product page show it again (lane default; no board for those) | (12) 720-721px media gap -> use range syntax | (13) locked/pending breadcrumb aligned to page edge, not card
+HOUR 2026-11-15T07:42Z | merged 7 since last HOUR (#78 #79 #80 #86 + issues) | closed 6 issues with reason (#44 #22 #27 #28 #30 #32) + reopened 2 (#42 #43) | fixed 2 (#79 test v0.1.0, #80 merge) | blocked: none | rule 2 (iteration): no board file | rule 3: n/a, no unlabeled agent issue left besides #23 | skipped (-ux): 0
+MEMBER 2026-11-15T07:42Z opus implementer: #23 typed secrets (branch fix/23-typed-secrets)
 
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
