@@ -473,7 +473,7 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
   assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /ご協力の感謝を、<br>次の学びに。/); assert.match(catalogue, /<title>プレゼント教材 \|/);
-  assert.match(catalogue, /<div class="eyebrow">THANK YOU FOR YOUR FEEDBACK<\/div><h1>ご協力の感謝を、<br>次の学びに。<\/h1><p class="lead">アンケートにお答えいただいた方へ。<br class="wide">TypeScript教材を無料プレゼントとしてお届けします。<\/p>/);
+  assert.match(catalogue, /<div class="eyebrow">THANK YOU FOR YOUR FEEDBACK<\/div><h1>ご協力の感謝を、<br>次の学びに。<\/h1><p class="lead"><span class="wide-only">アンケートにお答えいただいた方へ。<br>TypeScript教材を無料プレゼントとしてお届けします。<\/span><span class="narrow-only">アンケートにお答えいただいた方へ。TypeScript教材を無料プレゼントとしてお届けします。<\/span><\/p>/);
   assert.match(catalogue, /<h2>TypeScript教材<\/h2><p>アンケートにお答えいただいた方への無料プレゼントです。<\/p>/);
   assert.ok(catalogue.includes(`<footer>教材ライブラリ · ${version}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`), 'gift library footer');
   assert.match(catalogue, /<span class="brand-note">アンケート回答者限定<\/span>/);
@@ -482,6 +482,22 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
   assert.ok(course.includes(`<footer>教材ライブラリ · ${version}<br>`), 'gift course footer');
   assert.equal((course.match(/href="\/download\/typescript\//g) || []).length, 21);
+});
+test('the gift pages keep the design board copy at PC and mobile widths', async () => {
+  const { cookie } = await loginAttempt();
+  const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
+  // Chapters read 第1章 (no zero padding); exercises read 練習問題 01 on PC and 問題 01 on mobile.
+  assert.match(course, /<span>第1章<\/span>/); assert.match(course, /<span>第10章<\/span>/); assert.doesNotMatch(course, /第0\d章/);
+  assert.match(course, /<span class="wide-only">練習問題 01<\/span><span class="narrow-only">問題 01<\/span>/);
+  assert.match(course, /<p class="lead wide-only">学んだ内容を手を動かして確かめましょう。第9章には練習問題がありません。<\/p><p class="lead narrow-only">第9章には練習問題がありません。<\/p>/);
+  assert.match(course, /<span class="wide-only">学習の進め方を確認したら、本編と練習問題へ。<br>手元に保存して、ひとつずつ進めましょう。<\/span><span class="narrow-only">学習の進め方を確認したら、本編と練習問題へ。手元に保存して、ひとつずつ進めましょう。<\/span>/);
+  const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
+  assert.match(catalogue, /<div class="course-meta"><span class="wide-only">学習の進め方 \/ 本編 10章 \/ 練習問題 9本 \/ まとめて保存<\/span><span class="narrow-only">学習の進め方 \/ 本編 10章 \/ 練習問題 9本<\/span><\/div>/);
+  const entry = await (await req('/')).text();
+  assert.match(entry, /<span class="wide-only">アンケートへのご協力、ありがとうございます。<br>回答後のご案内に記載された合言葉を入力してください。<\/span><span class="narrow-only">アンケートへのご協力、ありがとうございます。回答後のご案内に記載された合言葉を入力してください。<\/span>/);
+  // The board has no normal line-height override on body text; REPEAT. keeps the book's weight 800.
+  const css = await (await req('/style.css')).text();
+  assert.match(css, /body\{[^}]*font:16px\/normal /); assert.match(css, /\.shelf-book b,\.cover-book b\{color:var\(--accent\);font-weight:inherit\}/);
 });
 test('aggregate login limiter rejects attempts spread across IP addresses', async () => {
   const instance = runtime({ origin, totalLimit: 1, bindings: { SESSION_SECRET: secret } });
@@ -550,7 +566,8 @@ test('pending, preview and published labels are distinct; verification copy belo
     const unversioned = views.productLibrary('synthetic-csrf', { ...product, version: null });
     const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
     assert.ok(unversioned.includes(`<footer>教材ライブラリ · ${appVersion}<br>`)); assert.ok(!/<footer>[^<]*synthetic/.test(unversioned));
-    assert.match(catalogue, />公開中</); assert.doesNotMatch(catalogue, /開発プレビュー/);
+    // A released gift card reads as the design board: badge 受け取れます and action 教材を受け取る.
+    assert.match(catalogue, /<span class="badge">受け取れます<\/span>/); assert.match(catalogue, />教材を受け取る <span/); assert.doesNotMatch(catalogue, /開発プレビュー/);
     const html = views.library('synthetic-csrf', course);
     for (const value of ['配送の確認記録A', '教材の確認記録B', '環境の確認記録C']) assert.ok(html.includes(value));
     assert.doesNotMatch(html, /教材コードはダミー|開発プレビュー：/);

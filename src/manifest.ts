@@ -61,7 +61,7 @@ export const materials: Material[] = [
   { id: 'learning-flow', title: '学習の進め方', filename: 'typescript-learning-flow.pdf', type: 'application/pdf', group: 'intro' },
   ...Array.from({ length: 10 }, (_, i): Material => {
     const n = String(i + 1).padStart(2, '0');
-    return { id: `chapter-${n}`, title: `第${n}章`, filename: `typescript-chapter-${n}.pdf`, type: 'application/pdf', group: 'books' };
+    return { id: `chapter-${n}`, title: `第${i + 1}章`, filename: `typescript-chapter-${n}.pdf`, type: 'application/pdf', group: 'books' };
   }),
   ...exerciseChapterIds.map((n): Material => {
     return { id: `exercise-${n}`, title: `練習問題 ${n}`, filename: `typescript-exercise-${n}.pdf`, type: 'application/pdf', group: 'exercises' };

@@ -8,6 +8,9 @@ export function page(title: string, body: string, layout: Layout = 'status', ver
   const note = layout === 'status' ? '' : '<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span><span class="note-short">ご案内のURLをブックマークしてご利用ください。</span>';
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a><span class="brand-note">アンケート回答者限定</span></header><main class="${layout}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
 }
+// PC and mobile boards word or break some lines differently; each variant is its own text, the other one is hidden.
+const variants = (wide: string, narrow: string) => `<span class="wide-only">${wide}</span><span class="narrow-only">${narrow}</span>`;
+const lead = (first: string, second: string) => `<p class="lead">${variants(`${first}<br>${second}`, first + second)}</p>`;
 const shelf = '<div class="shelf" aria-hidden="true"><i class="spine ink"></i><i class="spine forest"></i><i class="spine pale"></i><div class="shelf-book">LEARN<br>BUILD<br><b>REPEAT.</b></div></div>';
 const waiting = '<div class="waiting" aria-hidden="true"><i class="spine ink"></i><i class="spine forest"></i><i class="spine dashed"></i></div>';
 const logout = (nonce: string, label: string, note: string) => `<form method="post" action="/logout" class="logout"><input type="hidden" name="csrf" value="${escape(nonce)}"><button class="secondary">${label}</button><p class="muted">${note}</p></form>`;
@@ -19,10 +22,10 @@ export function notice(options: { eyebrow: string; title: string; body: string; 
 export function login(csrf: string, error = '', info = ''): string {
   const invalid = error ? ' aria-invalid="true" aria-describedby="phrase-error"' : '';
   const note = error ? '続けて間違えると、1分ほど入力を受け付けなくなります。' : 'アンケート回答者限定の無料プレゼントです。PDFを開くパスワードは配布時のご案内をご確認ください。';
-  return page('プレゼント教材を受け取る', `<div class="entry-copy"><div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS</div><h1>次の学びを、<br>ひとつずつ。</h1><p class="lead">アンケートへのご協力、ありがとうございます。<br class="wide">回答後のご案内に記載された合言葉を入力してください。</p>${shelf}</div><section class="card login-card"><h2>TypeScript教材を受け取る</h2>${error ? `<p role="alert" class="error" id="phrase-error">${escape(error)}</p>` : ''}${info ? `<p role="status" class="notice">${escape(info)}</p>` : ''}<form method="post" action="/login"><input type="hidden" name="csrf" value="${escape(csrf)}"><label for="phrase">アクセス用の合言葉</label><input id="phrase" type="password" name="phrase" required maxlength="256" autocomplete="current-password"${invalid}><button>教材ページを開く <span aria-hidden="true">→</span></button><p class="muted form-note">${note}</p><p class="muted busy-note">送信は1回で大丈夫です。画面が切り替わるまでお待ちください。</p></form></section>`, 'entry');
+  return page('プレゼント教材を受け取る', `<div class="entry-copy"><div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS</div><h1>次の学びを、<br>ひとつずつ。</h1>${lead('アンケートへのご協力、ありがとうございます。', '回答後のご案内に記載された合言葉を入力してください。')}${shelf}</div><section class="card login-card"><h2>TypeScript教材を受け取る</h2>${error ? `<p role="alert" class="error" id="phrase-error">${escape(error)}</p>` : ''}${info ? `<p role="status" class="notice">${escape(info)}</p>` : ''}<form method="post" action="/login"><input type="hidden" name="csrf" value="${escape(csrf)}"><label for="phrase">アクセス用の合言葉</label><input id="phrase" type="password" name="phrase" required maxlength="256" autocomplete="current-password"${invalid}><button>教材ページを開く <span aria-hidden="true">→</span></button><p class="muted form-note">${note}</p><p class="muted busy-note">送信は1回で大丈夫です。画面が切り替わるまでお待ちください。</p></form></section>`, 'entry');
 }
 function links(course: Collection, group: string): string {
-  return course.materials.filter(m => m.group === group).map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
+  return course.materials.filter(m => m.group === group).map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${m.group === 'exercises' ? variants(escape(m.title), escape(m.title.replace(/^練習問題/, '問題'))) : escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
 }
 const chapterCount = (course: Collection) => course.materials.filter(m => m.group === 'books').length;
 const exerciseCount = (course: Collection) => course.materials.filter(m => m.group === 'exercises').length;
@@ -33,7 +36,7 @@ function missingExercises(course: Collection): string {
 }
 export function library(nonce: string, course: Collection): string {
   const verification = course.release?.verification;
-  return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1><p class="lead">学習の進め方を確認したら、本編と練習問題へ。<br class="wide">手元に保存して、ひとつずつ進めましょう。</p>${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${links(course, 'intro')}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section><section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${links(course, 'books')}</div></section><section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead"><span class="wide-only">学んだ内容を手を動かして確かめましょう。</span>${missingExercises(course)}</p><div class="book-grid">${links(course, 'exercises')}</div></section><section class="card"><h2>まとめて手元に</h2>${links(course, 'bundle')}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p><p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
+  return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1>${lead('学習の進め方を確認したら、本編と練習問題へ。', '手元に保存して、ひとつずつ進めましょう。')}${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${links(course, 'intro')}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section><section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${links(course, 'books')}</div></section><section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead wide-only">学んだ内容を手を動かして確かめましょう。${missingExercises(course)}</p>${missingExercises(course) ? `<p class="lead narrow-only">${missingExercises(course)}</p>` : ''}<div class="book-grid">${links(course, 'exercises')}</div></section><section class="card bundle-card"><h2>まとめて手元に</h2>${links(course, 'bundle')}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p><p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
 }
 export function guide(): string {
   return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course');
@@ -41,12 +44,15 @@ export function guide(): string {
 export function catalogue(nonce: string, local = false, unlocked: readonly string[] = []): string {
   const gifts = collections.filter(isSurveyGift);
   const products = collections.filter(c => !isSurveyGift(c));
+  // A released gift reads as the board's badge; the synthetic preview keeps its preview label so it is never taken for the real gift.
+  const giftBadge = (c: Collection) => (c.release?.synthetic ? collectionStatusLabel(c.status) : '受け取れます');
   const giftCard = (c: Collection) => {
     const available = canDistribute(c, local) && unlocked.includes(c.id);
-    const contents = `学習の進め方 / 本編 ${chapterCount(c)}章 / 練習問題 ${exerciseCount(c)}本<span class="wide-only"> / まとめて保存</span>`;
+    const parts = `学習の進め方 / 本編 ${chapterCount(c)}章 / 練習問題 ${exerciseCount(c)}本`;
+    const contents = variants(`${parts} / まとめて保存`, parts);
     const state = unlocked.includes(c.id) ? (available ? (c.release?.synthetic ? 'ダミー教材を見る' : '教材を受け取る') : '配布準備状況を見る') : 'ギフト用の合言葉が必要です';
     // The survey description is shown only to those who opened the gift, so buyers read no survey wording.
-    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${unlocked.includes(c.id) ? (available ? collectionStatusLabel(c.status) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${unlocked.includes(c.id) ? `<p>${escape(c.description)}</p>` : ''}<div class="course-meta">${available ? contents : '回答後のご案内と配布版を確認しています'}</div><a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${unlocked.includes(c.id) ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${unlocked.includes(c.id) ? `<p>${escape(c.description)}</p>` : ''}<div class="course-meta">${available ? contents : '回答後のご案内と配布版を確認しています'}</div><a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
   const productCard = (c: Collection) => {
     const open = unlocked.includes(c.id);
@@ -58,11 +64,11 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
   const giftOpen = gifts.some(c => unlocked.includes(c.id));
   const productOpen = products.some(c => unlocked.includes(c.id));
   const hero = productOpen && !giftOpen
-    ? { title: '教材一覧', eyebrow: 'YOUR LIBRARY', heading: 'ご購入の教材を、<br>手元に。', lead: 'ご購入いただいた教材をお届けします。<br class="wide">教材ページを開いて保存してください。' }
+    ? { title: '教材一覧', eyebrow: 'YOUR LIBRARY', heading: 'ご購入の教材を、<br>手元に。', lead: lead('ご購入いただいた教材をお届けします。', '教材ページを開いて保存してください。') }
     : productOpen
-      ? { title: '教材一覧', eyebrow: 'YOUR LIBRARY', heading: '次の学びを、<br>ひとつずつ。', lead: 'お持ちの合言葉で開ける教材をお届けします。<br class="wide">教材ページを開いて保存してください。' }
-      : { title: 'プレゼント教材', eyebrow: 'THANK YOU FOR YOUR FEEDBACK', heading: 'ご協力の感謝を、<br>次の学びに。', lead: 'アンケートにお答えいただいた方へ。<br class="wide">TypeScript教材を無料プレゼントとしてお届けします。' };
-  return page(hero.title, `<div class="catalogue-hero"><div><div class="eyebrow">${hero.eyebrow}</div><h1>${hero.heading}</h1><p class="lead">${hero.lead}</p></div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div><div class="library-label"><h2>回答者限定プレゼント</h2><span>SURVEY GIFT</span></div>${gifts.map(giftCard).join('')}${products.length ? `<div class="library-label"><h2>教材（販売）</h2><span>PAID PRODUCT</span></div>${products.map(productCard).join('')}` : ''}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
+      ? { title: '教材一覧', eyebrow: 'YOUR LIBRARY', heading: '次の学びを、<br>ひとつずつ。', lead: lead('お持ちの合言葉で開ける教材をお届けします。', '教材ページを開いて保存してください。') }
+      : { title: 'プレゼント教材', eyebrow: 'THANK YOU FOR YOUR FEEDBACK', heading: 'ご協力の感謝を、<br>次の学びに。', lead: lead('アンケートにお答えいただいた方へ。', 'TypeScript教材を無料プレゼントとしてお届けします。') };
+  return page(hero.title, `<div class="catalogue-hero"><div><div class="eyebrow">${hero.eyebrow}</div><h1>${hero.heading}</h1>${hero.lead}</div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div><div class="library-label"><h2>回答者限定プレゼント</h2><span>SURVEY GIFT</span></div>${gifts.map(giftCard).join('')}${products.length ? `<div class="library-label"><h2>教材（販売）</h2><span>PAID PRODUCT</span></div>${products.map(productCard).join('')}` : ''}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
 }
 export function productLibrary(nonce: string, course: Collection): string {
   const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
@@ -102,7 +108,7 @@ export const js = `for(const form of document.querySelectorAll('form')){form.add
 // Values follow the reviewed design boards (PC 1440 / mobile 390). No external fonts or images.
 export const css = `:root{color-scheme:light;--paper:#f4f6f1;--ink:#1f3341;--muted:#536875;--line:#d9e3e4;--accent:#11675d;--accent-dark:#0b4a43;--pale:#c9d8cf;--field:#82969c;--error:#9b231f;--error-bg:#fbeaea;--busy:#4d7f78}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/1.8 system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/normal system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
 a{color:var(--accent)}a:hover{color:var(--accent-dark)}
 a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #c07424;outline-offset:4px}
 header{background:#fff;border-bottom:1px solid var(--line);padding:22px 72px;display:flex;align-items:baseline;gap:14px}
@@ -125,8 +131,8 @@ p{margin:0}
 .entry-copy{display:flex;flex-direction:column;gap:20px}
 .shelf{margin-top:28px;display:flex;align-items:flex-end;gap:10px;height:180px}
 .shelf .spine.ink{width:46px;height:150px}.shelf .spine.forest{width:38px;height:170px}.shelf .spine.pale{width:52px;height:132px}
-.shelf-book{width:120px;height:160px;background:#fff;border:1px solid var(--line);border-radius:6px 14px 14px 6px;box-shadow:inset 10px 0 0 var(--accent);display:flex;flex-direction:column;justify-content:center;padding-left:26px;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.5}
-.shelf-book b,.cover-book b{color:var(--accent)}
+.shelf-book{width:148px;height:162px;background:#fff;border:1px solid var(--line);border-radius:6px 14px 14px 6px;box-shadow:inset 10px 0 0 var(--accent);display:flex;flex-direction:column;justify-content:center;padding-left:26px;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.5}
+.shelf-book b,.cover-book b{color:var(--accent);font-weight:inherit}
 .login-card{padding:40px;gap:0}
 .login-card h2{margin:0 0 10px}
 .login-card form{display:flex;flex-direction:column}
@@ -135,9 +141,9 @@ label{font-weight:600;margin-top:12px;font-size:15px}
 .error+form label{margin-top:14px}
 input[type=password]{margin-top:8px;padding:14px;border:1px solid var(--field);border-radius:8px;font:inherit;font-size:16px;width:100%}
 input[aria-invalid=true]{border:2px solid var(--error)}
-button{margin-top:22px;padding:15px 20px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-size:16px;font-weight:700;display:flex;justify-content:space-between;align-items:center;cursor:pointer;width:100%}
-button:disabled{background:var(--busy);cursor:wait}
-.spinner{width:18px;height:18px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
+button{margin-top:22px;padding:15px 20px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-size:16px;font-weight:700;display:flex;justify-content:space-between;cursor:pointer;width:100%}
+button:disabled{background:var(--busy);cursor:wait;align-items:center}
+.spinner{width:24px;height:24px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .form-note{margin-top:18px}.busy-note{display:none;margin-top:18px}
 form[aria-busy=true] .form-note{display:none}form[aria-busy=true] .busy-note{display:block}
@@ -154,10 +160,10 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .library-label{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
 .library-label span{font-size:12px;letter-spacing:.16em;color:var(--muted)}
 .course-card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}
-.course-cover{background:var(--accent);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:260px}
+.course-cover{background:var(--accent);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:320px}
 .cover-title{display:contents}.cover-title span{font-size:11px;letter-spacing:.18em}
 .course-cover strong{font-size:26px;line-height:1.4}
-.cover-mark{align-self:flex-end;width:56px;height:56px;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.cover-mark{align-self:flex-end;width:60px;height:60px;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
 .course-body{grid-column:span 2;padding:34px 40px;display:flex;flex-direction:column;gap:12px}
 .badge{align-self:flex-start;padding:4px 12px;border-radius:999px;background:#e3f0ea;color:var(--accent-dark);font-size:12px;font-weight:700}
 .course-body h2{font-size:24px}
@@ -168,10 +174,13 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .version{font-size:11px;color:var(--muted)}
 .course{width:min(920px,100% - 48px);margin:0 auto;padding:56px 0;display:flex;flex-direction:column;gap:24px}
 .course h1{font-size:44px;letter-spacing:0}
+.course li,.course .card>p{line-height:1.8}
+.course .card .lead,.course .card .muted,.logout .muted{line-height:normal}
+.bundle-card{gap:10px}
 .breadcrumb{font-size:14px;align-self:flex-start}
-.notice{padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}
+.notice{line-height:1.8;padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}
 .section-title{display:flex;align-items:baseline;gap:16px}.section-title b{color:var(--accent);font-size:14px}
-.download{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
+.download{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
 .download:hover{background:#eaf5ed}
 .download small{white-space:nowrap;color:var(--muted)}
 .download.bundle{background:#edf5eb}
@@ -182,33 +191,40 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .logout .secondary:disabled{color:var(--busy);border-color:var(--busy)}
 .logout .secondary .spinner{display:none}
 .status{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:56px}
-.status .breadcrumb{width:min(600px,100%);margin-bottom:16px}
-.status-card{width:min(600px,100%);padding:44px;gap:16px}
+.status .breadcrumb{width:min(690px,100%);margin-bottom:16px}
+.status-card{width:min(690px,100%);padding:44px;gap:16px}
 .status-card h1{font-size:30px;letter-spacing:0}
+.status-card .muted{margin-top:6px;line-height:normal}
 .waiting{display:flex;align-items:flex-end;gap:8px;height:72px}
 .waiting .spine{border-radius:3px}.waiting .ink{width:22px;height:64px}.waiting .forest{width:18px;height:72px}.waiting .dashed{width:22px;height:56px}
 ol,ul{margin:0;padding-left:22px}li{margin:10px 0}
 .release-meta{margin:12px 0 0;color:var(--muted)}
+@media(min-width:721px){
+.narrow-only{display:none}
+.login-card:not(:has(.error,form[aria-busy=true])),.login-card:not(:has(.error,form[aria-busy=true])) form{gap:4px}
+}
 @media(max-width:720px){
 header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:2px}
 .brand{font-size:15px}
 footer{padding:20px 18px}
-.note-long,.wide,.wide-only{display:none}.note-short{display:inline}
+main.status+footer{line-height:normal}
+main.course+footer br,main.course+footer .note-short{display:none}
+.note-long,.wide-only{display:none}.note-short{display:inline}
 h1,.library h1,.course h1{font-size:30px;letter-spacing:0}
 h2{font-size:19px}
 .eyebrow{font-size:11px;letter-spacing:.16em}
 .lead{font-size:15px;line-height:1.8}
 .card{border-radius:14px;padding:22px 18px;gap:10px}
 .button,.course-action{align-self:stretch;min-height:52px;padding:14px 18px;display:flex;justify-content:center;align-items:center}
-.course-action{justify-content:space-between}
+.course-action{justify-content:space-between;margin-top:8px}
 .entry{display:flex;flex-direction:column;gap:14px;align-items:stretch;width:100%;padding:32px 18px}
 .entry-copy{gap:14px}
 .shelf{display:none}
-.login-card{margin-top:10px;padding:22px 18px}
+.login-card{margin-top:10px;padding:22px 18px;gap:0}
 .login-card h2{margin-bottom:6px}
 .error{font-size:14px;padding:12px}
 .error+form label{margin-top:12px}
-button{margin-top:18px;min-height:52px;padding:14px 18px}
+button{margin-top:18px;min-height:52px;padding:14px 18px;align-items:center}
 .form-note,.busy-note{margin-top:14px}
 .library{width:100%;padding:32px 18px;gap:16px}
 .catalogue-hero{display:flex;flex-direction:column;gap:16px;align-items:stretch}
@@ -219,17 +235,18 @@ button{margin-top:18px;min-height:52px;padding:14px 18px}
 .art-tag{display:none}
 .library-label{padding-bottom:10px}.library-label span{font-size:11px;letter-spacing:.14em}
 .course-card{display:flex;flex-direction:column;border-radius:14px}
-.course-cover{flex-direction:row;align-items:flex-end;min-height:150px;padding:22px}
+.course-cover{flex-direction:row;align-items:flex-end;min-height:194px;padding:22px}
 .cover-title{display:flex;flex-direction:column;gap:18px}.cover-title span{font-size:10px;letter-spacing:.16em}
 .course-cover{justify-content:space-between}
 .course-cover strong{font-size:22px}
-.cover-mark{width:46px;height:46px;border-radius:9px;align-self:auto;flex:none}
+.cover-mark{width:50px;height:50px;border-radius:9px;align-self:auto;flex:none}
 .course-body{padding:22px 18px;gap:10px}
 .course-body h2{font-size:20px}.course-body p{font-size:15px}.course-meta{font-size:13px}
 .course{width:100%;padding:28px 18px;gap:16px}
 .breadcrumb{min-height:44px;display:flex;align-items:center}
 .section-title{gap:12px}.section-title b{font-size:13px}
 .course .card .lead{font-size:14px}
+.course .card .muted,.logout .muted{line-height:1.8}
 .download{min-height:48px;padding:12px;align-items:center}
 .book-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .logout{margin-top:8px}
@@ -237,6 +254,8 @@ button{margin-top:18px;min-height:52px;padding:14px 18px}
 .status{display:block;padding:36px 18px}
 .status .breadcrumb{margin-bottom:8px}
 .status-card{padding:26px 20px;gap:14px}
+.status-card .button{margin-top:6px}
+.status-card .muted{margin-top:0;line-height:1.8}
 .status-card h1{font-size:24px}
 .waiting{gap:7px;height:60px}.waiting .ink{width:18px;height:52px}.waiting .forest{width:15px;height:60px}.waiting .dashed{width:18px;height:46px}
 }
