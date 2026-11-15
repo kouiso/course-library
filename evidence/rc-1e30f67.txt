@@ -1,0 +1,40 @@
+$ npm run check (head 1e30f674bdb9a92c1e72a11703800ee83144222a)
+> course-library@0.2.2 check
+> npm run scan:public && npm run lint && npm run typecheck && npm run build && npm test
+> course-library@0.2.2 scan:public
+> node scripts/public-scan.mjs
+> course-library@0.2.2 lint
+> node scripts/lint.mjs
+> course-library@0.2.2 typecheck
+> tsc --noEmit
+> course-library@0.2.2 build
+> node scripts/wrangler.mjs deploy --dry-run --outdir dist
+> course-library@0.2.2 test
+> node --test --test-concurrency=1 tests/*.test.mjs
+# tests 96
+# pass 96
+# fail 0
+# cancelled 0
+exit 0
+
+$ npm run release:ready (base fa9f35a, before)
+
+> course-library@0.2.2 release:ready
+> node scripts/check-release.mjs
+
+survey-gift: blocked typescript 0.2.2-synthetic - synthetic materials, status preview, giftPolicy.myaspVerified is false, giftPolicy.distributionApproved is false
+paid-product: ready redmine-clone 0.2.1
+Note: the survey gift stay closed in production because they are blocked; only the ready collections are released.
+Approved manifest is ready for a separately authorized production release.
+exit 0
+
+$ npm run release:ready (head 1e30f67, after)
+
+> course-library@0.2.2 release:ready
+> node scripts/check-release.mjs
+
+survey-gift: blocked typescript 0.2.2-synthetic - synthetic materials, status preview, giftPolicy.myaspVerified is false, giftPolicy.distributionApproved is false
+paid-product: ready redmine-clone 0.2.1
+Note: the survey gift stays closed in production because it is blocked; only the ready collections are released.
+Approved manifest is ready for a separately authorized production release.
+exit 0
