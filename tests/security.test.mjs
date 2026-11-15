@@ -272,6 +272,9 @@ test('an entry left open past its 600-second limit is shown again and the phrase
   assert.equal((await post(signed('session', now - 700, now - 100), '')).status, 403);
   assert.equal((await post(expired.slice(0, -2) + (expired.endsWith('AA') ? 'BB' : 'AA'), '')).status, 403);
   assert.equal((await post(fresh, '')).status, 403);
+  // 同じ名前の Cookie が2つ、または空の Cookie は「Cookie が無い」とは扱わず 403。
+  assert.equal((await post(expired, `local_course_login=${expired}; local_course_login=${expired}`)).status, 403);
+  assert.equal((await post(expired, 'local_course_login=')).status, 403);
 });
 test('surrounding half-width and full-width spaces are removed before the phrase is compared', async () => {
   for (const phrase of [` ${localPhrase}`, `${localPhrase} `, `\u3000${localPhrase}\u3000`, `\t ${localPhrase}\u3000\n`]) {
