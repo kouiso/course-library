@@ -499,6 +499,32 @@ test('the gift pages keep the design board copy at PC and mobile widths', async 
   const css = await (await req('/style.css')).text();
   assert.match(css, /body\{[^}]*font:16px\/normal /); assert.match(css, /\.shelf-book b,\.cover-book b\{color:var\(--accent\);font-weight:inherit\}/);
 });
+test('only the learning page drops the footer bookmark sentence on mobile', async () => {
+  const gift = (await loginAttempt()).cookie;
+  const product = (await loginAttempt(productPhrase)).cookie;
+  const main = html => /<main class="([^"]+)">/.exec(html)[1];
+  // The mobile learning board shows no bookmark sentence. /guide and the product page have no board and keep it.
+  assert.equal(main(await (await req('/courses/typescript', { headers: { Cookie: gift } })).text()), 'course learning');
+  assert.equal(main(await (await req('/guide', { headers: { Cookie: gift } })).text()), 'course');
+  assert.equal(main(await (await req('/courses/redmine-clone', { headers: { Cookie: product } })).text()), 'course');
+  const css = await (await req('/style.css')).text();
+  assert.match(css, /main\.learning\+footer br,main\.learning\+footer \.note-short\{display:none\}/);
+  assert.doesNotMatch(css, /main\.course\+footer/);
+});
+test('PC and mobile copy never both show: the width queries leave no gap', async () => {
+  const css = await (await req('/style.css')).text();
+  // min-width:721px and max-width:720px both miss a zoomed width such as 720.5px, and both copies show.
+  const queries = [...css.matchAll(/@media([^{]*)\{/g)].map(m => m[1].trim());
+  assert.ok(!queries.some(q => q.includes('min-width')), queries.join(' | '));
+  for (const q of queries.filter(q => q.startsWith('(max-width:'))) assert.ok(queries.includes(`not all and ${q}`), q);
+  assert.ok(queries.includes('not all and (max-width:720px)'), queries.join(' | '));
+});
+test('locked and pending screens line the breadcrumb up with the card', async () => {
+  const css = await (await req('/style.css')).text();
+  // Locked and pending screens: the breadcrumb is as wide as the card and centred like it.
+  assert.match(css, /\.status \.breadcrumb\{width:min\(690px,100%\);[^}]*align-self:center/);
+  assert.match(css, /\.status-card\{width:min\(690px,100%\)/);
+});
 test('aggregate login limiter rejects attempts spread across IP addresses', async () => {
   const instance = runtime({ origin, totalLimit: 1, bindings: { SESSION_SECRET: secret } });
   try {
