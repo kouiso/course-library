@@ -196,8 +196,12 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       res.headers.append('Set-Cookie', cookie('course_login', '', 0, local));
       return res;
     }
-    const form = await boundedForm(req);
-    if (!session || !form || !await equal(form.get('csrf') || '', session.nonce)) return error(403, '入口からもう一度お試しください');
+    // セッションが無い（期限切れなど）時は、失って困る状態が無いので、確認用の値を見ずに閉じた画面へ送る。
+    // 同一オリジンの検査は上で済んでいる。セッションがある時は、今までどおり確認用の値を照合する。
+    if (session) {
+      const form = await boundedForm(req);
+      if (!form || !await equal(form.get('csrf') || '', session.nonce)) return error(403, '入口からもう一度お試しください');
+    }
     // A fixed page confirms the closed session without query parameters or JavaScript.
     const res = redirect('/closed');
     res.headers.append('Set-Cookie', cookie('course_session', '', 0, local));
