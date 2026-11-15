@@ -47,14 +47,16 @@ export function saveName(course: Collection, material: Material): string {
 export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'exercises' | 'bundle' };
 // 秘密の設定値（wrangler secret で置く物）。生成物の worker-configuration.d.ts には出ないので、型はここ1か所で持つ。
 // 商品を足す時は、ここに商品用の合言葉の名前を足し、マニフェストの phraseEnv に同じ名前を書く。
+// ギフトの段の合言葉の名前も、下の GiftLevelEnvName でここに含める。
 export type Secrets = {
   SESSION_SECRET?: string;
   BASIC_AUTH_USER?: string;
   BASIC_AUTH_PASS?: string;
   ACCESS_PHRASE_SHA256?: string;
   ACCESS_PHRASE_SHA256_REDMINE_CLONE?: string;
-};
-export type PhraseEnvName = Extract<keyof Secrets, `ACCESS_PHRASE_SHA256${string}`>;
+} & { [Name in GiftLevelEnvName]?: string };
+// 商品の phraseEnv に書ける名前。ギフトの段の合言葉の名前は商品には使わせない。
+export type PhraseEnvName = Exclude<Extract<keyof Secrets, `ACCESS_PHRASE_SHA256${string}`>, GiftLevelEnvName>;
 export type Collection = { id: string; title: string; description: string; distribution: 'survey-gift' | 'paid-product'; audience: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; approval: Approval; materials: Material[]; cover: string; mark: string; phraseEnv?: PhraseEnvName };
 export const exerciseChapterIds = ['01', '02', '03', '04', '05', '06', '07', '08', '10'];
 export const materials: Material[] = [
@@ -91,10 +93,13 @@ export function phraseEnvName(c: Collection): PhraseEnvName | undefined {
 }
 // ギフトは段階の合言葉も持てる。N 段目（ACCESS_PHRASE_SHA256_TYPESCRIPT_0N、10 段目は _10）で 1〜N 章が開く。
 // 従来の ACCESS_PHRASE_SHA256 は 10 段目と同じ扱い（ギフト全部）。段の secret が未設定なら、その段は誰にも合わない。
-export const GIFT_LEVELS = 10;
-export function giftLevelEnvName(c: Collection, level: number): string {
-  return `ACCESS_PHRASE_SHA256_${c.id.toUpperCase().replaceAll('-', '_')}_${String(level).padStart(2, '0')}`;
-}
+// 名前を型で Secrets と突き合わせるため、ギフトの id（typescript）は名前に書いて持つ。
+// id と食い違わない事は validateManifest で確かめる。
+const giftLevelSuffixes = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] as const;
+export type GiftLevelEnvName = `ACCESS_PHRASE_SHA256_TYPESCRIPT_${(typeof giftLevelSuffixes)[number]}`;
+export const GIFT_LEVELS: number = giftLevelSuffixes.length;
+// 1 段目から順に並ぶ。
+export const giftLevelEnvNames: readonly GiftLevelEnvName[] = giftLevelSuffixes.map(n => `ACCESS_PHRASE_SHA256_TYPESCRIPT_${n}` as const);
 // どの教材が何段目で開くか: 学習の進め方は 1 段目、第 N 章と練習問題 N は N 段目、まとめ ZIP は 10 段目。
 export function giftMaterialLevel(m: Material): number | null {
   if (m.id === 'learning-flow') return 1;
@@ -134,13 +139,14 @@ export function validateManifest(): void {
   if (new Set(collections.map(c => c.id)).size !== collections.length) throw new Error('Duplicate collection');
   // The gift level in a session applies to every survey gift, so only one survey gift may exist.
   if (collections.filter(isSurveyGift).length > 1) throw new Error('Only one survey gift is supported');
-  const phraseNames = collections.flatMap(c => [phraseEnvName(c), ...(isSurveyGift(c) ? Array.from({ length: GIFT_LEVELS }, (_, i) => giftLevelEnvName(c, i + 1)) : [])]);
+  const phraseNames = collections.flatMap(c => [phraseEnvName(c), ...(isSurveyGift(c) ? giftLevelEnvNames : [])]);
   if (new Set(phraseNames).size !== phraseNames.length) throw new Error('Duplicate phrase setting');
   for (const c of collections) {
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(c.id) || (!isSurveyGift(c) && !isPaidProduct(c))) throw new Error('Not an approved collection');
     if (isPaidProduct(c) && (c.audience !== 'buyers' || c.phraseEnv !== productPhraseEnvName(c.id))) throw new Error('Invalid product collection');
     if (!isPaidProduct(c) && c.phraseEnv !== undefined) throw new Error('Invalid gift collection');
     if (isSurveyGift(c) && c.materials.some(m => giftMaterialLevel(m) === null)) throw new Error('Gift material without a level');
+    if (isSurveyGift(c) && giftLevelEnvNames.some(n => !n.startsWith(`${productPhraseEnvName(c.id)}_`))) throw new Error('Gift level setting does not match the gift');
     if (c.status === 'pending') {
       if (c.release || c.version || c.materials.length) throw new Error('Pending collection exposes materials');
       continue;

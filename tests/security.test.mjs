@@ -667,6 +667,20 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     assert.equal(manifest.canDistribute(course, false), true);
   } finally { Object.assign(course, original, { approval }); delete course.phraseEnv; Object.assign(manifest.giftPolicy, policy); }
 });
+test('gift level settings keep the names built from the gift id, and a gift id that disagrees with them does not start', async () => {
+  const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  // 型を付ける前と同じ名前（ギフトの id を大文字にし、段を2桁にした物）を、1 段目から順に読む。
+  const gift = manifest.collections.find(manifest.isSurveyGift);
+  assert.equal(manifest.GIFT_LEVELS, 10);
+  assert.deepEqual(manifest.giftLevelEnvNames, Array.from({ length: 10 }, (_, i) => `ACCESS_PHRASE_SHA256_${gift.id.toUpperCase().replaceAll('-', '_')}_${String(i + 1).padStart(2, '0')}`));
+  const policy = [...manifest.giftPolicy.allowedCourseIds], id = gift.id;
+  try {
+    manifest.giftPolicy.allowedCourseIds = ['javascript']; gift.id = 'javascript';
+    assert.throws(() => manifest.validateManifest(), /Gift level setting does not match the gift/);
+  } finally { manifest.giftPolicy.allowedCourseIds = policy; gift.id = id; }
+  assert.doesNotThrow(() => manifest.validateManifest());
+});
 test('approval lives in each collection and one decision function covers gifts and products', async () => {
   const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
   const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));

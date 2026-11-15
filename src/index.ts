@@ -1,5 +1,5 @@
 import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvName, isPaidProduct, isSurveyGift, phraseEnvName, saveName, type Collection, type Secrets, validateManifest } from './manifest';
+import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, phraseEnvName, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary, switchNote } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string } & Secrets;
@@ -166,9 +166,8 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       // 合言葉はコレクションごとに別の secret を持つ。打たれた合言葉が
       // どのコレクションのものかを全件照合し、合ったものだけを開ける。
       const digest = phrase.length > 256 ? '' : await sha256(phrase);
-      const secrets = env as unknown as Record<string, string | undefined>;
-      const matches = async (name: string) => {
-        const expected = secrets[name];
+      const matches = async (name: PhraseEnvName | GiftLevelEnvName) => {
+        const expected = env[name];
         return !!expected && /^[0-9a-f]{64}$/.test(expected) && !!digest && await equal(digest, expected);
       };
       const matched: string[] = [];
@@ -179,8 +178,8 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
         // ギフトは段の合言葉も全段照合し（途中で打ち切らない）、合った中で一番上の段を持たせる。
         if (isSurveyGift(c)) {
           if (name && await matches(name)) giftLevel = GIFT_LEVELS;
-          for (let level = 1; level <= GIFT_LEVELS; level++) {
-            if (await matches(giftLevelEnvName(c, level))) giftLevel = Math.max(giftLevel, level);
+          for (const [i, levelName] of giftLevelEnvNames.entries()) {
+            if (await matches(levelName)) giftLevel = Math.max(giftLevel, i + 1);
           }
           if (giftLevel) matched.push(c.id);
         } else if (name && await matches(name)) matched.push(c.id);
