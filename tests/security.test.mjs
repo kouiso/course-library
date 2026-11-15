@@ -562,7 +562,7 @@ test('security headers and mobile semantic page structure are present', async ()
   assert.equal(entry.headers.get('Strict-Transport-Security'), null);
   noCache(entry);
 });
-test('survey gift catalogue contains only TypeScript and never the Taskapp product', async () => {
+test('the gift section of the catalogue lists only TypeScript; a paid product is never listed as a gift and no unknown collection appears', async () => {
   const { cookie } = await loginAttempt();
   const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
@@ -572,6 +572,9 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   assert.ok(catalogue.includes(`<footer>教材ライブラリ · ${version}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`), 'gift library footer');
   assert.match(catalogue, /<span class="brand-note">アンケート回答者限定<\/span>/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
+  // 商品は「教材（販売）」の欄に鍵つきで並ぶ。ギフトの欄には入らない。
+  const giftSection = catalogue.slice(catalogue.indexOf('<h2>回答者限定プレゼント</h2>'), catalogue.indexOf('<h2>教材（販売）</h2>'));
+  assert.match(giftSection, /href="\/courses\/typescript"/); assert.doesNotMatch(giftSection, /redmine-clone|PAID PRODUCT/);
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
   assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
   assert.ok(course.includes(`<footer>教材ライブラリ · ${version}<br>`), 'gift course footer');
@@ -694,7 +697,7 @@ test('pending, preview and published labels are distinct; verification copy belo
     assert.doesNotMatch(views.guide(), /教材コードはダミー|配布サイトはMac/);
   } finally { course.status = originalStatus; course.release = originalRelease; Object.assign(manifest.giftPolicy, originalPolicy); }
 });
-test('Taskapp product routes are denied even with valid gift auth and existing product objects', async () => {
+test('routes of a collection id that is not in the manifest (taskapp) are denied even with valid gift auth and objects stored under that id', async () => {
   const { cookie } = await loginAttempt();
   const sentinel = 'PAID PRODUCT MUST NEVER BE A SURVEY GIFT';
   const bucket = await mf.getR2Bucket('MATERIALS');
@@ -754,6 +757,7 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
   const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
   const course = manifest.collections[0], original = structuredClone(course), policy = { ...manifest.giftPolicy }, approval = course.approval;
   try {
+    // taskapp は、ギフトとして認めていない id の例（giftPolicy.allowedCourseIds に無い id はギフトにならない）。
     for (const [field, value] of [['id', 'taskapp'], ['distribution', 'free-product'], ['audience', 'all-newsletter-readers']]) {
       Object.assign(course, original, { [field]: value });
       assert.equal(manifest.canDistribute(course, true), false);
