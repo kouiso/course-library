@@ -143,7 +143,7 @@ try {
   await noOverflow();
   await screenshot('desktop-typescript');
   const downloadEvent = page.waitForEvent('download');
-  await page.getByRole('link', { name: '第01章' }).click();
+  await page.getByRole('link', { name: '第1章' }).click();
   const download = await downloadEvent;
   assert.equal(download.suggestedFilename(), 'typescript-chapter-01.pdf');
   const downloadPath = resolve(folder, 'downloaded-synthetic-chapter-01.pdf');
