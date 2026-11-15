@@ -1,3 +1,8 @@
+HANDOFF 2026-11-15T12:10Z (after the 20:48 JST RESUME; Opus; no subagent running; nothing unpushed)
+- #93 (docs/35-decided-scope, head e5426d2909ca17cc57d6c458c08c289bd8d6fb79, Closes #35): READY-TO-LAND posted https://github.com/kouiso/course-library/pull/93#issuecomment-6894107053 . Reviews: 472b7bc FAIL -> fixed, 26060bc FAIL (must 2, add-a-product step) -> fixed in e5426d2 (docs/OPERATIONS.md:57, :96), e5426d2 PASS must 0 (https://github.com/kouiso/course-library/pull/93#issuecomment-6894088301). Local: check 98/0, test:browser 0, release:ready 0; evidence/93-e5426d2.png. The one thing it waits for: the manager's merge (the lane does not merge per the supervisor's order). After the merge: close #21 (parent of #35) with a reason if its criteria hold.
+- open threads on #93: only the 2 Taskapp threads, intentionally open for the owner.
+- #84 (handoff 2026-11-14), #85 (notes, draft): never merge, never close.
+
 HANDOFF 2026-11-15T10:43Z (DONE-FOR-NOW on the supervisor check, pass 3; Opus; no subagent running; nothing unpushed)
 - open pull requests and the one thing each waits for:
   - #93 (docs/35-decided-scope, head 26060bc, Closes #35): waits for ONE independent review at head 26060bc (the fix round answering the FAILED review is complete: LOCAL-CHECK 98/0 https://github.com/kouiso/course-library/pull/93#issuecomment-6892757954 ; the last review was stopped by the 10:12Z PAUSE before it posted). That review also judges the 3 CodeRabbit threads opened at 10:11Z on docs/OPERATIONS.md:57 (add-a-product step: local preview phrase only for redmine-clone, unknown-id tests use `taskapp`, one release-check test edits only the existing product's flag) — they concern adding a product, not #35's criterion. The 2 Taskapp threads are answered and intentionally open: they wait for the owner (ASK in needs owner). PASS -> GATE + merge at 26060bc, close #21 if its criteria hold. FAIL -> park #93/#35 with the findings (it is the last round).
@@ -30,7 +35,7 @@ HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subag
 - 課題 review band: ready (the lane's PR work is done except #93) — for the managing session to place.
 - not done, by rule: no manager audit yet (scene c); model note: lead and subagents ran on fable from 08:16Z by the owner's relayed order until this PAUSE.
 
-STATE DONE-FOR-NOW 2026-11-15T10:43Z | every open PR settled (merged, or the one thing it waits for named below) | no new work in this period (owner rule) | waits for: #93 one independent review
+STATE DONE-FOR-NOW 2026-11-15T12:10Z | #93 READY-TO-LAND at e5426d2 (final review PASS must 0), waits for the manager to merge | #84 #85 never merge
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
