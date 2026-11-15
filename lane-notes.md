@@ -145,6 +145,8 @@ CYCLE 2 T=2026-11-15T08:36Z | PRs 2 (#84 #85, never merge) | issues 9 (#21 #24 #
 CORRECTION 2026-11-15T08:40Z | #35 was parked as OWNER by the previous lane and carried over by this lane. It is not: its two dependencies are closed and the owner answered all four points on #34 on 2026-11-14 (https://github.com/kouiso/course-library/issues/34#issuecomment-6877495479). #35 moved to agent work; #21 (parent) closes after it. Cause: the sort trusted the handoff line instead of reading the dependency issue. Check added: before parking an item as OWNER, read the comments of every issue it names as its decision.
 MEMBER 2026-11-15T08:40Z fable implementer: #35 docs to the decided scope + product distribution procedure in OPERATIONS (branch docs/35-decided-scope)
 
+93 | review | fable implementer: #35 docs to the decided scope (#34 answers), OPERATIONS section "Distribute a paid product", manifest comments, test/browser-check wording; Closes #35 | 472b7bc | local 98/0, test:browser pass | evidence/35-472b7bc.png | fresh fable reviewer running; CodeRabbit reviewing
+
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
 - #47 | Show products the visitor does not own in the library? (A) hide (B) show with a link to the sales page (needs the URL) | default: current (shown, no link)
@@ -154,6 +156,8 @@ MEMBER 2026-11-15T08:40Z fable implementer: #35 docs to the decided scope + prod
 - (8) buyer-only library still shows the survey section label, locked gift meta line, gift footer version — same question as #42 #43
 - #27 option: extend the 600 s entry token? default: no
 - ASK (from #92 review) | Removing the product phrase setting leaves product sessions opened earlier able to download until their 4-hour expiry, while a malformed value closes them at once. Should an unset setting also close existing product sessions? yes/no/don't know | read: src/index.ts misconfiguredProducts (skips empty values), PR #92 review | the code is consistent either way; it is a distribution-stop policy | on "don't know": unchanged (documented in SETUP by #92)
+- ASK (from #93) | Decision (2) on #34 says Taskapp is listed as a paid product. Is Taskapp the same product as the manifest's `redmine-clone`? yes/no/don't know | read: issue #34 comment 6877495479, git log of the commits that added the product, README, docs, src/manifest.ts | none of them links the two names | on "don't know": docs speak of "paid products for buyers (currently redmine-clone)" and do not mention Taskapp (state after #93); if "no", adding Taskapp needs its own manifest entry and materials (owner-only)
+- owner-only facts (from #93) | two statements about the real production state were left untouched because the repository cannot show what is deployed: docs/SECURITY.md last line ("No real material ... or deployment has been performed by the prototype") and README ("Production Cloudflare is verified for the synthetic build only"). Are they still true? yes/no | default: unchanged
 - any approval flag change, any deploy: owner only
 
 ## for main session
