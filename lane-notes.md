@@ -94,6 +94,8 @@ DECIDED | #80 keeps the "rename to redmine-clone.zip" sentence | reason: commit 
 follow-ups (from #79/#80 reviews): (9) product guidance copy is hardcoded for redmine-clone -> move to manifest when a 2nd ZIP product exists | (10) release-meta still grey (nit)
 MEMBER 2026-11-15T07:20Z opus implementer: design conformance PR over the 12 boards (branch fix/design-conformance); not-in-design elements kept and listed
 
+READ 2026-11-15T07:25Z origin/handoff/ritmo-hearing-20261115 (c230c41, doc/handoff/ritmo-hearing-20261115.md): record of the other account's lane; no work this lane lacks (its next steps 1-5 are landed or in work here); no wip/*-ritmo-20261115 branch exists. Rule: never push/rebase/merge/close those branches.
+
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
 - #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
