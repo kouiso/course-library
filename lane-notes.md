@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T01:16Z | counts pending
+STATE RUNNING 2026-11-15T01:40Z | PAUSED by managing session | merged 3 (#81 #68 #72) + #64 carried | closed issues 3 (#73 #82 #39) | open PRs 7 workable (#74-#80)
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, night order) | advisor unknown | github via connector | push via git (testing) | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -33,6 +33,16 @@ MEMBER done 2026-11-15T01:32Z | tools/design-compare.cjs on notes branch (12 boa
 design baseline, default 28c4c27 vs design (for the conformance PR): global line-height 1.8 makes header, inputs, buttons, download rows taller on every screen (Library 1651px vs 1100, Course 2221 vs 1905); Library: badge/button copy, extra paid-product section and close button; Course: "第01章" vs "第1章", "練習問題 NN" vs "問題 NN" (mobile), bundle label, extra verification paragraph; footer version 0.2.2-synthetic vs 0.2.x; mobile footer bookmark note. Screens with no board: /guide, /status, locked course (403), paid product page, message pages (401/403/404/421/429), config-error 503, 404 preparing.
 design check #74-#77: diff.md identical to default on all 12 boards for each head (evidence/design-74-91bc5eb, -75-cb3be3d, -76-f49e6e5, -77-1c0641d)
 DECIDED | one freshly spawned reviewer returns four separate REVIEW records for the stacked #74-#77 | reason: one-subagent cap and cost; each PR still gets its own record against its own diff and head | revert: one reviewer per PR
+HOUR 2026-11-15T01:40Z | merged 3 | closed 3 | fixed 0 | blocked: PAUSE (allowance guard); #74-#77 reviewed PASS, not yet posted or merged
+HANDOFF 2026-11-15T01:40Z (PAUSE from managing session)
+- next item: #74. Its REVIEW text (PASS, must 0) is in reviews/74-77.md on this branch together with #75 #76 #77 (all PASS, must 0). Per PR, in order 74 -> 75 -> 76 -> 77: post REVIEW (word for word), LOCAL-CHECK with evidence/<pr>-<sha>.png plus design link evidence/design-<pr>-<sha>/, GATE, merge (merge commit, expected head). #74 is already retargeted to default; retarget #75 #76 #77 to default after the one below lands (heads already contain the layer below, no new commit needed).
+  heads: #74 91bc5eb (80/0) | #75 cb3be3d (81/0) | #76 f49e6e5 (82/0) | #77 1c0641d (82/0); all pushed
+- then stack 2: #78 needs rework by an implementer (manager: keep the design copy on entry and footer, land only product-holder wording and per-course footer version; merge fix/45 top / default into it, views.ts conflicts), then #79, #80; run tools/design-compare.cjs on each head
+- then: design conformance PR over all 12 boards (baseline evidence/design-default-28c4c27/diff.md; fold #58), #30 test:browser, follow-ups 1,3,2,4 and review follow-ups 5-7 above, close parent stories fully met (#22 #27 #28 #29 #32 #45 #48 #49 #50 #56 to verify)
+- open queues: LAND 4 (#74-#77, reviewed) | FIX 1 (#78) | FINISH 2 (#79 #80) | issues 24 open, unsorted
+- owner list: see needs owner | device: none
+- members still running: none (manager agent id a5da30e4e548e559a may not survive; decisions are above)
+- container worktrees: /workspace/w74..w78, /workspace/wcmp, /workspace/notes; nothing unpushed
 
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
