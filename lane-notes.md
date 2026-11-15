@@ -1,6 +1,6 @@
 STATE RUNNING 2026-11-15T08:18Z | merged today 17 (#81 #68 #72 #74-#80 #86-#91) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: docs product phrase PR (last agent item)
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
-model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
+model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
 repo rules read: README, docs/, .githooks/pre-push (npm run scan:public), .github/workflows (all manual), no CLAUDE.md/AGENTS.md, no PR template; stricter ones: public-content rules (.github/public-content-rules.json)
 DEPLOY | merge to codex/initial-implementation -> nothing | evidence .github/workflows/verify.yml:3 (workflow_dispatch only; deploy job needs inputs.deploy) + check runs on merged head 41bcc71 show only CodeRabbit (no hosting-platform build check)
@@ -134,6 +134,8 @@ remaining after it: (15) ACCESS_PHRASE_SHA256_REDMINE_CLONE missing from SETUP t
 DECIDED | sessions with no gift level (pre-level cookies, expire within 4 h) get no new copy | reason: transient; new copy is a product call with no source | revert: add a sentence on the learning page
 MEMBER 2026-11-15T08:18Z opus implementer: follow-up (15) docs SETUP product phrase setting (branch docs/product-phrase-setting)
 HOUR 2026-11-15T08:18Z | merged 5 since 07:42 (#87 #88 #89 #90 #91) | closed 1 issue (#23 via #87) | fixed 0 | blocked: none | skipped (-ux): 0 | remaining nits (no action): SETUP rules untested (malformed matches nobody / highest level wins), browser-position checks, release-meta grey
+
+MODEL 2026-11-15T08:16Z | lead switched to fable; subagents spawned from now use model fable (one alive at a time unchanged). The docs implementer already running was started on opus before the order and is left to finish.
 
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
