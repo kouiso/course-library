@@ -1,6 +1,6 @@
-STATE RUNNING 2026-11-15T01:40Z | PAUSED by managing session | merged 3 (#81 #68 #72) + #64 carried | closed issues 3 (#73 #82 #39) | open PRs 7 workable (#74-#80)
+STATE RUNNING 2026-11-15T05:16Z | merged today 7 (#81 #68 #72 #74 #75 #76 #77) | open PRs workable 3 (#78 FIX, #79 #80 FINISH) | open issues 19
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
-model fable (lead, night order) | advisor unknown | github via connector | push via git (testing) | png ok
+model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
 repo rules read: README, docs/, .githooks/pre-push (npm run scan:public), .github/workflows (all manual), no CLAUDE.md/AGENTS.md, no PR template; stricter ones: public-content rules (.github/public-content-rules.json)
 DEPLOY | merge to codex/initial-implementation -> nothing | evidence .github/workflows/verify.yml:3 (workflow_dispatch only; deploy job needs inputs.deploy) + check runs on merged head 41bcc71 show only CodeRabbit (no hosting-platform build check)
@@ -58,6 +58,17 @@ HANDOFF 2026-11-15 (cleanup hearing; lane handed to the personal-account manager
   #84 handoff PR of the previous lane, #85 notes PR: never merge or close
 - planned next after the PRs: design conformance PR over the 12 boards, #30, follow-ups 1-7, closing parent stories that are fully met (list above)
 - could not be pushed: nothing
+
+MOVED to personal account 2026-11-15T05:05Z
+START 2026-11-15T05:05Z | lead opus | one subagent at a time | handoff: HANDOFF 01:40Z above, next #74
+worktree /home/user/course-library claude/course-library-cloud-messaging-exayv3 clean | /home/user/notes notes/course-library clean
+
+74 | LAND | CodeRabbit valid finding (duplicate/empty login cookie -> 200) fixed by lead + test + notice-template copy; fresh opus review PASS | 749ca6c | local 80/0 | https://github.com/kouiso/course-library/pull/74#issuecomment-6889558471 | merged e95176f
+75 | LAND | base merged, base-only REVIEW line, retargeted | c50733f | local 81/0 | https://github.com/kouiso/course-library/pull/75#issuecomment-6889615021 | merged a0a7fb0
+76 | LAND | same | 7692b5d | local 82/0 | https://github.com/kouiso/course-library/pull/76#issuecomment-6889615477 | merged 3555339
+77 | LAND | same | f6937ec | local 82/0 | https://github.com/kouiso/course-library/pull/77#issuecomment-6889615930 | merged 37e0d30 (issues #48 #49 #29 #45 closed by merge)
+DECIDED | lead fixed the 3-line CodeRabbit finding on #74 itself, then a fresh opus reviewer reviewed the whole PR | reason: one-subagent cap; one implementer round costs more than the fix | revert: hand such fixes to an opus implementer
+queues 05:16Z: LAND 4->0 | FIX 1 (#78) | FINISH 2 (#79 #80) | next: #78 rework by opus implementer
 
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
