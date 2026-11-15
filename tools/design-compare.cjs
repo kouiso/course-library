@@ -35,7 +35,7 @@ const SCREENS = {
   Logout: { route: 'POST /logout -> /closed', states: ['logout'] },
   LogoutMobile: { route: 'POST /logout -> /closed', states: ['logout'] },
 };
-const PROPS = ['font-size', 'font-weight', 'color', 'background-color', 'padding', 'border-radius'];
+const PROPS = ['font-size', 'font-weight', 'line-height', 'color', 'background-color', 'padding', 'border-radius'];
 
 const freePort = () => new Promise((res, rej) => { const s = net.createServer(); s.on('error', rej); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
 const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
@@ -107,7 +107,15 @@ const short = t => (t.length > 70 ? t.slice(0, 69) + '…' : t);
 function diffSection(name, board, spec, d, appSides) {
   const appItems = appSides.flatMap(s => s.items);
   const ops = lcsDiff(d.items, appItems), lines = [], style = new Map();
-  for (const [op, x, y] of ops) {
+  const join = list => list.map(o => (o[1] || o[2]).t).join('').replace(/\s+/g, '');
+  for (let k = 0; k < ops.length; k++) {
+    const [op, x, y] = ops[k];
+    if (op !== '=') {
+      // A run of design-only then app-only nodes with the same joined text is a markup split (<br>, <span>), not a copy change.
+      let e = k; while (e < ops.length && ops[e][0] === '-') e++;
+      let f = e; while (f < ops.length && ops[f][0] === '+') f++;
+      if (e > k && f > e && join(ops.slice(k, e)) === join(ops.slice(e, f))) { lines.push(`- same text, split differently: \`${short(join(ops.slice(k, e)))}\` (design ${e - k} node(s), app ${f - e})`); k = f - 1; continue; }
+    }
     if (op === '-') lines.push(`- design only: \`${short(x.t)}\` (${x.tag})`);
     else if (op === '+') lines.push(`- app only: \`${short(y.t)}\` (${y.tag})`);
     else for (const p of PROPS) if (x.s[p] !== y.s[p]) { const k = `\`${short(x.t)}\` ${p}: ${x.s[p]} → ${y.s[p]}`; style.set(k, (style.get(k) || 0) + 1); }
@@ -199,7 +207,8 @@ async function main() {
     const report = [`# Design vs. app — ${commit}`, '', `- app: \`${commit}\` (${app}), synthetic local runtime on ${origin}`, `- design: ${canvas.title} (${boards.length} boards)`, `- captured: ${stamp} (UTC), Chromium ${browser.version()}, deviceScaleFactor 1, viewport = board w × board h, full page`,
       '- method: visible text nodes in document order, LCS-aligned; styles compared only for matched text (background = nearest non-transparent ancestor).',
       '- the LoginStates "sending" state is reproduced by letting the app\'s own submit handler run and cancelling navigation; the real request is not held.',
-      '- local fixture effects (synthetic notice, "ダミー教材を見る", version `0.2.2-synthetic`/manifest version vs. board `0.2.x`) are expected local differences, not design gaps.', ''];
+      '- local-only: the yellow synthetic notice and the "ダミー教材を見る" label are gated on the release being synthetic / local mode; the version, badge, material titles and verification text come from src/manifest.ts on this commit and are real.',
+      '- form controls carry no text nodes; their size differences show only in the images and via line-height of the button label.', ''];
     for (const board of boards) {
       const spec = SCREENS[board.name];
       const ctxOpts = { viewport: { width: board.w, height: board.h }, deviceScaleFactor: 1, locale: 'ja-JP', reducedMotion: 'reduce' };
@@ -247,7 +256,7 @@ async function compose(browser, file, board, d, dShot, appShots, caption) {
   const img = b => `data:image/png;base64,${b.toString('base64')}`;
   const col = (label, png) => `<div class="col"><div class="lbl">${label}</div><img src="${img(png)}"></div>`;
   await page.setContent(`<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#888;font:15px/1.4 system-ui,sans-serif}
-    .cap{background:#111;color:#fff;padding:10px 16px;white-space:nowrap}.row{display:flex;gap:24px;padding:16px;align-items:flex-start;width:max-content}
+    .cap{background:#111;color:#fff;padding:10px 16px;white-space:nowrap;width:max-content;min-width:100%;box-sizing:border-box}.row{display:flex;gap:24px;padding:16px;align-items:flex-start;width:max-content}
     .col{display:flex;flex-direction:column;gap:6px}.stack{display:flex;flex-direction:column;gap:16px}.lbl{color:#fff;font-weight:700}img{display:block;background:#fff}</style>
     <div class="cap">${caption.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>
     <div class="row">${col(`DESIGN ${board.name} (${board.w}×${board.h}${d.height > board.h ? `, content overflows to ${d.height}px` : ''})`, dShot)}<div class="stack">${appShots.map(s => col(`APP ${s.state} ${s.url}`, s.png)).join('')}</div></div>`);

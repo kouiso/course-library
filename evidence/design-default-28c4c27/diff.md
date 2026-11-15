@@ -1,11 +1,12 @@
 # Design vs. app — 28c4c27
 
-- app: `28c4c27` (/workspace/wcmp), synthetic local runtime on http://127.0.0.1:37481
+- app: `28c4c27` (/workspace/wcmp), synthetic local runtime on http://127.0.0.1:33591
 - design: Course Library 画面デザイン (12 boards)
-- captured: 2026-11-15T01:29:33Z (UTC), Chromium 153.0.8010.12, deviceScaleFactor 1, viewport = board w × board h, full page
+- captured: 2026-11-15T01:31:43Z (UTC), Chromium 153.0.8010.12, deviceScaleFactor 1, viewport = board w × board h, full page
 - method: visible text nodes in document order, LCS-aligned; styles compared only for matched text (background = nearest non-transparent ancestor).
 - the LoginStates "sending" state is reproduced by letting the app's own submit handler run and cancelling navigation; the real request is not held.
-- local fixture effects (synthetic notice, "ダミー教材を見る", version `0.2.2-synthetic`/manifest version vs. board `0.2.x`) are expected local differences, not design gaps.
+- local-only: the yellow synthetic notice and the "ダミー教材を見る" label are gated on the release being synthetic / local mode; the version, badge, material titles and verification text come from src/manifest.ts on this commit and are real.
+- form controls carry no text nodes; their size differences show only in the images and via line-height of the button label.
 
 ## Main — 入口（PC 1440）
 
@@ -20,7 +21,14 @@
 
 ### Style of matched text (design → app)
 
+- `COURSE LIBRARY` line-height: normal → 28.8px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `A GIFT FOR SURVEY RESPONDENTS` line-height: normal → 21.6px
 - `REPEAT.` font-weight: 800 → 900
+- `TypeScript教材を受け取る` line-height: normal → 37.8px
+- `アクセス用の合言葉` line-height: normal → 27px
+- `教材ページを開く` line-height: normal → 28.8px
+- `→` line-height: normal → 28.8px
 
 ## EntryMobile — 入口（スマホ 390）
 
@@ -30,15 +38,19 @@
 
 ### Text (design order)
 
-- design only: `アンケートへのご協力、ありがとうございます。回答後のご案内に記載された合言葉を入力してください。` (p)
-- app only: `アンケートへのご協力、ありがとうございます。` (p)
-- app only: `回答後のご案内に記載された合言葉を入力してください。` (p)
+- same text, split differently: `アンケートへのご協力、ありがとうございます。回答後のご案内に記載された合言葉を入力してください。` (design 1 node(s), app 2)
 - design only: `教材ライブラリ · 0.2.x` (footer)
 - app only: `教材ライブラリ · 0.2.2-synthetic` (footer)
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 27px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `A GIFT FOR SURVEY RESPONDENTS` line-height: normal → 19.8px
+- `TypeScript教材を受け取る` line-height: normal → 34.2px
+- `アクセス用の合言葉` line-height: normal → 27px
+- `教材ページを開く` line-height: normal → 28.8px
+- `→` line-height: normal → 28.8px
 
 ## LoginStates — 合言葉の入力：誤入力・送信中（PC）
 
@@ -52,7 +64,11 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `TypeScript教材を受け取る` line-height: normal → 37.8px (×2)
+- `アクセス用の合言葉` line-height: normal → 27px (×2)
+- `教材ページを開く` line-height: normal → 28.8px
+- `→` line-height: normal → 28.8px
+- `確認しています…` line-height: normal → 28.8px
 
 ## LoginStatesMobile — 合言葉の入力：誤入力・送信中（スマホ）
 
@@ -66,7 +82,11 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `TypeScript教材を受け取る` line-height: normal → 34.2px (×2)
+- `アクセス用の合言葉` line-height: normal → 27px (×2)
+- `教材ページを開く` line-height: normal → 28.8px
+- `→` line-height: normal → 28.8px
+- `確認しています…` line-height: normal → 28.8px
 
 ## Library — 教材の一覧（PC）
 
@@ -103,7 +123,18 @@
 
 ### Style of matched text (design → app)
 
+- `COURSE LIBRARY` line-height: normal → 28.8px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `THANK YOU FOR YOUR FEEDBACK` line-height: normal → 21.6px
 - `REPEAT.` font-weight: 800 → 900
+- `ONE STEP AT A TIME` line-height: normal → 18px
+- `一歩ずつ、自分のペースで。` line-height: normal → 23.4px
+- `回答者限定プレゼント` line-height: normal → 37.8px
+- `SURVEY GIFT` line-height: normal → 21.6px
+- `THANK-YOU GIFT` line-height: normal → 19.8px
+- `TS` line-height: normal → 28.8px
+- `TypeScript教材` line-height: normal → 43.2px
+- `↗` line-height: normal → 28.8px
 
 ## LibraryMobile — 教材の一覧（スマホ）
 
@@ -113,9 +144,7 @@
 
 ### Text (design order)
 
-- design only: `アンケートにお答えいただいた方へ。TypeScript教材を無料プレゼントとしてお届けします。` (p)
-- app only: `アンケートにお答えいただいた方へ。` (p)
-- app only: `TypeScript教材を無料プレゼントとしてお届けします。` (p)
+- same text, split differently: `アンケートにお答えいただいた方へ。TypeScript教材を無料プレゼントとしてお届けします。` (design 1 node(s), app 2)
 - design only: `受け取れます` (span)
 - app only: `開発プレビュー` (span)
 - design only: `教材を受け取る` (a)
@@ -140,7 +169,18 @@
 
 ### Style of matched text (design → app)
 
+- `COURSE LIBRARY` line-height: normal → 27px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `THANK YOU FOR YOUR FEEDBACK` line-height: normal → 19.8px
 - `REPEAT.` font-weight: 800 → 900
+- `ONE STEP AT A TIME` line-height: normal → 16.2px
+- `回答者限定プレゼント` line-height: normal → 34.2px
+- `SURVEY GIFT` line-height: normal → 19.8px
+- `THANK-YOU GIFT` line-height: normal → 18px
+- `TS` line-height: normal → 28.8px
+- `TypeScript教材` line-height: normal → 36px
+- `学習の進め方 / 本編 10章 / 練習問題 9本` line-height: normal → 23.4px
+- `↗` line-height: normal → 28.8px
 
 ## Course — 学習案内（PC）
 
@@ -169,9 +209,7 @@
 - app only: `第08章` (span)
 - design only: `第9章` (a)
 - app only: `第09章` (span)
-- design only: `学んだ内容を手を動かして確かめましょう。第9章には練習問題がありません。` (p)
-- app only: `学んだ内容を手を動かして確かめましょう。` (span)
-- app only: `第9章には練習問題がありません。` (p)
+- same text, split differently: `学んだ内容を手を動かして確かめましょう。第9章には練習問題がありません。` (design 1 node(s), app 2)
 - design only: `教材をまとめて保存` (a)
 - app only: `ダミー教材をまとめて保存` (span)
 - app only: `MacのローカルWorkerとChromiumで配布機能を検証しています。 この画面の教材はダミーです。実教材と配布版は未検証です。 Wi…` (p)
@@ -180,7 +218,36 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 28.8px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `← プレゼント一覧へ` line-height: normal → 25.2px
+- `YOUR TYPESCRIPT LEARNING GIFT` line-height: normal → 21.6px
+- `01` line-height: normal → 25.2px
+- `まずは学習の進め方から` line-height: normal → 37.8px
+- `教材の読み方と進め方を確認しましょう。` line-height: normal → 30.4px
+- `学習の進め方` line-height: normal → 28.8px
+- `PDF` line-height: normal → 24px (×20)
+- `保存と閲覧の手順を見る →` line-height: normal → 27px
+- `02` line-height: normal → 25.2px
+- `本編 10章` line-height: normal → 37.8px
+- `必要な章を1つずつ保存できます。` line-height: normal → 30.4px
+- `第10章` line-height: normal → 28.8px
+- `03` line-height: normal → 25.2px
+- `練習問題 9本` line-height: normal → 37.8px
+- `練習問題 01` line-height: normal → 28.8px
+- `練習問題 02` line-height: normal → 28.8px
+- `練習問題 03` line-height: normal → 28.8px
+- `練習問題 04` line-height: normal → 28.8px
+- `練習問題 05` line-height: normal → 28.8px
+- `練習問題 06` line-height: normal → 28.8px
+- `練習問題 07` line-height: normal → 28.8px
+- `練習問題 08` line-height: normal → 28.8px
+- `練習問題 10` line-height: normal → 28.8px
+- `まとめて手元に` line-height: normal → 37.8px
+- `ZIP` line-height: normal → 24px
+- `ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。` line-height: normal → 23.4px
+- `教材ページを閉じる` line-height: normal → 28.8px
+- `アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。` line-height: normal → 23.4px
 
 ## CourseMobile — 学習案内（スマホ）
 
@@ -239,7 +306,24 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 27px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `← プレゼント一覧へ` line-height: normal → 25.2px
+- `YOUR TYPESCRIPT LEARNING GIFT` line-height: normal → 19.8px
+- `01` line-height: normal → 23.4px
+- `まずは学習の進め方から` line-height: normal → 34.2px
+- `学習の進め方` line-height: normal → 28.8px
+- `PDF` line-height: normal → 24px (×20)
+- `保存と閲覧の手順を見る →` line-height: normal → 27px
+- `02` line-height: normal → 23.4px
+- `本編 10章` line-height: normal → 34.2px
+- `第10章` line-height: normal → 28.8px
+- `03` line-height: normal → 23.4px
+- `練習問題 9本` line-height: normal → 34.2px
+- `第9章には練習問題がありません。` line-height: normal → 25.2px
+- `まとめて手元に` line-height: normal → 34.2px
+- `ZIP` line-height: normal → 24px
+- `教材ページを閉じる` line-height: normal → 28.8px
 
 ## Preparing — 準備中 503（PC）
 
@@ -254,7 +338,11 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 28.8px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `GETTING READY` line-height: normal → 21.6px
+- `教材ページに戻る` line-height: normal → 28.8px
+- `しばらくたっても変わらない場合は、配布時のご案内にある連絡先へお知らせください。` line-height: normal → 23.4px
 
 ## PreparingMobile — 準備中 503（スマホ）
 
@@ -269,7 +357,10 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 27px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `GETTING READY` line-height: normal → 19.8px
+- `教材ページに戻る` line-height: normal → 28.8px
 
 ## Logout — ログアウト後（PC）
 
@@ -284,7 +375,10 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 28.8px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `SEE YOU AGAIN` line-height: normal → 21.6px
+- `入口へ戻る` line-height: normal → 28.8px
 
 ## LogoutMobile — ログアウト後（スマホ）
 
@@ -299,4 +393,7 @@
 
 ### Style of matched text (design → app)
 
-- none
+- `COURSE LIBRARY` line-height: normal → 27px
+- `アンケート回答者限定` line-height: normal → 21.6px
+- `SEE YOU AGAIN` line-height: normal → 19.8px
+- `入口へ戻る` line-height: normal → 28.8px
