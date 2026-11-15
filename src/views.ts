@@ -102,7 +102,7 @@ export const js = `for(const form of document.querySelectorAll('form')){form.add
 // Values follow the reviewed design boards (PC 1440 / mobile 390). No external fonts or images.
 export const css = `:root{color-scheme:light;--paper:#f4f6f1;--ink:#1f3341;--muted:#536875;--line:#d9e3e4;--accent:#11675d;--accent-dark:#0b4a43;--pale:#c9d8cf;--field:#82969c;--error:#9b231f;--error-bg:#fbeaea;--busy:#4d7f78}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/1.8 system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:16px/normal system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
 a{color:var(--accent)}a:hover{color:var(--accent-dark)}
 a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #c07424;outline-offset:4px}
 header{background:#fff;border-bottom:1px solid var(--line);padding:22px 72px;display:flex;align-items:baseline;gap:14px}
@@ -125,8 +125,8 @@ p{margin:0}
 .entry-copy{display:flex;flex-direction:column;gap:20px}
 .shelf{margin-top:28px;display:flex;align-items:flex-end;gap:10px;height:180px}
 .shelf .spine.ink{width:46px;height:150px}.shelf .spine.forest{width:38px;height:170px}.shelf .spine.pale{width:52px;height:132px}
-.shelf-book{width:120px;height:160px;background:#fff;border:1px solid var(--line);border-radius:6px 14px 14px 6px;box-shadow:inset 10px 0 0 var(--accent);display:flex;flex-direction:column;justify-content:center;padding-left:26px;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.5}
-.shelf-book b,.cover-book b{color:var(--accent)}
+.shelf-book{width:148px;height:162px;background:#fff;border:1px solid var(--line);border-radius:6px 14px 14px 6px;box-shadow:inset 10px 0 0 var(--accent);display:flex;flex-direction:column;justify-content:center;padding-left:26px;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.5}
+.shelf-book b,.cover-book b{color:var(--accent);font-weight:inherit}
 .login-card{padding:40px;gap:0}
 .login-card h2{margin:0 0 10px}
 .login-card form{display:flex;flex-direction:column}
@@ -135,9 +135,9 @@ label{font-weight:600;margin-top:12px;font-size:15px}
 .error+form label{margin-top:14px}
 input[type=password]{margin-top:8px;padding:14px;border:1px solid var(--field);border-radius:8px;font:inherit;font-size:16px;width:100%}
 input[aria-invalid=true]{border:2px solid var(--error)}
-button{margin-top:22px;padding:15px 20px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-size:16px;font-weight:700;display:flex;justify-content:space-between;align-items:center;cursor:pointer;width:100%}
-button:disabled{background:var(--busy);cursor:wait}
-.spinner{width:18px;height:18px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
+button{margin-top:22px;padding:15px 20px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-size:16px;font-weight:700;display:flex;justify-content:space-between;cursor:pointer;width:100%}
+button:disabled{background:var(--busy);cursor:wait;align-items:center}
+.spinner{width:24px;height:24px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .form-note{margin-top:18px}.busy-note{display:none;margin-top:18px}
 form[aria-busy=true] .form-note{display:none}form[aria-busy=true] .busy-note{display:block}
@@ -154,10 +154,10 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .library-label{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
 .library-label span{font-size:12px;letter-spacing:.16em;color:var(--muted)}
 .course-card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}
-.course-cover{background:var(--accent);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:260px}
+.course-cover{background:var(--accent);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:320px}
 .cover-title{display:contents}.cover-title span{font-size:11px;letter-spacing:.18em}
 .course-cover strong{font-size:26px;line-height:1.4}
-.cover-mark{align-self:flex-end;width:56px;height:56px;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.cover-mark{align-self:flex-end;width:60px;height:60px;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800}
 .course-body{grid-column:span 2;padding:34px 40px;display:flex;flex-direction:column;gap:12px}
 .badge{align-self:flex-start;padding:4px 12px;border-radius:999px;background:#e3f0ea;color:var(--accent-dark);font-size:12px;font-weight:700}
 .course-body h2{font-size:24px}
@@ -168,10 +168,13 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .version{font-size:11px;color:var(--muted)}
 .course{width:min(920px,100% - 48px);margin:0 auto;padding:56px 0;display:flex;flex-direction:column;gap:24px}
 .course h1{font-size:44px;letter-spacing:0}
+.course li,.course .card>p{line-height:1.8}
+.course .card .lead,.course .card .muted,.logout .muted{line-height:normal}
+.bundle-card{gap:10px}
 .breadcrumb{font-size:14px;align-self:flex-start}
-.notice{padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}
+.notice{line-height:1.8;padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}
 .section-title{display:flex;align-items:baseline;gap:16px}.section-title b{color:var(--accent);font-size:14px}
-.download{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
+.download{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
 .download:hover{background:#eaf5ed}
 .download small{white-space:nowrap;color:var(--muted)}
 .download.bundle{background:#edf5eb}
@@ -182,33 +185,40 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .logout .secondary:disabled{color:var(--busy);border-color:var(--busy)}
 .logout .secondary .spinner{display:none}
 .status{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:56px}
-.status .breadcrumb{width:min(600px,100%);margin-bottom:16px}
-.status-card{width:min(600px,100%);padding:44px;gap:16px}
+.status .breadcrumb{width:min(690px,100%);margin-bottom:16px}
+.status-card{width:min(690px,100%);padding:44px;gap:16px}
 .status-card h1{font-size:30px;letter-spacing:0}
+.status-card .muted{margin-top:6px;line-height:normal}
 .waiting{display:flex;align-items:flex-end;gap:8px;height:72px}
 .waiting .spine{border-radius:3px}.waiting .ink{width:22px;height:64px}.waiting .forest{width:18px;height:72px}.waiting .dashed{width:22px;height:56px}
 ol,ul{margin:0;padding-left:22px}li{margin:10px 0}
 .release-meta{margin:12px 0 0;color:var(--muted)}
+@media(min-width:721px){
+.narrow-only{display:none}
+.login-card:not(:has(.error,form[aria-busy=true])),.login-card:not(:has(.error,form[aria-busy=true])) form{gap:4px}
+}
 @media(max-width:720px){
 header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:2px}
 .brand{font-size:15px}
 footer{padding:20px 18px}
-.note-long,.wide,.wide-only{display:none}.note-short{display:inline}
+main.status+footer{line-height:normal}
+main.course+footer br,main.course+footer .note-short{display:none}
+.note-long,.wide-only{display:none}.note-short{display:inline}
 h1,.library h1,.course h1{font-size:30px;letter-spacing:0}
 h2{font-size:19px}
 .eyebrow{font-size:11px;letter-spacing:.16em}
 .lead{font-size:15px;line-height:1.8}
 .card{border-radius:14px;padding:22px 18px;gap:10px}
 .button,.course-action{align-self:stretch;min-height:52px;padding:14px 18px;display:flex;justify-content:center;align-items:center}
-.course-action{justify-content:space-between}
+.course-action{justify-content:space-between;margin-top:8px}
 .entry{display:flex;flex-direction:column;gap:14px;align-items:stretch;width:100%;padding:32px 18px}
 .entry-copy{gap:14px}
 .shelf{display:none}
-.login-card{margin-top:10px;padding:22px 18px}
+.login-card{margin-top:10px;padding:22px 18px;gap:0}
 .login-card h2{margin-bottom:6px}
 .error{font-size:14px;padding:12px}
 .error+form label{margin-top:12px}
-button{margin-top:18px;min-height:52px;padding:14px 18px}
+button{margin-top:18px;min-height:52px;padding:14px 18px;align-items:center}
 .form-note,.busy-note{margin-top:14px}
 .library{width:100%;padding:32px 18px;gap:16px}
 .catalogue-hero{display:flex;flex-direction:column;gap:16px;align-items:stretch}
@@ -219,17 +229,18 @@ button{margin-top:18px;min-height:52px;padding:14px 18px}
 .art-tag{display:none}
 .library-label{padding-bottom:10px}.library-label span{font-size:11px;letter-spacing:.14em}
 .course-card{display:flex;flex-direction:column;border-radius:14px}
-.course-cover{flex-direction:row;align-items:flex-end;min-height:150px;padding:22px}
+.course-cover{flex-direction:row;align-items:flex-end;min-height:194px;padding:22px}
 .cover-title{display:flex;flex-direction:column;gap:18px}.cover-title span{font-size:10px;letter-spacing:.16em}
 .course-cover{justify-content:space-between}
 .course-cover strong{font-size:22px}
-.cover-mark{width:46px;height:46px;border-radius:9px;align-self:auto;flex:none}
+.cover-mark{width:50px;height:50px;border-radius:9px;align-self:auto;flex:none}
 .course-body{padding:22px 18px;gap:10px}
 .course-body h2{font-size:20px}.course-body p{font-size:15px}.course-meta{font-size:13px}
 .course{width:100%;padding:28px 18px;gap:16px}
 .breadcrumb{min-height:44px;display:flex;align-items:center}
 .section-title{gap:12px}.section-title b{font-size:13px}
 .course .card .lead{font-size:14px}
+.course .card .muted,.logout .muted{line-height:1.8}
 .download{min-height:48px;padding:12px;align-items:center}
 .book-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .logout{margin-top:8px}
@@ -237,6 +248,8 @@ button{margin-top:18px;min-height:52px;padding:14px 18px}
 .status{display:block;padding:36px 18px}
 .status .breadcrumb{margin-bottom:8px}
 .status-card{padding:26px 20px;gap:14px}
+.status-card .button{margin-top:6px}
+.status-card .muted{margin-top:0;line-height:1.8}
 .status-card h1{font-size:24px}
 .waiting{gap:7px;height:60px}.waiting .ink{width:18px;height:52px}.waiting .forest{width:15px;height:60px}.waiting .dashed{width:18px;height:46px}
 }
