@@ -1,3 +1,11 @@
+HANDOFF 2026-11-15T10:43Z (DONE-FOR-NOW on the supervisor check, pass 3; Opus; no subagent running; nothing unpushed)
+- open pull requests and the one thing each waits for:
+  - #93 (docs/35-decided-scope, head 26060bc, Closes #35): waits for ONE independent review at head 26060bc (the fix round answering the FAILED review is complete: LOCAL-CHECK 98/0 https://github.com/kouiso/course-library/pull/93#issuecomment-6892757954 ; the last review was stopped by the 10:12Z PAUSE before it posted). That review also judges the 3 CodeRabbit threads opened at 10:11Z on docs/OPERATIONS.md:57 (add-a-product step: local preview phrase only for redmine-clone, unknown-id tests use `taskapp`, one release-check test edits only the existing product's flag) — they concern adding a product, not #35's criterion. The 2 Taskapp threads are answered and intentionally open: they wait for the owner (ASK in needs owner). PASS -> GATE + merge at 26060bc, close #21 if its criteria hold. FAIL -> park #93/#35 with the findings (it is the last round).
+  - #84 (handoff 2026-11-14) and #85 (notes, draft): never merge, never close (managing-session order); nothing to do.
+- merged in this lane today: 18 (#81 #68 #72 #74-#80 #86-#92), each with REVIEW, LOCAL-CHECK, evidence and GATE on the PR.
+- owner-waiting items: see "needs owner" (#42 #43 #46 #47 #55 #24 #25, Taskapp identity, production-state sentences, unset-setting sessions, product stop path).
+- not started by rule: no new issue, branch or feature in this period; new work goes to Horsemanager first.
+
 HANDOFF 2026-11-15T10:12Z (PAUSE from managing session; no subagent running; nothing unpushed; do not resume before a RESUME message)
 - done since RESUME: PR #93 fix round finished and pushed by an opus member: head 26060bc (0f4c1dc test escape + 26060bc docs). All 7 findings of the FAILED review (https://github.com/kouiso/course-library/pull/93#issuecomment-6891943126) answered; LOCAL-CHECK 98/0 with test:browser and release:ready exit 0: https://github.com/kouiso/course-library/pull/93#issuecomment-6892757954 ; evidence/35-26060bc.png; PR body matches 26060bc; CodeRabbit threads r4577718140 r4577718131 r4577718146 resolved, r4577718124 r4577718153 (Taskapp) answered and left open on purpose.
 - half done: the last independent review of #93 at 26060bc was stopped by this PAUSE before it posted anything (no REVIEW comment at 26060bc exists). Its temp worktree /tmp/rv93b may remain in the container; it holds no work.
@@ -22,7 +30,7 @@ HANDOFF 2026-11-15T08:57Z (PAUSE from managing session "side-personal"; no subag
 - 課題 review band: ready (the lane's PR work is done except #93) — for the managing session to place.
 - not done, by rule: no manager audit yet (scene c); model note: lead and subagents ran on fable from 08:16Z by the owner's relayed order until this PAUSE.
 
-STATE PAUSED 2026-11-15T10:12Z | PAUSE from managing session (allowance guard) | open work PR 1 (#93, fix round done, last review not finished) | waits for RESUME
+STATE DONE-FOR-NOW 2026-11-15T10:43Z | every open PR settled (merged, or the one thing it waits for named below) | no new work in this period (owner rule) | waits for: #93 one independent review
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model fable (lead, owner order relayed 2026-11-15: 「Opus使ってるところはfableチケット使いたいからfableに変えて。」; reviewers and implementers fable, mechanical steps sonnet) | advisor unknown | github via connector (gh token invalid) | push via git | png ok
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
