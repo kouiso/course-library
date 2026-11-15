@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
-import { seed, fixtures, version } from '../scripts/fixtures.mjs';
+import { seed, fixtures, version, productVersion } from '../scripts/fixtures.mjs';
 
 const origin = 'http://127.0.0.1:8813';
 const secret = 'synthetic-only-test-signing-key-000000000000000000000';
@@ -71,7 +71,7 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
   const bucket = await mf.getR2Bucket('MATERIALS');
-  await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES');
+  await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES');
   const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
   assert.equal(dl.status, 200);
   assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source.zip"');
@@ -88,7 +88,7 @@ test('production serves the paid product to product-phrase holders behind the Ba
   const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });
   try {
     const bucket = await instance.getR2Bucket('MATERIALS');
-    await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PROD PRODUCT BYTES');
+    await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PROD PRODUCT BYTES');
     const authHeaders = { Authorization: basicHeader };
     const entry = await instance.dispatchFetch(prodOrigin, { headers: authHeaders });
     const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
@@ -241,7 +241,7 @@ test('a malformed product phrase setting closes only that product as under confi
   for (const malformed of [digest(productPhrase).toUpperCase(), productPhrase, digest(productPhrase).slice(1)]) {
     const { instance, send, attempt } = await productPhraseCase(malformed);
     try {
-      await instance.getR2Bucket('MATERIALS').then(b => b.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES'));
+      await instance.getR2Bucket('MATERIALS').then(b => b.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES'));
       assert.equal((await send('/')).status, 200);
       const denied = await attempt(productPhrase);
       assert.equal(denied.status, 401);
@@ -468,4 +468,12 @@ test('zero-byte release objects return an authenticated no-store 503 without att
     const part = await req('/download/typescript/' + id, { headers: { Cookie: cookie, Range: 'bytes=0-9' } });
     assert.equal(part.status, 206, id); assert.deepEqual(Buffer.from(await part.arrayBuffer()), fixtures().get(name).subarray(0, 10));
   }
+});
+
+test('the local product fixture seeds the exact object prefix the manifest serves', async () => {
+  const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  assert.equal(productVersion, productRelease.version);
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  assert.ok(await bucket.head(`${productRelease.prefix}redmine-clone-source.zip`), 'seeded product object missing at the manifest prefix');
 });
