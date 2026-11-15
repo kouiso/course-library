@@ -16,18 +16,42 @@
 | --- | --- | --- |
 | アクセス用の合言葉 | サイトに入る。十分にランダムな128ビット以上の値を使う | 元の値は利用者の秘密管理先。SHA-256ダイジェストだけをWorkerの`ACCESS_PHRASE_SHA256`へ |
 | セッション署名鍵 | 有効期限付きCookieを署名する。32ランダムバイト以上 | Workerの`SESSION_SECRET`と利用者の秘密管理先 |
+| 外側のBasic認証のIDとパスワード | 本番でサイトの全ページの前に入力する | Workerの`BASIC_AUTH_USER`・`BASIC_AUTH_PASS`と利用者の秘密管理先 |
 | PDFの開封パスワード | 確認済みの同一配布版のPDFを開く | 利用者の秘密管理先と、別途承認された読者向け案内。WorkerやGitHubへ保存する必要はない |
 | PDFの所有者パスワード | 暗号化コピーの管理。開封用とは別のランダム値 | 利用者の秘密管理先のみ |
 | Cloudflareデプロイトークン（継続CDを別途許可した場合だけ） | 検証済みコードをGitHubから自動配布する | `kouiso/course-library`の`production`環境シークレット。初回の手動公開には新規トークンを前提としない |
 
 合言葉、PDF用パスワード、署名鍵、デプロイトークンは使い回しません。PDFの印刷やコピーは利用可能なままにします。
 
+## 本番に必須の設定値
+
+Workerは起動のたびに次の条件を確かめます（`src/index.ts`の`configured`）。1つでも欠けるか形が違うと、サイト全体が「ただいま準備中です」の503になり、原因は画面にもログにも出ません。表と`configured`の条件は1対1です。
+
+| 名前 | 種類と置き場所 | 本番の条件 |
+| --- | --- | --- |
+| `APP_ORIGIN` | `wrangler.jsonc`の`vars` | `https:`のオリジンだけ（末尾の`/`・パス・ID・パスワードを含めない。ホスト名が`.invalid`で終わる物は不可）。ローカルは`http://localhost`か`http://127.0.0.1` |
+| `APP_MODE` | `wrangler.jsonc`の`vars` | `production`と書く（`local`以外はすべて本番扱い）。`local`はローカルの確認だけ |
+| `SESSION_SECRET` | WorkerのSecret | 43文字以上（32ランダムバイト以上をbase64urlにした値） |
+| `ACCESS_PHRASE_SHA256` | WorkerのSecret | 合言葉のSHA-256ダイジェスト。**小文字の16進64文字**（大文字や空白・改行が入ると不一致） |
+| `BASIC_AUTH_USER` | WorkerのSecret | 本番だけ必須。外側のBasic認証のID（空でない） |
+| `BASIC_AUTH_PASS` | WorkerのSecret | 本番だけ必須。外側のBasic認証のパスワード（空でない） |
+| `MATERIALS` | `wrangler.jsonc`の`r2_buckets` | 教材の私有R2バケットのバインディング |
+| `LOGIN_IP_LIMIT`・`LOGIN_TOTAL_LIMIT` | `wrangler.jsonc`の`ratelimits` | 合言葉の入力回数の制限のバインディング |
+
+ダイジェストの作り方（合言葉はコマンドの引数や画面に出さず、改行なしで標準入力から渡します）:
+
+```sh
+printf %s "$PHRASE" | shasum -a 256 | cut -d' ' -f1
+```
+
+`$PHRASE`は、`read -rs PHRASE`のように画面にも履歴にも残さない方法で用意したシェル変数です。`shasum`が無い環境では`sha256sum`を使います。出力が小文字の16進64文字になっていることを確かめてから、Secretに入れます。
+
 ## 初回は既存接続で手動公開する
 
 既存のCloudflare接続は、Workerのアップロード・版作成・デプロイ、R2バケット作成・オブジェクトアップロードに対応するAPIを呼べます。APIの対応と実アカウントでの書き込み許可は別なので、変更による権限テストは行いません。初回公開のために新規の継続用APIトークンを先に作る必要はありません。
 
 1. 対象アカウント・新Worker・新しい私有R2を指定する。新しい権限や課金を発生させずに実行できること、契約と利用上限を先に確認する。既存接続で拒否された操作は、勝手に権限を増やさず報告する。
-2. アプリ用の秘密値の保存先を、対象WorkerのSecret型バインディング`ACCESS_PHRASE_SHA256`と`SESSION_SECRET`として確定する。合言葉の元の値や保管用コピーは、利用者が指定した既存の秘密管理先で扱う。
+2. アプリ用の秘密値の保存先を、対象WorkerのSecret型バインディング`ACCESS_PHRASE_SHA256`・`SESSION_SECRET`・`BASIC_AUTH_USER`・`BASIC_AUTH_PASS`として確定する（[本番に必須の設定値](#本番に必須の設定値)の表のSecret全部）。合言葉の元の値や保管用コピーは、利用者が指定した既存の秘密管理先で扱う。
 3. 秘密値の入力は、所有者がCloudflareの対象Workerの **Settings → Variables and Secrets → Add → Secret** へ直接入力する方法が公式に対応している。AIは変数名と対象を準備し、値はチャットで尋ねない。最後のDeployは配信開始を伴うため、その前に必要な確認を終える。
 4. ローカルの既存認証が別途確認できる場合は、非表示の対話入力や所有者だけが読める秘密ファイルによるWrangler入力も候補になる。既存コネクターにはローカル秘密ファイルを非表示のまま渡す入力欄が確認できていないため、その経路の全自動化は約束しない。実教材のローカルファイルからの大容量バイナリ転送も別途確認する。
 
@@ -53,4 +77,4 @@ PDF暗号化ツールは現在の公式版を使い、秘密値を引数に置�
 
 Sources: [API token permission scopes](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Worker roles](https://developers.cloudflare.com/workers/authorization/workers/), [binding permissions](https://developers.cloudflare.com/workers/authorization/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [GitHub environment secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [qpdf Job JSON](https://qpdf.readthedocs.io/en/stable/qpdf-job.html).
 
-本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。共有合言葉だけで回答者本人を個別確認する仕組みはありません。MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`が失敗する現在の状態は意図した停止です。
+本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。共有合言葉だけで回答者本人を個別確認する仕組みはありません。MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`は、ギフトも商品も1つも配れない状態のときだけ失敗（終了コード1）し、どちら側が止まっているかをメッセージに出します。配れない物は1行ずつ報告し、ほかに配れる物があれば成功（終了コード0）して、配れない物は本番で閉じたままである旨（`Note: … stay closed in production …`）を表示します。ギフトを承認済みにしたのに配れない状態（合成教材のまま・公開中でない等）は失敗します。

@@ -1,5 +1,7 @@
 // Small synthetic files only. Never import production materials into this script.
 import { crc32 } from 'node:zlib';
+import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
 export const version = '0.2.2-synthetic';
 export function pdf(label) {
   const stream = `BT /F1 16 Tf 45 760 Td (${label} - SYNTHETIC PLACEHOLDER ONLY) Tj ET`;
@@ -42,7 +44,17 @@ export function fixtures() {
   const files = [['typescript-learning-flow.pdf', pdf('Synthetic TypeScript learning flow')], ...chapters, ...exercises];
   return new Map([...files, ['typescript-all-materials.zip', zip(files)]]);
 }
+// The paid product keeps its real release prefix, so the local preview can open and download it.
+// The version is read from src/manifest.ts (productRelease) so the fixture can never drift from what the Worker serves.
+const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
+export const productVersion = productRelease.version;
+export function productFixtures() {
+  const readme = 'SYNTHETIC PLACEHOLDER ONLY. This ZIP is a local dummy, not the real product source.\n';
+  return new Map([['redmine-clone-source.zip', zip([['redmine-clone-source/README.txt', readme]])]]);
+}
 export async function seed(mf) {
   const bucket = await mf.getR2Bucket('MATERIALS');
   for (const [name, data] of fixtures()) await bucket.put(`releases/typescript/${version}/${name}`, data);
+  for (const [name, data] of productFixtures()) await bucket.put(`releases/redmine-clone/${productVersion}/${name}`, data);
 }
