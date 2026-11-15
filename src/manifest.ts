@@ -113,6 +113,10 @@ export function canOpenMaterial(c: Collection, m: Material, giftLevel: number): 
   const level = giftMaterialLevel(m);
   return level !== null && level <= giftLevel;
 }
+// 段で開ける教材だけに絞ったコレクション。教材ページの一覧も /library のカードの数もここから作るので、数と開ける物がずれない。
+export function openedCollection(c: Collection, giftLevel: number): Collection {
+  return { ...c, materials: c.materials.filter(m => canOpenMaterial(c, m, giftLevel)) };
+}
 // コレクションの承認が揃っているか。ギフトは MyASP の確認と配布の承認の両方、商品は配布の承認だけ。
 // approval が無い・旗が true 以外の時は、承認されていない側に倒す（公開前の検査もこの関数を使う）。
 export function isApproved(c: Collection): boolean {

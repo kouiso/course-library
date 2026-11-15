@@ -1,5 +1,5 @@
 import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, phraseEnvName, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
+import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, openedCollection, phraseEnvName, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary, switchNote } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string } & Secrets;
@@ -232,7 +232,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   const unlocked = session.unlocked ?? [];
   // 段を持たないセッションはギフトの教材を1つも開けない（全部開ける扱いにはしない）。
   const giftLevel = session.giftLevel ?? 0;
-  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local, unlocked));
+  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local, unlocked, giftLevel));
   if (url.pathname === '/status') {
     const gift = collections.find(isSurveyGift);
     return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift, session.nonce)) : error(503, '配布設定の確認中です');
@@ -244,8 +244,7 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
     if (misconfigured.has(course.id)) return error(503, '配布設定の確認中です');
     if (!unlocked.includes(course.id)) return response(req.method === 'HEAD' ? null : lockedCourse(course, session.nonce), 403);
     if (isSurveyGift(course)) {
-      const opened = { ...course, materials: course.materials.filter(m => canOpenMaterial(course, m, giftLevel)) };
-      return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, opened) : pendingCourse(course, session.nonce));
+      return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, openedCollection(course, giftLevel)) : pendingCourse(course, session.nonce));
     }
     if (isPaidProduct(course)) return response(req.method === 'HEAD' ? null : canDistributeProduct(course) ? productLibrary(session.nonce, course) : pendingCourse(course, session.nonce));
     return error(404, '教材が見つかりません');
