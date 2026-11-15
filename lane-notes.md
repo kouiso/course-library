@@ -96,6 +96,12 @@ MEMBER 2026-11-15T07:20Z opus implementer: design conformance PR over the 12 boa
 
 READ 2026-11-15T07:25Z origin/handoff/ritmo-hearing-20261115 (c230c41, doc/handoff/ritmo-hearing-20261115.md): record of the other account's lane; no work this lane lacks (its next steps 1-5 are landed or in work here); no wip/*-ritmo-20261115 branch exists. Rule: never push/rebase/merge/close those branches.
 
+86 | review | opus implementer: design conformance over 12 boards (body line-height normal + board values, content-box sizes, board copy 第1章 / 問題 NN, PC/mobile copy split); kept not-in-design items listed in body | b06e5fb | local 85/0, test:browser pass | evidence/design-dc-b06e5fb/ | reviewer running
+DECIDED | #86: login card spacing follows each board as drawn (Main 4px, LoginStates 0px; card moves 16px on PC when sending) | reason: owner rule = match the design exactly; the boards disagree with each other | revert: pick one value in views.ts
+DECIDED | #86: synthetic labels 「開発プレビュー」「ダミー教材を見る」「ダミー教材をまとめて保存」 stay | reason: board copy would present dummy material as the real gift (pass line b/g); released state uses board copy (test) | revert: none needed once real materials ship
+DECIDED | #86: product card badge 「公開中」 stays | reason: no board shows a product card | revert: use 受け取れます in productCard
+next after #86: #23 fix (src/index.ts:169 `env as unknown as Record` -> typed lookup via Secrets incl. gift level names ACCESS_PHRASE_SHA256_TYPESCRIPT_01..10)
+
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
 - #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
