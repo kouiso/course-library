@@ -165,6 +165,8 @@ MEMBER 2026-11-15T08:40Z fable implementer: #35 docs to the decided scope + prod
 
 93 | FIX | fresh fable review FAIL at 472b7bc (must 2: OPERATIONS offers closing a product by flag=false although 15 tests and release:ready then fail; filename change omits fixture + test literals; want 3, nit 2). CodeRabbit 5 threads: 3 valid (same findings), 2 = Taskapp identity (owner ASK, left unresolved) | fix round sent back to the same fable implementer 08:58Z; a second FAIL parks #93 and #35 | https://github.com/kouiso/course-library/pull/93#issuecomment-6891943126
 
+93 | review | fix round by opus member: 0f4c1dc (test escape) + 26060bc (OPERATIONS: no flag=false step, filename change lists fixture + test literals, second product lists check-release tests, closing-a-product facts without a procedure; SETUP MyASP scoped to the gift; release:ready exit wording) | 26060bc | local 98/0, test:browser + release:ready exit 0 | https://github.com/kouiso/course-library/pull/93#issuecomment-6892757954 | 3 CodeRabbit threads resolved, 2 Taskapp threads answered + left open | second fresh opus reviewer running (last round)
+
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
 - #47 | Show products the visitor does not own in the library? (A) hide (B) show with a link to the sales page (needs the URL) | default: current (shown, no link)
