@@ -19,6 +19,74 @@
 6. Update the approved TypeScript collection version, safe filenames, object prefix and `synthetic` flag in `src/manifest.ts`. Keep `survey-gift` and `survey-respondents` policy restrictions. Do not add a paid-product collection or reuse product prefixes/filenames. Record the MyASP/invitation and release review privately before enabling both release approval flags. The current false flags and synthetic release keep the survey gift closed in production; `npm run release:ready` still passes while at least one collection (gift or paid product) is ready, and blocked collections stay closed in production. It fails only when no collection is ready, or when the approved gift cannot be distributed. Update catalogue descriptions and verification notes truthfully. Public metadata must contain no private inventory identifiers.
 7. Run `npm ci` and `npm run check` at the exact candidate commit, then perform staging/private edge checks on direct anonymous GET/HEAD/Range, wrong/expired cookies, missing objects, cache headers, successful downloads and mobile/desktop browser behaviour. No public access grants are needed for R2.
 
+## Distribute a paid product
+
+This library distributes paid products to buyers next to the free survey gift. A paid product is a collection of its own in `src/manifest.ts` (`distribution: 'paid-product'`, `audience: 'buyers'`); the current one is `redmine-clone`. It is never part of the free gift: the gift phrase does not open a product, and a product phrase does not open the gift. The outer Basic site gate stays in place after distribution starts, so a buyer passes the Basic prompt first and the product phrase second.
+
+This section describes steps; the repository executes none of them. Uploads, secrets and deployment need the same separately approved secure steps as the rest of this runbook. Real URLs, IDs, passwords, phrases and contacts are never written in this repository.
+
+### What a product is made of
+
+| Part | Rule | What checks it |
+| --- | --- | --- |
+| Phrase setting | A Worker secret named `ACCESS_PHRASE_SHA256_` plus the product `id` in upper case with `-` changed to `_` (`productPhraseEnvName` in `src/manifest.ts`; `ACCESS_PHRASE_SHA256_REDMINE_CLONE` for `redmine-clone`). The same name is listed in the `Secrets` type and written in the collection's `phraseEnv`. The value shape and what the Worker does when the secret is unset, malformed or repeats another phrase are in [商品の合言葉（任意）](SETUP.md#商品の合言葉任意). | `npm run typecheck` fails for a `phraseEnv` that is not in `Secrets`. `validateManifest` stops the whole site (503) when `phraseEnv` is missing, differs from the name built from the `id`, or repeats a gift phrase name. |
+| Objects in R2 | The private bucket bound as `MATERIALS`. The key of a file is the release `prefix` followed by the material `filename` from the manifest. The prefix is exactly `releases/<id>/<version>/` (`releases/redmine-clone/<version>/`, where the version is `productRelease.version`) and every filename starts with `<id>-` (`redmine-clone-source.zip`). | `validateManifest` (`Invalid release manifest`). The Worker reads only `release.prefix + filename`; a missing object answers with the "preparing" page (404) and a zero-byte object with 503. |
+| Approval flag | Each collection has its own approval object (`approval`). For a paid product only `distributionApproved` is read. `productPolicy` is the approval of `redmine-clone` alone and is currently `true`; another product gets its own object. | `isApproved` in `src/manifest.ts`. `validateManifest` refuses two collections that share one approval object (`Shared approval`). |
+| Release state | The product is distributed only when its release has `synthetic: false`, its status is `published` and its approval is `true`. Otherwise the product page shows the preparation state and its downloads answer 503. With `distributionApproved` set back to `false` and that commit deployed, the product closes the same way. | `isDistributable` / `canDistributeProduct` in `src/manifest.ts`; the Worker and `npm run release:ready` both call them. |
+
+### What `npm run release:ready` tells you
+
+`npm run release:ready` reads `src/manifest.ts`, runs `validateManifest` and prints one line per collection. Example output, taken with the product at version 0.2.1 (the version numbers follow the manifest):
+
+```text
+survey-gift: blocked typescript 0.2.2-synthetic - synthetic materials, status preview, giftPolicy.myaspVerified is false, giftPolicy.distributionApproved is false
+paid-product: ready redmine-clone 0.2.1
+Note: the survey gift stays closed in production because it is blocked; only the ready collections are released.
+Approved manifest is ready for a separately authorized production release.
+```
+
+- `paid-product: ready <id> <version>` means the manifest allows production to distribute that product: non-synthetic release, status `published`, approval `true`.
+- `paid-product: blocked <id> <version> - <reasons>` names what is missing (`synthetic materials`, `status …`, `no release`, or the approval flag with its current value). A blocked product stays closed in production; it does not stop the release of the others.
+- The command exits 1 only when no collection is ready, or when the survey gift is approved but cannot be distributed. The optional deploy job runs it before deploying.
+- It reads the manifest only. It does not look into R2 and does not know whether the phrase secret is set, so `ready` is not proof that the objects are uploaded or that buyers can log in. Check those separately (steps below).
+
+### Start distributing a product
+
+For `redmine-clone` the manifest side of these steps is already in place (`status: 'published'`, `productPolicy.distributionApproved: true`). The list is for another product, or for checking the existing one.
+
+1. Add the collection to `collections` in `src/manifest.ts` with `distribution: 'paid-product'`, `audience: 'buyers'`, its `materials` (filenames starting with `<id>-`), its own release object (`schemaVersion: 1`, `version`, `date`, `synthetic`, `prefix: 'releases/<id>/<version>/'`, the three `verification` sentences) and its own approval object with `distributionApproved: false`. The product page (`productLibrary` in `src/views.ts`) carries a sentence about `redmine-clone.zip` that is written for `redmine-clone`; another product needs its own wording there before it is published. Add the phrase setting name to `Secrets` and to `phraseEnv` as described in [商品の合言葉（任意）](SETUP.md#商品の合言葉任意).
+2. Upload the files to the new private prefix `releases/<id>/<version>/` under the manifest filenames. Never overwrite objects of a release that is being served. Compare every object's size and checksum with the private release report.
+3. Prepare the product phrase (random, at least 128 bits, different from every other phrase) and place its SHA-256 digest in the product's secret. The value shape and the digest command are in [the setup guide](SETUP.md#本番に必須の設定値). Ordinary `wrangler secret put` deploys immediately; see step 5 of [Before activation](#before-activation).
+4. When the release review is recorded privately, set `synthetic: false`, `status: 'published'` and the product's `distributionApproved: true`. Run `npm run check`, then `npm run release:ready` and confirm the line `paid-product: ready <id> <version>`.
+5. Deploy that commit through [Deploy and verify](#deploy-and-verify). Through the real hostname, confirm that the product phrase opens `/courses/<id>` and the download, and that the gift phrase does not.
+6. Send buyers the notice (see [What the buyer receives](#what-the-buyer-receives)).
+
+### Raise the version of a product
+
+Example: `redmine-clone` from the version being served (called `OLD` below; it is `productRelease.version` before the edit) to a new version `X.Y.Z`.
+
+1. **Upload first.** Put the new files under a new prefix `releases/redmine-clone/X.Y.Z/` with the same filenames as the manifest (`redmine-clone-source.zip`; the R2 key carries no version in the filename). Leave `releases/redmine-clone/OLD/` untouched: it is still being served and it is the rollback target. Compare sizes and checksums with the private release report.
+2. **Edit `productRelease` in `src/manifest.ts`** and nothing else for the version:
+   - `version`: `'X.Y.Z'` (lower-case letters, digits, `.` and `-`).
+   - `prefix`: `'releases/redmine-clone/X.Y.Z/'`. It must be exactly `releases/<id>/<version>/`, otherwise `validateManifest` throws and the whole site answers 503.
+   - `date`: the release date. The product page shows it next to the version.
+   - `verification`: the three sentences (`delivery`, `materials`, `platforms`) are shown on the product page as written. Rewrite them so they are true for the new files.
+   - The collection's `version` is `productRelease.version`, so it follows by itself. `synthetic` stays `false`. `phraseEnv`, the secret and the phrase do not change: the setting name is built from the `id`, not from the version.
+   - Leave `productPolicy.distributionApproved` as it is when the new version is approved. Set it to `false` to keep the product closed until the review is done.
+   - Change a `filename` or add a material only when the set of files itself changes; the uploaded object names must then match.
+3. **What the buyer sees.** `saveName` adds the version to the name of a paid product's ZIP when it is saved: `redmine-clone-source.zip` is saved as `redmine-clone-source-vX.Y.Z.zip`. The product page names that file, and shows the new version and date and the three sentences. Sessions opened before the deploy keep working (up to four hours) and receive the new files after it.
+4. **Run `npm run check`.** Nothing in the tests or the local fixtures holds the version as a literal: `scripts/fixtures.mjs` reads `productRelease.version` and seeds the dummy ZIP at `releases/redmine-clone/<version>/`. The tests then confirm that the seeded object is at the manifest prefix, that the download is saved as `redmine-clone-source-v<version>.zip`, that the product page shows the version, date and the three sentences, and that a prefix which is not `releases/<id>/<version>/` is refused. A failure here means the manifest edit is inconsistent, not that R2 is wrong; the tests never read the production bucket.
+5. **Run `npm run release:ready`** and confirm `paid-product: ready redmine-clone X.Y.Z`. A `blocked` line names the reason.
+6. **Read the product page locally.** `npm run test:browser` logs in with the gift phrase only and does not open the product page. Start `npm run dev`, enter the local dummy product phrase that the preview prints, and read the version, date, saved file name and the three sentences on `/courses/redmine-clone`. The local ZIP is a dummy; only the page text is being checked here.
+7. **Deploy** the reviewed commit through [Deploy and verify](#deploy-and-verify). Deploying before step 1 is complete makes the product download answer with the "preparing" page, because the new prefix has no object yet. After the deploy, confirm through the real hostname that the product phrase downloads `redmine-clone-source-vX.Y.Z.zip` with the expected size.
+8. **Roll back** by deploying the previous reviewed commit; its manifest points at `releases/redmine-clone/OLD/`, which step 1 left in place. Do not delete an earlier prefix until the retention decision in [Roll back](#roll-back) is approved.
+
+### What the buyer receives
+
+- A notice written from [the notice template](notice-template.md): section 1 for a first purchase, section 2 for a buyer who already holds another product. The sender fills in the entry URL, the Basic ID and password, the product phrase, the product name and the contact. Those values are never written in this repository.
+- On the site: the product page `/courses/<id>` and the download, saved under the versioned name described above.
+- How buyers receive the phrase is decided by the operator and is deliberately not written in this public repository.
+
 ## CI/CD activation (not performed)
 
 The workflows currently checked in use `workflow_dispatch` only. The local test detects added triggers; it does not prevent a newly added PR-triggered workflow from running before that test. Review trigger changes before pushing. No Actions run has been requested. Before first manual execution, verify the actual plan and free usage limits and review this configuration. It uses `ubuntu-latest`, no self-hosted/larger runners, no artifact storage, and no cache storage. Concurrency is fixed for the library and cancellation is disabled, so verification and deployment from different releases cannot race.
