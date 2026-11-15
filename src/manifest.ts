@@ -1,6 +1,7 @@
 // 配布の承認は、コレクションごとに approval として持つ（Collection['approval']）。
 // giftPolicy は TypeScript教材（ギフト）の承認。対象 id と audience もギフトの条件としてここに置く。
-// Explicit distribution policy: Taskapp is a paid product, never a survey gift.
+// 配る物は、無料のギフト（survey-gift）と買った人向けの商品（paid-product）の2種類。
+// ギフトにできるのは allowedCourseIds にある id だけで、商品はギフトに入らない（isSurveyGift）。
 export type Approval = { distributionApproved: boolean; myaspVerified?: boolean };
 export const giftPolicy = {
   allowedCourseIds: ['typescript'] as readonly string[],
@@ -21,7 +22,9 @@ export const release = {
   },
 } as const;
 export type Release = { schemaVersion: number; version: string; date: string; synthetic: boolean; prefix: string; verification: { delivery: string; materials: string; platforms: string } };
-// 商品の配布可否は商品側のフラグで別管理する（購入者への合言葉の渡し方が決まるまでは配らない）。
+// 商品の配布可否は、ギフトとは別に商品側の旗で持つ。distributionApproved が true で、公開中（published）かつ
+// 合成でない版の時だけ配る（isApproved・isDistributable）。開けるのは、その商品の合言葉で入った人だけ。
+// 今は true（配り始めてよい）。購入者への合言葉の渡し方は運営側で決めてあり、中身はこのリポジトリに書かない。
 // productPolicy は Redmineクローン教材だけの承認。商品を足す時は、その商品用の承認を別に作る。
 export const productPolicy = {
   distributionApproved: true,
