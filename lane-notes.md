@@ -1,6 +1,6 @@
-STATE RUNNING 2026-11-15T01:40Z | PAUSED by managing session | merged 3 (#81 #68 #72) + #64 carried | closed issues 3 (#73 #82 #39) | open PRs 7 workable (#74-#80)
+STATE RUNNING 2026-11-15T05:05Z | resumed on personal account | open PRs: #74-#77 LAND, #78 FIX, #79 #80 FINISH
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
-model fable (lead, night order) | advisor unknown | github via connector | push via git (testing) | png ok
+model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
 repo rules read: README, docs/, .githooks/pre-push (npm run scan:public), .github/workflows (all manual), no CLAUDE.md/AGENTS.md, no PR template; stricter ones: public-content rules (.github/public-content-rules.json)
 DEPLOY | merge to codex/initial-implementation -> nothing | evidence .github/workflows/verify.yml:3 (workflow_dispatch only; deploy job needs inputs.deploy) + check runs on merged head 41bcc71 show only CodeRabbit (no hosting-platform build check)
@@ -43,6 +43,10 @@ HANDOFF 2026-11-15T01:40Z (PAUSE from managing session)
 - owner list: see needs owner | device: none
 - members still running: none (manager agent id a5da30e4e548e559a may not survive; decisions are above)
 - container worktrees: /workspace/w74..w78, /workspace/wcmp, /workspace/notes; nothing unpushed
+
+MOVED to personal account 2026-11-15T05:05Z
+START 2026-11-15T05:05Z | lead opus | one subagent at a time | handoff: HANDOFF 01:40Z above, next #74
+worktree /home/user/course-library claude/course-library-cloud-messaging-exayv3 clean | /home/user/notes notes/course-library clean
 
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
