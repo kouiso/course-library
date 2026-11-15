@@ -71,6 +71,10 @@ worktree /home/user/course-library claude/course-library-cloud-messaging-exayv3 
 DECIDED | lead fixed the 3-line CodeRabbit finding on #74 itself, then a fresh opus reviewer reviewed the whole PR | reason: one-subagent cap; one implementer round costs more than the fix | revert: hand such fixes to an opus implementer
 queues 05:16Z: LAND 4->0 | FIX 1 (#78) | FINISH 2 (#79 #80) | next: #78 rework by opus implementer
 
+HOUR 2026-11-15T06:36Z | merged 4 (#74 #75 #76 #77) | closed 4 issues by merge (#48 #49 #29 #45) | fixed 1 (#74 CodeRabbit finding) | blocked: none; worker restart 05:20-06:30Z cost an hour | open PR 6->2 workable (#78 in rework, #79 #80) | open issues 19 | iteration board: none (.github/scrum-board.yml absent) | skipped (-ux): 0
+design boards fetched from the design page to /home/user/design (12 boards); tools/design-compare.cjs reproduces the 28c4c27 baseline on default 37e0d30
+MEMBER 2026-11-15T06:35Z opus implementer: #78 rework per manager decision (design copy on entry/header/footer; land buyer-only hero, hidden locked-gift description, per-course footer version; Refs #42 #43 #24)
+
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
 - #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
