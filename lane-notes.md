@@ -108,9 +108,15 @@ HOUR 2026-11-15T07:42Z | merged 7 since last HOUR (#78 #79 #80 #86 + issues) | c
 MEMBER 2026-11-15T07:42Z opus implementer: #23 typed secrets (branch fix/23-typed-secrets)
 
 ## needs owner
-- ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
-- #46 #47 #55 #57: product decisions (taste); #57 gets a reversible default through #80 but stays open
-- #21 #35 product-distribution procedure, any approval flag, any deploy: production / owner-only facts
+- ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
+- #47 | Show products the visitor does not own in the library? (A) hide (B) show with a link to the sales page (needs the URL) | default: current (shown, no link)
+- #46 | depends on #47; restyle locked cards and put open ones first | waits for #47
+- #55 | /status: (A) remove (B) keep but not for non-gift sessions | default: unchanged
+- #35 / #21 | scope of what the library distributes, outer Basic auth, how buyers get the phrase -> then docs rewrite | owner-only facts (production / distribution)
+- #24 #25 | parent stories; close when #42 #43 #55 / #46 #47 are settled
+- (8) buyer-only library still shows the survey section label, locked gift meta line, gift footer version — same question as #42 #43
+- #27 option: extend the 600 s entry token? default: no
+- any approval flag change, any deploy: owner only
 
 ## for main session
 - first message carried no plan rows (LEDGER); lane works open PRs and issues from the handoff.
