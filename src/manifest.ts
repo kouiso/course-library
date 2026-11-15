@@ -33,7 +33,7 @@ export const productRelease = {
   synthetic: false,
   prefix: 'releases/redmine-clone/0.2.1/',
   verification: {
-    delivery: 'ZIP の中身が Day0 の骨格と一致することを検査で確かめています。',
+    delivery: 'ローカルの Worker で、この版の置き場から ZIP を版入りの名前で配布できることを検査で確かめています。',
     materials: 'Day0 の骨格 ZIP で、完成品の app/ は含みません。',
     platforms: 'Windows と macOS の実機での実走は未検証です。',
   },
@@ -113,15 +113,22 @@ export function canOpenMaterial(c: Collection, m: Material, giftLevel: number): 
   const level = giftMaterialLevel(m);
   return level !== null && level <= giftLevel;
 }
+// コレクションの承認が揃っているか。ギフトは MyASP の確認と配布の承認の両方、商品は配布の承認だけ。
+// approval が無い・旗が true 以外の時は、承認されていない側に倒す（公開前の検査もこの関数を使う）。
+export function isApproved(c: Collection): boolean {
+  if (isSurveyGift(c)) return c.approval?.myaspVerified === true && c.approval?.distributionApproved === true;
+  if (isPaidProduct(c)) return c.approval?.distributionApproved === true;
+  return false;
+}
 // 配布してよいかの判定はこの関数1つに集める。配布の種類ごとの条件もここに書く。
 // local はローカル実行かどうか。ダミー教材（synthetic）のギフトはローカルでだけ配る。
 export function isDistributable(c: Collection, local: boolean): boolean {
   if (!c.release || c.status === 'pending') return false;
   if (isSurveyGift(c)) {
     if (c.release.synthetic) return local;
-    return c.status === 'published' && c.approval.myaspVerified === true && c.approval.distributionApproved;
+    return c.status === 'published' && isApproved(c);
   }
-  if (isPaidProduct(c)) return !c.release.synthetic && c.status === 'published' && c.approval.distributionApproved;
+  if (isPaidProduct(c)) return !c.release.synthetic && c.status === 'published' && isApproved(c);
   return false;
 }
 export function canDistribute(c: Collection, local: boolean): boolean {
@@ -141,6 +148,9 @@ export function validateManifest(): void {
   if (collections.filter(isSurveyGift).length > 1) throw new Error('Only one survey gift is supported');
   const phraseNames = collections.flatMap(c => [phraseEnvName(c), ...(isSurveyGift(c) ? giftLevelEnvNames : [])]);
   if (new Set(phraseNames).size !== phraseNames.length) throw new Error('Duplicate phrase setting');
+  // 承認の旗はコレクションごとに別のオブジェクトで持つ。共有すると、片方を承認した時にもう片方も開く。
+  const approvals = collections.map(c => c.approval).filter(a => a !== undefined);
+  if (new Set(approvals).size !== approvals.length) throw new Error('Shared approval');
   for (const c of collections) {
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(c.id) || (!isSurveyGift(c) && !isPaidProduct(c))) throw new Error('Not an approved collection');
     if (isPaidProduct(c) && (c.audience !== 'buyers' || c.phraseEnv !== productPhraseEnvName(c.id))) throw new Error('Invalid product collection');
