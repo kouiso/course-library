@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T07:48Z | merged today 14 (#81 #68 #72 #74-#80 #86 #87 #88) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: release check correctness PR
+STATE RUNNING 2026-11-15T08:02Z | merged today 15 (#81 #68 #72 #74-#80 #86-#89) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: gift level follow-ups PR
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -115,6 +115,13 @@ remaining lane follow-ups after this PR: (1) duplicate hash = broken config, (3)
 88 | LAND | opus implementer + fresh opus review PASS (must 0 want 0 nit 1); CodeRabbit no actionable comments | ac41f84 | local 89/0, test:browser pass | https://github.com/kouiso/course-library/pull/88#issuecomment-6891211817 | merged fa9f35a (follow-ups 11 12 13 done)
 MEMBER 2026-11-15T07:48Z opus implementer: release check correctness (follow-ups 1 4 5 6, validateManifest tests from 7) branch fix/release-check-correctness
 remaining after it: (3) 61 s test, (7) bundle box below level 10 + SETUP _01.._10 settings, (9) per-product guidance copy (only when a 2nd ZIP product exists), (10) release-meta grey (nit)
+
+89 | LAND | opus implementer + fresh opus review PASS (must 0 want 0 nit 1) | 1e30f67 | local 96/0, release:ready exit 0 | https://github.com/kouiso/course-library/pull/89#issuecomment-6891329149 | merged 7691648 (follow-ups 1 4 5 6 done)
+DECIDED | #89 product delivery sentence reworded to what the repo tests | reason: the old sentence claimed a check this repo lacks; true copy is the safe side | revert: restore the old sentence with a pointer to where that check is recorded
+DECIDED | product phrase set equal to the gift digest: that phrase opens only the gift, the product stays closed as 配布設定の確認中, no extra login message | reason: fails closed; operator misconfiguration only | revert: add a note at login when a product is under configuration check
+follow-up (3) 61 s test: DONE-ALREADY — full suite 10.6 s on 7691648, longest test 1.5 s (the 61 s was the test:browser timeout fixed by #30)
+MEMBER 2026-11-15T08:02Z opus implementer: follow-up (7) gift level: empty bundle box below level 10 + SETUP _01.._10 (branch fix/72-gift-level-followups)
+not startable: (9) per-product guidance copy -> only when a 2nd ZIP product exists | (10) release-meta grey: nit, no board for the product page -> no action
 
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
