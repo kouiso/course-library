@@ -1,4 +1,4 @@
-STATE RUNNING 2026-11-15T07:42Z | merged today 12 (#81 #68 #72 #74-#80 #86) | open work PRs 0 (+ #84 #85 never merge) | open issues 12 | in work: #23 typed secrets
+STATE RUNNING 2026-11-15T07:32Z | merged today 13 (#81 #68 #72 #74-#80 #86 #87) | open work PRs 0 (+ #84 #85 never merge) | open issues 11 | in work: #86 follow-ups PR
 mission: プランに書いてある作業をやること。まず既存の PR を本質的に対処する（handoff #84 の続きから）
 model opus (lead, night order 2026-11-15 14:20 JST) | advisor unknown | github via connector (gh token invalid) | push via git (testing) | png ok (previous lane)
 goal: lane to DONE or DONE-WAITING or PAUSE | DONE-WAITING satisfies it: yes
@@ -106,6 +106,11 @@ next after #86: #23 fix (src/index.ts:169 `env as unknown as Record` -> typed lo
 follow-ups from #86: (11) mobile footer bookmark sentence: scope the hiding to the board screen only (Course) -> /guide and product page show it again (lane default; no board for those) | (12) 720-721px media gap -> use range syntax | (13) locked/pending breadcrumb aligned to page edge, not card
 HOUR 2026-11-15T07:42Z | merged 7 since last HOUR (#78 #79 #80 #86 + issues) | closed 6 issues with reason (#44 #22 #27 #28 #30 #32) + reopened 2 (#42 #43) | fixed 2 (#79 test v0.1.0, #80 merge) | blocked: none | rule 2 (iteration): no board file | rule 3: n/a, no unlabeled agent issue left besides #23 | skipped (-ux): 0
 MEMBER 2026-11-15T07:42Z opus implementer: #23 typed secrets (branch fix/23-typed-secrets)
+
+87 | LAND | opus implementer + fresh opus review PASS (must 0 want 0 nit 1) | b0b4b7c | local 86/0 | https://github.com/kouiso/course-library/pull/87#issuecomment-6891054514 | merged 74016e6 (closes #23)
+DECIDED | #87 gift level setting names spell TYPESCRIPT, guarded by a startup check against the gift id | reason: one gift only; drift closes the site at startup; reviewer judged sound | revert: build giftLevelEnvNames from the gift id
+MEMBER 2026-11-15T07:32Z opus implementer: #86 follow-ups (11)(12)(13) in one PR (branch fix/86-followups)
+remaining lane follow-ups after this PR: (1) duplicate hash = broken config, (3) 61 s test, (4) grammar "the survey gift stay", (5) manifest.ts delivery sentence claims a check the repo lacks, (6) check-release reads policies directly / shared approval object / approval ?. === true, (7) bundle box below level 10, SETUP lacks _01.._10 settings, validateManifest checks untested, (9) per-product guidance copy, (10) release-meta grey
 
 ## needs owner
 - ASK #42 #43 | Entry screen, header and footer: should the issue wording (no survey wording for buyers) win over the design board copy (「A GIFT FOR SURVEY RESPONDENTS」「アンケート回答者限定」「回答後に届いたご案内のURL…」)? yes/no/don't know | read: issues #42 #43, design Main/EntryMobile/Library boards, PR #78 #86 | they contradict each other | on "don't know": design copy stays (current state)
