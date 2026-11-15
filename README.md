@@ -6,7 +6,7 @@ A small Japanese library for the TypeScript survey-response gift built with Type
 
 ## Try locally
 
-Requires Node.js 22.23+ and npm.
+Requires Node.js 22.23+ (`.nvmrc` pins 22.23.4) and npm. `npm run check` also needs poppler for `pdfinfo` and `pdftotext` (macOS: `brew install poppler`, Ubuntu: `apt install poppler-utils`); without them the candidate tests stop with a message naming the missing tool.
 
 ```sh
 npm ci
@@ -26,7 +26,7 @@ Neither is a production phrase. Local signing keys are generated in memory for e
 
 The local TypeScript preview has 20 clearly synthetic PDFs (learning flow, ten chapters, exercises for chapters01–08 and10 (none for09)) and one ZIP. This is a test fixture structure, not confirmation of the actual release inventory. Real files, the approved version and the MyASP survey-response settings remain unverified.
 
-Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` intentionally fails in this state, and the optional deploy job runs this gate before deployment.
+Production shows a preparation state and denies downloads until a non-synthetic published release and both `giftPolicy.myaspVerified` and `giftPolicy.distributionApproved` are reviewed and enabled. Both flags are currently false. `npm run release:ready` prints one `survey-gift:` and one `paid-product:` line per collection. It fails (exit 1) only when no collection, gift or paid product, can be distributed, and the message names which side is blocked. A blocked collection is still reported on its own line; when something else is ready it exits 0 and a Note says the blocked collections stay closed in production. An approved survey gift that cannot be distributed also fails. The optional deploy job runs this gate before deployment.
 
 ## Design
 
@@ -81,6 +81,10 @@ npm run test:browser
 ```
 
 On Linux, Chromium also needs its system libraries (for example NSS and NSPR; `npx playwright install-deps chromium` installs them). This opt-in test starts one loopback test runtime, a new temporary BrowserServer, one context and one page, and closes its own handles in `finally`. It never downloads browsers or opens personal browser profiles. Screenshots and downloaded synthetic fixtures stay in ignored `artifacts/visual/`.
+
+When to run it: run `npm run test:browser` whenever a change touches what a visitor sees on screen (the key screen, the library or product pages, buttons, wording, layout, styles), and before publishing such a change. It is not part of `npm run check`, the pre-push hook or CI, so nothing runs it for you. CI deliberately does not run it: no workflow of this repository has run in GitHub Actions yet (only Dependabot updates have), so the Chromium download time and cost are unmeasured, and the check needs a locally installed browser. If you later want it in CI, measure a real run first and then change `.github/workflows/verify.yml`.
+
+Finding the tooling: the script reads two paths from the environment and downloads nothing. `COURSE_PLAYWRIGHT_PACKAGE` is the directory of an installed official `playwright` package (for example a global or other-project `node_modules/playwright`). `COURSE_BROWSER_EXECUTABLE` is the path to an installed Chromium or Chrome binary (for example the one under Playwright's browser cache, or the system Chrome). If you have neither, install them yourself outside this repository first (`npm install playwright` in a scratch directory, then `npx playwright install chromium` there) and point the two variables at the results. Setting both variables always works. If they are not set, the script either finds an already-installed Playwright with its matching Chromium by itself (once automatic discovery from issue #52 is merged) or stops with an error that names them; it never downloads browsers.
 
 ## Delivery controls
 

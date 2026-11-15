@@ -1,8 +1,8 @@
-import { cookie, cookieName, cookies, equal, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, canDistributeProduct, collections, isPaidProduct, isSurveyGift, phraseEnvName, type Collection, validateManifest } from './manifest';
-import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary } from './views';
+import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
+import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvName, isPaidProduct, isSurveyGift, phraseEnvName, type Collection, type Secrets, validateManifest } from './manifest';
+import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary, switchNote } from './views';
 
-type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string; ACCESS_PHRASE_SHA256?: string; SESSION_SECRET?: string; BASIC_AUTH_USER?: string; BASIC_AUTH_PASS?: string };
+type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string } & Secrets;
 const security = {
   'Cache-Control': 'private, no-store, max-age=0',
   'CDN-Cache-Control': 'no-store',
@@ -22,6 +22,13 @@ function response(body: BodyInit | null, status = 200, headers: HeadersInit = {}
 }
 const error = (status: number, title: string) => response(message(title), status);
 const redirect = (to: '/closed' | '/library') => response(null, 303, { Location: to });
+const digestShape = /^[0-9a-f]{64}$/;
+// 入口の確認用の値の期限（秒）。延ばすかどうかは別の判断待ちなので、ここでは変えない。
+const LOGIN_TTL = 600;
+async function entry(secret: string, local: boolean, info = '', head = false): Promise<Response> {
+  const csrf = await issue(secret, 'login', LOGIN_TTL);
+  return response(head ? null : login(csrf, '', info), 200, { 'Set-Cookie': cookie('course_login', csrf, LOGIN_TTL, local) });
+}
 function configured(env: AppEnv): boolean {
   try {
     const u = new URL(env.APP_ORIGIN);
@@ -29,10 +36,22 @@ function configured(env: AppEnv): boolean {
     return u.origin === env.APP_ORIGIN && !u.username && !u.password
       && (local ? u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname) : u.protocol === 'https:' && !u.hostname.endsWith('.invalid'))
       && !!env.SESSION_SECRET && env.SESSION_SECRET.length >= 43
-      && /^[0-9a-f]{64}$/.test(env.ACCESS_PHRASE_SHA256 || '')
+      && digestShape.test(env.ACCESS_PHRASE_SHA256 || '')
       && !!env.MATERIALS && !!env.LOGIN_IP_LIMIT && !!env.LOGIN_TOTAL_LIMIT
       && (local || (!!env.BASIC_AUTH_USER && !!env.BASIC_AUTH_PASS));
   } catch { return false; }
+}
+// 商品用の合言葉は、未設定ならその商品が閉じたままになるだけで、全体は動かす。
+// 設定済みで形（小文字の16進64文字）が違う商品は、全体を 503 にせず、その商品だけを設定確認中として閉じる。
+// 1つの設定の間違いで、ギフトや他の商品を持つ人まで入れなくしないため。
+function misconfiguredProducts(env: AppEnv): Set<string> {
+  const ids = new Set<string>();
+  for (const c of collections) {
+    const name = phraseEnvName(c);
+    const value = name ? env[name] : undefined;
+    if (isPaidProduct(c) && value && !digestShape.test(value)) ids.add(c.id);
+  }
+  return ids;
 }
 // The outer site gate. Local previews keep the phrase-only flow; production requires browser credentials before any page.
 async function basicAuth(req: Request, env: AppEnv): Promise<boolean> {
@@ -114,8 +133,9 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (!configured(env)) return error(503, 'ただいま準備中です');
   if (url.origin !== env.APP_ORIGIN) return error(421, '正しいURLからアクセスしてください');
   validateManifest();
+  const misconfigured = misconfiguredProducts(env);
   const local = env.APP_MODE === 'local';
-  if (!local && !await basicAuth(req, env)) return response(message('認証が必要です'), 401, { 'WWW-Authenticate': 'Basic realm="course-library", charset="UTF-8"' });
+  if (!local && !await basicAuth(req, env)) return response(message('認証が必要です', 'ご案内にある ID とパスワードを入力してください。'), 401, { 'WWW-Authenticate': 'Basic realm="course-library", charset="UTF-8"' });
   const secret = env.SESSION_SECRET!;
   const jar = cookies(req);
   const session = await verify(secret, jar.get(cookieName('course_session', local)), 'session');
@@ -132,28 +152,56 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
       const form = await boundedForm(req);
       const csrf = form?.get('csrf') || '';
       const loginCookie = jar.get(cookieName('course_login', local));
+      // 同じ名前の Cookie が重なると cookies() は値を空にする。空の値は「無い」と区別して 403 側へ回す。
+      const hasLoginCookie = jar.has(cookieName('course_login', local));
+      if (form && (!hasLoginCookie || (!!loginCookie && await equal(csrf, loginCookie))) && await expiredButSigned(secret, csrf, 'login')) {
+        // 入口を開いたまま期限が過ぎただけなら、合言葉は照合せずに入口を出し直す。
+        // Cookie は期限と同じ 600 秒で消えるので、Cookie が無い時もこちらへ来る。
+        // Cookie があって値が違う（空や重複を含む）、または署名が不正な時は、今までどおり 403。
+        return entry(secret, local, '時間がたったので、もう一度入力してください。');
+      }
       if (!form || !loginCookie || !await equal(csrf, loginCookie) || !await verify(secret, csrf, 'login')) return error(403, '入口からもう一度お試しください');
-      const phrase = form.get('phrase') || '';
+      // 案内からコピーした時に付きやすい前後の空白（全角の空白を含む）を取り除いてから照合する。
+      const phrase = (form.get('phrase') || '').trim();
       // 合言葉はコレクションごとに別の secret を持つ。打たれた合言葉が
       // どのコレクションのものかを全件照合し、合ったものだけを開ける。
       const digest = phrase.length > 256 ? '' : await sha256(phrase);
       const secrets = env as unknown as Record<string, string | undefined>;
+      const matches = async (name: string) => {
+        const expected = secrets[name];
+        return !!expected && /^[0-9a-f]{64}$/.test(expected) && !!digest && await equal(digest, expected);
+      };
       const matched: string[] = [];
+      let giftLevel = 0;
       for (const c of collections) {
-        const expected = secrets[phraseEnvName(c)];
-        if (expected && digest && await equal(digest, expected)) matched.push(c.id);
+        if (misconfigured.has(c.id)) continue;
+        const name = phraseEnvName(c);
+        // ギフトは段の合言葉も全段照合し（途中で打ち切らない）、合った中で一番上の段を持たせる。
+        if (isSurveyGift(c)) {
+          if (name && await matches(name)) giftLevel = GIFT_LEVELS;
+          for (let level = 1; level <= GIFT_LEVELS; level++) {
+            if (await matches(giftLevelEnvName(c, level))) giftLevel = Math.max(giftLevel, level);
+          }
+          if (giftLevel) matched.push(c.id);
+        } else if (name && await matches(name)) matched.push(c.id);
       }
       if (!matched.length) {
-        return response(login(csrf, '合言葉を確認して、もう一度入力してください。'), 401);
+        // 設定確認中の商品がある時は、購入者が合言葉の打ち間違いと思い込まないよう、その事を添える。
+        const notice = misconfigured.size ? '販売中の教材は、ただいま配布設定を確認しています。商品用の合言葉で入れない時は、時間をおいてお試しください。' : '';
+        return response(login(csrf, `合言葉を確認して、もう一度入力してください。${notice}`), 401);
       }
       const unlocked = [...new Set(matched)];
       const res = redirect('/library');
-      res.headers.append('Set-Cookie', cookie('course_session', await issue(secret, 'session', SESSION_TTL, { unlocked }), SESSION_TTL, local));
+      res.headers.append('Set-Cookie', cookie('course_session', await issue(secret, 'session', SESSION_TTL, giftLevel ? { unlocked, giftLevel } : { unlocked }), SESSION_TTL, local));
       res.headers.append('Set-Cookie', cookie('course_login', '', 0, local));
       return res;
     }
-    const form = await boundedForm(req);
-    if (!session || !form || !await equal(form.get('csrf') || '', session.nonce)) return error(403, '入口からもう一度お試しください');
+    // セッションが無い（期限切れなど）時は、失って困る状態が無いので、確認用の値を見ずに閉じた画面へ送る。
+    // 同一オリジンの検査は上で済んでいる。セッションがある時は、今までどおり確認用の値を照合する。
+    if (session) {
+      const form = await boundedForm(req);
+      if (!form || !await equal(form.get('csrf') || '', session.nonce)) return error(403, '入口からもう一度お試しください');
+    }
     // A fixed page confirms the closed session without query parameters or JavaScript.
     const res = redirect('/closed');
     res.headers.append('Set-Cookie', cookie('course_session', '', 0, local));
@@ -164,12 +212,18 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (url.pathname === '/app.js') return response(req.method === 'HEAD' ? null : js, 200, { 'Content-Type': 'text/javascript; charset=utf-8' });
   if (url.pathname === '/') {
     if (session) return redirect('/library');
-    const csrf = await issue(secret, 'login', 600);
-    return response(req.method === 'HEAD' ? null : login(csrf), 200, { 'Set-Cookie': cookie('course_login', csrf, 600, local) });
+    return entry(secret, local, '', req.method === 'HEAD');
+  }
+  // 鍵の画面の主ボタンの行き先。ログイン中でも、別の合言葉の入力欄を出す。
+  // 入り直すと、今のセッションは打った合言葉の教材だけのセッションに置き換わる。
+  if (url.pathname === '/phrase') {
+    return entry(secret, local, session ? switchNote : '', req.method === 'HEAD');
   }
   if (url.pathname === '/closed') return session ? redirect('/library') : response(req.method === 'HEAD' ? null : closed());
   if (!session) return error(401, '合言葉を入力して教材を開いてください');
   const unlocked = session.unlocked ?? [];
+  // 段を持たないセッションはギフトの教材を1つも開けない（全部開ける扱いにはしない）。
+  const giftLevel = session.giftLevel ?? 0;
   if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local, unlocked));
   if (url.pathname === '/status') {
     const gift = collections.find(isSurveyGift);
@@ -179,8 +233,12 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (courseRoute) {
     const course = collections.find(c => c.id === courseRoute[1]);
     if (!course) return error(404, '教材が見つかりません');
+    if (misconfigured.has(course.id)) return error(503, '配布設定の確認中です');
     if (!unlocked.includes(course.id)) return response(req.method === 'HEAD' ? null : lockedCourse(course, session.nonce), 403);
-    if (isSurveyGift(course)) return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, course) : pendingCourse(course, session.nonce));
+    if (isSurveyGift(course)) {
+      const opened = { ...course, materials: course.materials.filter(m => canOpenMaterial(course, m, giftLevel)) };
+      return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, opened) : pendingCourse(course, session.nonce));
+    }
     if (isPaidProduct(course)) return response(req.method === 'HEAD' ? null : canDistributeProduct(course) ? productLibrary(session.nonce, course) : pendingCourse(course, session.nonce));
     return error(404, '教材が見つかりません');
   }
@@ -189,8 +247,12 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   if (downloadRoute) {
     const course = collections.find(c => c.id === downloadRoute[1]);
     if (!course || !unlocked.includes(course.id)) return error(404, '教材が見つかりません');
+    if (misconfigured.has(course.id)) return error(503, '配布設定の確認中です');
     const distributable = isSurveyGift(course) ? canDistribute(course, local) : isPaidProduct(course) && canDistributeProduct(course);
     if (!distributable) return error(503, '配布設定の確認中です');
+    // 段より上の教材は、存在を確かめる前に 403 で止める（GET・HEAD・Range とも）。
+    const material = course.materials.find(m => m.id === downloadRoute[2]);
+    if (material && !canOpenMaterial(course, material, giftLevel)) return error(403, 'この教材はお持ちの合言葉ではまだ開けません');
     return download(req, env, course, downloadRoute[2]!);
   }
   return error(404, 'ページが見つかりません');

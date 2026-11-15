@@ -1,13 +1,12 @@
 import { version as appVersion } from '../package.json';
-import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, type Collection } from './manifest';
+import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, release, type Collection } from './manifest';
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
-// The footer shows the opened course's version on its page and the app version everywhere else,
-// so a buyer never sees the gift version. Header and footer copy fit both gift and product holders.
-export function page(title: string, body: string, layout: Layout = 'status', version: string = appVersion): string {
-  const note = layout === 'status' ? '' : '<br><span class="note-long">お手元のご案内にあるURLをブックマークしてご利用ください。</span><span class="note-short">ご案内のURLをブックマークしてご利用ください。</span>';
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a><span class="brand-note">合言葉をお持ちの方専用</span></header><main class="${layout}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
+// A course or product page passes its own version, so a buyer never sees the gift version.
+export function page(title: string, body: string, layout: Layout = 'status', version: string = release.version): string {
+  const note = layout === 'status' ? '' : '<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span><span class="note-short">ご案内のURLをブックマークしてご利用ください。</span>';
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a><span class="brand-note">アンケート回答者限定</span></header><main class="${layout}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
 }
 const shelf = '<div class="shelf" aria-hidden="true"><i class="spine ink"></i><i class="spine forest"></i><i class="spine pale"></i><div class="shelf-book">LEARN<br>BUILD<br><b>REPEAT.</b></div></div>';
 const waiting = '<div class="waiting" aria-hidden="true"><i class="spine ink"></i><i class="spine forest"></i><i class="spine dashed"></i></div>';
@@ -17,10 +16,10 @@ export function notice(options: { eyebrow: string; title: string; body: string; 
   const { eyebrow, title, body, action, note, art, role, after = '' } = options;
   return `<section class="card status-card"${role ? ` role="${role}"` : ''}>${art ? waiting : ''}<div class="eyebrow">${eyebrow}</div><h1>${escape(title)}</h1><p class="lead">${body}</p>${action ? `<a class="button" href="${action.href}">${action.label}</a>` : ''}${note ? `<p class="muted">${note}</p>` : ''}</section>${after}`;
 }
-export function login(csrf: string, error = ''): string {
+export function login(csrf: string, error = '', info = ''): string {
   const invalid = error ? ' aria-invalid="true" aria-describedby="phrase-error"' : '';
-  const note = error ? '続けて間違えると、1分ほど入力を受け付けなくなります。' : '配布時のご案内、またはご購入時にお渡しした合言葉で開けます。PDFを開くパスワードは配布時のご案内をご確認ください。';
-  return page('合言葉を入力して教材を開く', `<div class="entry-copy"><div class="eyebrow">ENTER YOUR ACCESS PHRASE</div><h1>次の学びを、<br>ひとつずつ。</h1><p class="lead">お手元のご案内に記載された合言葉を入力してください。<br class="wide">開ける教材が一覧に並びます。</p>${shelf}</div><section class="card login-card"><h2>合言葉を入力して教材を開く</h2>${error ? `<p role="alert" class="error" id="phrase-error">${escape(error)}</p>` : ''}<form method="post" action="/login"><input type="hidden" name="csrf" value="${escape(csrf)}"><label for="phrase">アクセス用の合言葉</label><input id="phrase" type="password" name="phrase" required maxlength="256" autocomplete="current-password"${invalid}><button>教材ページを開く <span aria-hidden="true">→</span></button><p class="muted form-note">${note}</p><p class="muted busy-note">送信は1回で大丈夫です。画面が切り替わるまでお待ちください。</p></form></section>`, 'entry');
+  const note = error ? '続けて間違えると、1分ほど入力を受け付けなくなります。' : 'アンケート回答者限定の無料プレゼントです。PDFを開くパスワードは配布時のご案内をご確認ください。';
+  return page('プレゼント教材を受け取る', `<div class="entry-copy"><div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS</div><h1>次の学びを、<br>ひとつずつ。</h1><p class="lead">アンケートへのご協力、ありがとうございます。<br class="wide">回答後のご案内に記載された合言葉を入力してください。</p>${shelf}</div><section class="card login-card"><h2>TypeScript教材を受け取る</h2>${error ? `<p role="alert" class="error" id="phrase-error">${escape(error)}</p>` : ''}${info ? `<p role="status" class="notice">${escape(info)}</p>` : ''}<form method="post" action="/login"><input type="hidden" name="csrf" value="${escape(csrf)}"><label for="phrase">アクセス用の合言葉</label><input id="phrase" type="password" name="phrase" required maxlength="256" autocomplete="current-password"${invalid}><button>教材ページを開く <span aria-hidden="true">→</span></button><p class="muted form-note">${note}</p><p class="muted busy-note">送信は1回で大丈夫です。画面が切り替わるまでお待ちください。</p></form></section>`, 'entry');
 }
 function links(course: Collection, group: string): string {
   return course.materials.filter(m => m.group === group).map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
@@ -70,12 +69,14 @@ export function productLibrary(nonce: string, course: Collection): string {
   const verification = course.release?.verification;
   return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
 }
+// 2つ目の合言葉で入り直した時の今の動き（前の教材は閉じる）を、そのまま伝える。
+export const switchNote = '別の合言葉で入り直すと、いま開いている教材は閉じます。続けて使う時は、その教材の合言葉でもう一度入ってください。';
 export function lockedCourse(course: Collection, nonce: string): string {
   const paid = course.distribution === 'paid-product';
   const body = paid
-    ? `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を、入口の画面で入力してください。`
-    : `${escape(course.title)}はアンケート回答後のご案内にある合言葉を持つ方だけが開けます。ご案内の合言葉を、入口の画面で入力してください。`;
-  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body, action: { href: '/', label: '入口で合言葉を入力する' }, note: '一度ログアウトしてから別の合言葉で入り直すこともできます。', after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
+    ? `${escape(course.title)}は商品用の合言葉を持つ方だけが開けます。ご購入時にお渡しした商品用の合言葉を入力してください。`
+    : `${escape(course.title)}はアンケート回答後のご案内にある合言葉を持つ方だけが開けます。ご案内の合言葉を入力してください。`;
+  return page(`${course.title}へのアクセス`, `<a href="/library" class="breadcrumb">← 教材一覧へ</a>${notice({ eyebrow: 'PHRASE REQUIRED', title: 'この教材の合言葉が必要です', body, action: { href: '/phrase', label: 'この教材の合言葉を入力する' }, note: switchNote, after: logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。') })}`);
 }
 export function pendingCourse(course: Collection, nonce: string): string {
   const paid = course.distribution === 'paid-product';

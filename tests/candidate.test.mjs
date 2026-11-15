@@ -9,6 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { inspectPdf, validateCandidate } from '../scripts/candidate-validation.mjs';
 import { fixtures, pdf } from '../scripts/fixtures.mjs';
 const ver = '0.0.1';
+test('poppler tools needed by candidate inspection are installed', () => {
+  for (const tool of ['pdfinfo', 'pdftotext']) {
+    const probe = spawnSync(tool, ['-v'], { encoding: 'utf8' });
+    assert.ok(!probe.error, `${tool} was not found. Install poppler (macOS: brew install poppler, Ubuntu: apt install poppler-utils).`);
+  }
+});
 function syntheticCandidate() {
   const expected = ['learning-flow', ...Array.from({ length: 10 }, (_, i) => `chapter-${String(i + 1).padStart(2, '0')}`), ...['01', '02', '03', '04', '05', '06', '07', '08', '10'].map(n => `exercise-${n}`)];
   const policy = { courseId: 'fixture-course', distribution: 'survey-gift', audience: 'fixture-respondents', sourceRootId: 'fixture-root', sourceVersion: ver, expectedEncryption: false, slots: [] };
