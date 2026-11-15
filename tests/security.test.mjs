@@ -186,6 +186,30 @@ test('session gift levels are signed, bounded and fail closed when missing', asy
   assert.equal((await req('/download/typescript/chapter-02', { headers: { Cookie: `local_course_session=${token({ giftLevel: 1 })}` } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({ giftLevel: 1 })}` } })).status, 200);
 });
+test('below level 10 the learning page drops the bundle heading, link and ZIP note but keeps the verification sentences; level 10 keeps the whole bundle box', async () => {
+  const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const { release } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
+  const now = Math.floor(Date.now() / 1000);
+  const token = extra => {
+    const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['typescript'], ...extra })).toString('base64url');
+    return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  };
+  const bundleCard = async extra => {
+    const res = await req('/courses/typescript', { headers: { Cookie: `local_course_session=${token(extra)}` } });
+    assert.equal(res.status, 200);
+    const card = /<section class="card bundle-card">[\s\S]*?<\/section>/.exec(await res.text())?.[0];
+    assert.ok(card, JSON.stringify(extra));
+    for (const sentence of Object.values(release.verification)) assert.ok(card.includes(sentence), `${JSON.stringify(extra)} ${sentence}`);
+    return card;
+  };
+  for (const extra of [{}, { giftLevel: 1 }, { giftLevel: 3 }, { giftLevel: 9 }]) {
+    const card = await bundleCard(extra);
+    assert.doesNotMatch(card, /まとめて手元に|ZIPを展開してから|<a /, JSON.stringify(extra));
+  }
+  const full = await bundleCard({ giftLevel: 10 });
+  assert.ok(full.includes('<h2>まとめて手元に</h2><a class="download bundle" href="/download/typescript/all-materials">'));
+  assert.ok(full.includes('<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p>'));
+});
 test('production serves the paid product to product-phrase holders behind the Basic gate', async () => {
   const prodOrigin = 'https://course.example';
   const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });
