@@ -110,7 +110,9 @@ test('the product page shows its version, date and the three verification senten
   const card = /<h2>ダウンロード<\/h2>[\s\S]*?<\/section>/.exec(html)[0];
   assert.ok(card.includes(`<p class="release-meta">${productRelease.version} · <time datetime="${productRelease.date}">${productRelease.date}</time></p>`));
   const items = [...card.matchAll(/<li>([^<]*)<\/li>/g)].map(m => m[1]);
-  assert.deepEqual(items, [productRelease.verification.materials, productRelease.verification.delivery, productRelease.verification.platforms]);
+  // 画面は文を escape（src/views.ts）に通して出す。同じ決まりで直した文と比べるので、& < > " ' を含む文でも通る。
+  const escapeHtml = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+  assert.deepEqual(items, [productRelease.verification.materials, productRelease.verification.delivery, productRelease.verification.platforms].map(escapeHtml));
   assert.doesNotMatch(card, /class="muted"/);
 });
 test('the gift phrase does not unlock paid products', async () => {
