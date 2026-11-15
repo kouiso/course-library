@@ -1,6 +1,11 @@
+import { GIFT_LEVELS } from './manifest';
 const encoder = new TextEncoder();
 export const SESSION_TTL = 4 * 60 * 60;
-export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[] };
+// Under load the local runtime was observed verifying its own login/session tokens about a second
+// before their iat (cause in the runtime not isolated). Allow a small skew; exp - iat still caps lifetime.
+const CLOCK_SKEW = 60;
+// giftLevel はギフトの何段目まで開けたか（1〜GIFT_LEVELS）。署名の内側にだけ持つ。
+export type Token = { purpose: 'login' | 'session'; iat: number; exp: number; nonce: string; unlocked?: string[]; giftLevel?: number };
 const encode = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 function decode(s: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
@@ -17,7 +22,7 @@ export async function equal(a: string, b: string): Promise<boolean> {
   const y = await crypto.subtle.digest('SHA-256', encoder.encode(b));
   return crypto.subtle.timingSafeEqual(x, y);
 }
-export async function issue(secret: string, purpose: Token['purpose'], ttl: number, extra?: { unlocked?: string[] }): Promise<string> {
+export async function issue(secret: string, purpose: Token['purpose'], ttl: number, extra?: { unlocked?: string[]; giftLevel?: number }): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const body = encode(encoder.encode(JSON.stringify({ purpose, iat, exp: iat + ttl, nonce: crypto.randomUUID(), ...extra })));
   return `${body}.${encode(new Uint8Array(await crypto.subtle.sign('HMAC', await key(secret), encoder.encode(body))))}`;
@@ -31,12 +36,26 @@ export async function verify(secret: string, value: string | undefined, purpose:
     const now = Math.floor(Date.now() / 1000);
     const ttl = purpose === 'session' ? SESSION_TTL : 600;
     if (t.purpose !== purpose || !Number.isSafeInteger(t.iat) || !Number.isSafeInteger(t.exp)
-      || t.iat > now || t.exp <= now || t.exp <= t.iat || t.exp - t.iat > ttl
+      || t.iat > now + CLOCK_SKEW || t.exp <= now || t.exp <= t.iat || t.exp - t.iat > ttl
       || !/^[0-9a-f-]{36}$/.test(t.nonce)) return null;
     if (t.unlocked !== undefined && (!Array.isArray(t.unlocked) || t.unlocked.length > 8
       || t.unlocked.some(id => typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)))) return null;
+    if (t.giftLevel !== undefined && (!Number.isSafeInteger(t.giftLevel) || t.giftLevel < 1 || t.giftLevel > GIFT_LEVELS)) return null;
     return t;
   } catch { return null; }
+}
+// 署名は正しく、期限だけが切れた値か。入口の確認用の値が時間切れになった時に、
+// 403 ではなく入口を出し直すかどうかの判定に使う。署名が不正な値は false。
+export async function expiredButSigned(secret: string, value: string | undefined, purpose: Token['purpose']): Promise<boolean> {
+  try {
+    if (!value || value.length > 1024 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) return false;
+    const [body, sig] = value.split('.');
+    if (!body || !sig || !await crypto.subtle.verify('HMAC', await key(secret), decode(sig), encoder.encode(body))) return false;
+    const t: Token = JSON.parse(new TextDecoder().decode(decode(body)));
+    const ttl = purpose === 'session' ? SESSION_TTL : 600;
+    return t.purpose === purpose && Number.isSafeInteger(t.iat) && Number.isSafeInteger(t.exp)
+      && t.exp <= Math.floor(Date.now() / 1000) && t.exp > t.iat && t.exp - t.iat <= ttl;
+  } catch { return false; }
 }
 export function cookies(req: Request): Map<string, string> {
   const result = new Map<string, string>();

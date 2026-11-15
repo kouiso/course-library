@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
-import { seed, fixtures, version } from '../scripts/fixtures.mjs';
+import { seed, fixtures, version, productVersion } from '../scripts/fixtures.mjs';
 
 // views.ts reads the app version from package.json; data: modules need it as a module.
 const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const version = ${JSON.stringify(JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version)};`);
@@ -58,6 +58,11 @@ test('a session without unlocked collections is locked out of every download', a
   const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now, now + 100)}` } });
   assert.equal(res.status, 404);
 });
+test('a session issued a few seconds ahead of the worker clock is still accepted', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${signed('session', now + 5, now + 100)}` } });
+  assert.equal(res.status, 404);
+});
 test('the product phrase unlocks only its product, not the survey gift', async () => {
   const { res, cookie } = await loginAttempt(productPhrase);
   assert.equal(res.status, 303);
@@ -65,32 +70,37 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(course.status, 200);
   const productHtml = await course.text();
   assert.match(productHtml, /ソースコード一式/);
-  assert.match(productHtml, /redmine-clone-source-v0\.1\.0\.zip/);
+  assert.ok(productHtml.includes(`redmine-clone-source-v${productVersion}.zip`));
   assert.match(productHtml, /Day 3 の手順は <code>redmine-clone\.zip<\/code> という名前で書かれています。保存したファイルの名前を <code>redmine-clone\.zip<\/code> に変えてから、Day 3 の手順どおりに進めてください。/);
   assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
   const bucket = await mf.getR2Bucket('MATERIALS');
-  await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PRODUCT ZIP BYTES');
+  await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES');
   const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
   assert.equal(dl.status, 200);
-  assert.equal(dl.headers.get('Content-Disposition'), 'attachment; filename="redmine-clone-source-v0.1.0.zip"');
+  assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-source-v${productVersion}.zip"`);
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
 });
-test('buyers see wording for both audiences: entry, header, footer and catalogue hero', async () => {
+test('buyers read product wording in the library hero and the product footer; entry, header and footer keep the design copy', async () => {
   const entry = await (await req('/')).text();
-  for (const limited of ['アンケート', '回答者限定', 'TypeScript教材', 'ご協力']) assert.ok(!entry.includes(limited), limited);
+  assert.match(entry, /<title>プレゼント教材を受け取る \|/); assert.match(entry, /<div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS<\/div>/);
+  assert.match(entry, /<h2>TypeScript教材を受け取る<\/h2>/); assert.match(entry, /アンケートへのご協力、ありがとうございます。/);
+  assert.match(entry, /<span class="brand-note">アンケート回答者限定<\/span>/);
+  assert.match(entry, new RegExp(`<footer>教材ライブラリ · ${version.replaceAll('.', '\\.')}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`));
   const { cookie } = await loginAttempt(productPhrase);
   const library = await (await req('/library', { headers: { Cookie: cookie } })).text();
   const product = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
-  for (const html of [library, product]) {
-    assert.ok(!html.includes('アンケート回答者限定'), 'header'); assert.ok(!html.includes('回答後に届いた'), 'footer');
-    assert.ok(!html.includes(version), 'gift version in footer');
-  }
   const hero = /<div class="catalogue-hero">[\s\S]*?<\/p>/.exec(library)[0];
-  for (const limited of ['アンケート', 'ご協力', 'FEEDBACK', 'プレゼント']) assert.ok(!hero.includes(limited), limited);
-  assert.match(product, /<footer>教材ライブラリ · 0\.1\.0/);
-  for (const html of [entry, library, product]) assert.equal(html.split('アンケート').length - 1, 0);
+  for (const limited of ['アンケート', 'ご協力', 'FEEDBACK', 'プレゼント', '回答']) assert.ok(!hero.includes(limited), limited);
+  assert.match(hero, /<div class="eyebrow">YOUR LIBRARY<\/div><h1>ご購入の教材を、<br>手元に。<\/h1>/); assert.match(library, /<title>教材一覧 \|/);
+  // The locked survey gift card carries no survey description for buyers.
+  assert.ok(!library.includes('アンケートにお答えいただいた方への無料プレゼントです。'), 'locked gift description');
+  assert.match(library, /<h2>TypeScript教材<\/h2><div class="course-meta">/);
+  // The product page footer shows the product version, never the gift version.
+  const footer = /<footer>[\s\S]*?<\/footer>/.exec(product)[0];
+  assert.ok(footer.startsWith(`<footer>教材ライブラリ · ${productVersion}<br>`), footer); assert.ok(!footer.includes(version), 'gift version in product footer');
+  assert.match(product, /<span class="brand-note">アンケート回答者限定<\/span>/);
 });
 test('the product page shows its version, date and the three verification sentences as body text', async () => {
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
@@ -109,12 +119,79 @@ test('the gift phrase does not unlock paid products', async () => {
   assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 404);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 200);
 });
+test('gift level phrases open chapters 1..N only, level 10 and the legacy phrase open all, unset levels never match', async () => {
+  const levelPhrase = n => `synthetic-gift-level-${n}`;
+  const pad = n => String(n).padStart(2, '0');
+  const bindings = { SESSION_SECRET: secret };
+  for (const n of [1, 3, 9, 10]) bindings[`ACCESS_PHRASE_SHA256_TYPESCRIPT_${pad(n)}`] = digest(levelPhrase(n));
+  const instance = runtime({ origin, bindings, totalLimit: 1000 });
+  try {
+    await instance.ready; await seed(instance);
+    const get = (path, cookie, options = {}) => instance.dispatchFetch(origin + path, { redirect: 'manual', ...options, headers: { Cookie: cookie, ...options.headers } });
+    async function levelLogin(phrase) {
+      const entry = await instance.dispatchFetch(origin + '/');
+      assert.equal(entry.status, 200);
+      const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+      const res = await instance.dispatchFetch(origin + '/login', { method: 'POST', redirect: 'manual', headers: { Origin: origin, 'CF-Connecting-IP': `198.51.100.${++ip}`, Cookie: headerCookie(entry, 'local_course_login') }, body: new URLSearchParams({ csrf, phrase }) });
+      return { res, cookie: headerCookie(res, 'local_course_session') };
+    }
+    // 未設定の段（2 段目）の合言葉は誰にも合わず、サイト全体も 503 にならない。
+    assert.equal((await levelLogin(levelPhrase(2))).res.status, 401);
+    for (const n of [1, 3, 9]) {
+      const { res, cookie } = await levelLogin(levelPhrase(n));
+      assert.equal(res.status, 303, `level ${n}`);
+      const ok = await get(`/download/typescript/chapter-${pad(n)}`, cookie);
+      assert.equal(ok.status, 200, `chapter ${n}`);
+      assert.deepEqual(Buffer.from(await ok.arrayBuffer()), fixtures().get(`typescript-chapter-${pad(n)}.pdf`));
+      assert.equal((await get('/download/typescript/learning-flow', cookie)).status, 200);
+      for (const options of [{}, { method: 'HEAD' }, { headers: { Range: 'bytes=0-9' } }]) {
+        const denied = await get(`/download/typescript/chapter-${pad(n + 1)}`, cookie, options);
+        assert.equal(denied.status, 403, `chapter ${n + 1}`); noCache(denied); assert.equal(denied.headers.get('Content-Disposition'), null);
+      }
+      assert.equal((await get('/download/typescript/all-materials', cookie)).status, 403);
+      const page = await get('/courses/typescript', cookie);
+      assert.equal(page.status, 200);
+      const html = await page.text();
+      assert.ok(html.includes(`/download/typescript/chapter-${pad(n)}"`)); assert.ok(!html.includes(`/download/typescript/chapter-${pad(n + 1)}"`));
+      assert.equal((await get('/courses/redmine-clone', cookie)).status, 403);
+      if (n === 3) {
+        assert.equal((await get('/download/typescript/exercise-03', cookie)).status, 200);
+        assert.equal((await get('/download/typescript/exercise-04', cookie)).status, 403);
+      }
+    }
+    for (const phrase of [levelPhrase(10), localPhrase]) {
+      const { res, cookie } = await levelLogin(phrase);
+      assert.equal(res.status, 303);
+      for (const [name, bytes] of fixtures()) {
+        const id = name.replace('typescript-', '').replace(/\.(pdf|zip)$/, '');
+        const dl = await get('/download/typescript/' + id, cookie);
+        assert.equal(dl.status, 200, `${phrase === localPhrase ? 'legacy' : 'level 10'} ${id}`);
+        assert.deepEqual(Buffer.from(await dl.arrayBuffer()), bytes);
+      }
+    }
+  } finally { await instance.dispose(); }
+});
+test('session gift levels are signed, bounded and fail closed when missing', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const token = extra => {
+    const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['typescript'], ...extra })).toString('base64url');
+    return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  };
+  for (const giftLevel of [0, 11, -1, 1.5, '10', null]) {
+    const res = await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({ giftLevel })}` } });
+    assert.equal(res.status, 401, String(giftLevel));
+  }
+  // 段を持たないセッションはギフトの章を開けない（全部開ける扱いにしない）。
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({})}` } })).status, 403);
+  assert.equal((await req('/download/typescript/chapter-02', { headers: { Cookie: `local_course_session=${token({ giftLevel: 1 })}` } })).status, 403);
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: `local_course_session=${token({ giftLevel: 1 })}` } })).status, 200);
+});
 test('production serves the paid product to product-phrase holders behind the Basic gate', async () => {
   const prodOrigin = 'https://course.example';
   const instance = runtime({ bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) } });
   try {
     const bucket = await instance.getR2Bucket('MATERIALS');
-    await bucket.put('releases/redmine-clone/0.1.0/redmine-clone-source.zip', 'PROD PRODUCT BYTES');
+    await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PROD PRODUCT BYTES');
     const authHeaders = { Authorization: basicHeader };
     const entry = await instance.dispatchFetch(prodOrigin, { headers: authHeaders });
     const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
@@ -190,15 +267,60 @@ test('login rejects missing/mismatched CSRF, cross-site origins and oversized fo
   assert.equal((await loginAttempt(localPhrase, { form: { padding: 'x'.repeat(5000) } })).res.status, 403);
   assert.equal((await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.200' }, body: new URLSearchParams({ phrase: localPhrase, csrf: 'none' }) })).status, 403);
 });
-test('expired login CSRF and duplicate form/cookie values are rejected', async () => {
+test('expired login CSRF reissues the entry; tampered and duplicate form/cookie values are rejected', async () => {
   const now = Math.floor(Date.now() / 1000), token = signed('login', now - 700, now - 100);
   const res = await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.201', Cookie: `local_course_login=${token}` }, body: new URLSearchParams({ csrf: token, phrase: localPhrase }) });
-  assert.equal(res.status, 403);
+  assert.equal(res.status, 200); assert.match(await res.text(), /時間がたったので、もう一度入力してください。/);
+  assert.equal(headerCookie(res, 'local_course_session'), '');
+  const tampered = token.slice(0, -2) + (token.endsWith('AA') ? 'BB' : 'AA');
+  assert.equal((await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.201', Cookie: `local_course_login=${tampered}` }, body: new URLSearchParams({ csrf: tampered, phrase: localPhrase }) })).status, 403);
   const { cookie } = await loginAttempt();
   assert.equal((await req('/library', { headers: { Cookie: cookie + '; ' + cookie } })).status, 401);
   const entry = await req('/'); const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
   const body = new URLSearchParams({ csrf, phrase: localPhrase }); body.append('phrase', 'other');
   assert.equal((await req('/login', { method: 'POST', headers: { Origin: origin, Cookie: headerCookie(entry, 'local_course_login'), 'CF-Connecting-IP': '192.0.2.202' }, body })).status, 403);
+});
+test('an entry left open past its 600-second limit is shown again and the phrase then works', async () => {
+  const entry = await req('/');
+  const fresh = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+  const claims = JSON.parse(Buffer.from(fresh.split('.')[0], 'base64url').toString());
+  assert.equal(claims.exp - claims.iat, 600);
+  assert.match(entry.headers.get('Set-Cookie'), /Max-Age=600/);
+  const now = Math.floor(Date.now() / 1000), expired = signed('login', now - 700, now - 100);
+  const post = (csrf, cookie, phrase = localPhrase) => req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, ...(cookie ? { Cookie: cookie } : {}) }, body: new URLSearchParams({ csrf, phrase }) });
+  // ブラウザでは Cookie も 600 秒で消えるので、Cookie が無い送信が普通の形になる。
+  for (const cookie of ['', `local_course_login=${expired}`]) {
+    const res = await post(expired, cookie, 'wrong');
+    assert.equal(res.status, 200, cookie || 'no cookie');
+    const html = await res.text();
+    assert.match(html, /role="status" class="notice">時間がたったので、もう一度入力してください。/);
+    assert.doesNotMatch(html, /role="alert"/);
+    const csrf = /name="csrf" value="([^"]+)"/.exec(html)[1];
+    assert.notEqual(csrf, expired);
+    const again = JSON.parse(Buffer.from(csrf.split('.')[0], 'base64url').toString());
+    assert.equal(again.exp - again.iat, 600);
+    assert.match(res.headers.get('Set-Cookie'), /^local_course_login=[^;]+; .*Max-Age=600/);
+    const ok = await post(csrf, headerCookie(res, 'local_course_login'));
+    assert.equal(ok.status, 303); assert.equal(ok.headers.get('Location'), '/library');
+  }
+  // Cookie の値と合わない、用途が違う、署名が不正な値は、今までどおり 403。
+  assert.equal((await post(expired, headerCookie(entry, 'local_course_login'))).status, 403);
+  assert.equal((await post(signed('session', now - 700, now - 100), '')).status, 403);
+  assert.equal((await post(expired.slice(0, -2) + (expired.endsWith('AA') ? 'BB' : 'AA'), '')).status, 403);
+  assert.equal((await post(fresh, '')).status, 403);
+  // 同じ名前の Cookie が2つ、または空の Cookie は「Cookie が無い」とは扱わず 403。
+  assert.equal((await post(expired, `local_course_login=${expired}; local_course_login=${expired}`)).status, 403);
+  assert.equal((await post(expired, 'local_course_login=')).status, 403);
+});
+test('surrounding half-width and full-width spaces are removed before the phrase is compared', async () => {
+  for (const phrase of [` ${localPhrase}`, `${localPhrase} `, `\u3000${localPhrase}\u3000`, `\t ${localPhrase}\u3000\n`]) {
+    assert.equal((await loginAttempt(phrase)).res.status, 303, JSON.stringify(phrase));
+  }
+  assert.equal((await loginAttempt(` ${productPhrase}\u3000`)).res.status, 303);
+  for (const phrase of [' wrong ', '\u3000wrong', `${localPhrase}x `, '\u3000 ']) {
+    const { res } = await loginAttempt(phrase);
+    assert.equal(res.status, 401, JSON.stringify(phrase)); assert.match(await res.text(), /合言葉を確認して/);
+  }
 });
 test('IP brute-force limit is enforced by the actual platform binding', async () => {
   const entry = await req('/'); const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
@@ -226,6 +348,50 @@ test('logout requires session-bound CSRF and clears the browser cookie', async (
   assert.doesNotMatch(html, /name="csrf"|<script(?! defer src="\/app\.js")/);
   assert.equal((await req('/closed', { headers: { Cookie: cookie } })).headers.get('Location'), '/library');
 });
+test('closing without a session goes to the closed page; other origins are still refused', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  // 4時間たって戻った人の Cookie は、期限切れのセッションの値になっている。
+  for (const cookie of ['', `local_course_session=${signed('session', now - 14500, now - 100)}`]) {
+    const res = await req('/logout', { method: 'POST', headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}) }, body: new URLSearchParams({ csrf: 'stale-or-missing' }) });
+    assert.equal(res.status, 303, cookie || 'no cookie'); assert.equal(res.headers.get('Location'), '/closed');
+    assert.match(res.headers.get('Set-Cookie'), /^local_course_session=; .*Max-Age=0/);
+    noCache(res);
+  }
+  assert.equal((await req('/logout', { method: 'POST', headers: { Origin: origin }, body: '' })).status, 303);
+  for (const headers of [{ Origin: 'https://evil.example' }, {}, { Origin: origin, 'Sec-Fetch-Site': 'cross-site' }]) {
+    const res = await req('/logout', { method: 'POST', headers, body: new URLSearchParams({ csrf: 'x' }) });
+    assert.equal(res.status, 403, JSON.stringify(headers)); assert.equal(res.headers.get('Set-Cookie'), null);
+  }
+  // セッションがある時は、今までどおり確認用の値が違えば 403。
+  const { cookie } = await loginAttempt();
+  assert.equal((await req('/logout', { method: 'POST', headers: { Origin: origin, Cookie: cookie }, body: new URLSearchParams({ csrf: 'bad' }) })).status, 403);
+  assert.equal((await req('/library', { headers: { Cookie: cookie } })).status, 200);
+});
+test('the locked page primary button leads to a phrase field, and re-entering closes the previous collection', async () => {
+  const { cookie } = await loginAttempt(localPhrase);
+  const locked = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
+  assert.equal(locked.status, 403);
+  const html = await locked.text();
+  const href = /<section class="card status-card"[^>]*>.*?<a class="button" href="([^"]+)">/.exec(html)[1];
+  assert.equal(href, '/phrase');
+  assert.match(html, /別の合言葉で入り直すと、いま開いている教材は閉じます。/);
+  assert.doesNotMatch(html, /ログアウトしてから別の合言葉で入り直すこともできます/);
+  assert.equal((await req('/', { headers: { Cookie: cookie } })).headers.get('Location'), '/library');
+  const entry = await req(href, { headers: { Cookie: cookie } });
+  assert.equal(entry.status, 200); noCache(entry);
+  const form = await entry.text();
+  assert.match(form, /<input id="phrase" type="password" name="phrase"/);
+  assert.match(form, /別の合言葉で入り直すと、いま開いている教材は閉じます。/);
+  const csrf = /name="csrf" value="([^"]+)"/.exec(form)[1];
+  const res = await req('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, Cookie: `${cookie}; ${headerCookie(entry, 'local_course_login')}` }, body: new URLSearchParams({ csrf, phrase: productPhrase }) });
+  assert.equal(res.status, 303);
+  const next = headerCookie(res, 'local_course_session');
+  assert.equal((await req('/courses/redmine-clone', { headers: { Cookie: next } })).status, 200);
+  // 今の動きのまま: 入り直すと、前に開けた教材は閉じる。
+  assert.equal((await req('/courses/typescript', { headers: { Cookie: next } })).status, 403);
+  const anonymous = await req(href);
+  assert.equal(anonymous.status, 200); assert.doesNotMatch(await anonymous.text(), /いま開いている教材は閉じます/);
+});
 test('fixed redirects ignore user-controlled next URL; unexpected hosts are refused', async () => {
   const { cookie } = await loginAttempt();
   const res = await req('/?next=https://evil.example', { headers: { Cookie: cookie } });
@@ -237,6 +403,54 @@ test('missing/short secrets and invalid production origin fail closed', async ()
     const instance = runtime({ bindings });
     try { const res = await instance.dispatchFetch(origin + '/download/typescript/chapter-01'); assert.equal(res.status, 503); noCache(res); }
     finally { await instance.dispose(); }
+  }
+});
+async function productPhraseCase(productSecret) {
+  const instance = runtime({ origin, bindings: { SESSION_SECRET: secret, ...(productSecret === undefined ? {} : { ACCESS_PHRASE_SHA256_REDMINE_CLONE: productSecret }) } });
+  await instance.ready;
+  const send = (path, opts = {}) => instance.dispatchFetch(origin + path, { redirect: 'manual', ...opts });
+  const attempt = async phrase => {
+    const entry = await send('/');
+    const csrf = /name="csrf" value="([^"]+)"/.exec(await entry.text())[1];
+    return send('/login', { method: 'POST', headers: { Origin: origin, 'CF-Connecting-IP': `192.0.2.${++ip}`, Cookie: headerCookie(entry, 'local_course_login') }, body: new URLSearchParams({ csrf, phrase }) });
+  };
+  return { instance, send, attempt };
+}
+test('an unset product phrase setting keeps the site and the gift working', async () => {
+  const { instance, send, attempt } = await productPhraseCase(undefined);
+  try {
+    assert.equal((await send('/')).status, 200);
+    assert.equal((await attempt(localPhrase)).status, 303);
+    const denied = await attempt(productPhrase);
+    assert.equal(denied.status, 401); assert.doesNotMatch(await denied.text(), /配布設定を確認しています/);
+  } finally { await instance.dispose(); }
+});
+test('a malformed product phrase setting closes only that product as under configuration check', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const body = Buffer.from(JSON.stringify({ purpose: 'session', iat: now, exp: now + 100, nonce: '00000000-0000-4000-a000-000000000000', unlocked: ['redmine-clone'] })).toString('base64url');
+  const productSession = `local_course_session=${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+  // 大文字のダイジェスト、ダイジェストにし忘れた生の合言葉、長さ違いの3通り。
+  for (const malformed of [digest(productPhrase).toUpperCase(), productPhrase, digest(productPhrase).slice(1)]) {
+    const { instance, send, attempt } = await productPhraseCase(malformed);
+    try {
+      await instance.getR2Bucket('MATERIALS').then(b => b.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES'));
+      assert.equal((await send('/')).status, 200);
+      const denied = await attempt(productPhrase);
+      assert.equal(denied.status, 401);
+      assert.match(await denied.text(), /販売中の教材は、ただいま配布設定を確認しています/);
+      assert.equal((await attempt(malformed)).status, 401);
+      const gift = await attempt(localPhrase);
+      assert.equal(gift.status, 303);
+      const giftCookie = headerCookie(gift, 'local_course_session');
+      assert.equal((await send('/courses/typescript', { headers: { Cookie: giftCookie } })).status, 200);
+      const closedPage = await send('/courses/redmine-clone', { headers: { Cookie: giftCookie } });
+      assert.equal(closedPage.status, 503); assert.match(await closedPage.text(), /配布設定の確認中です/);
+      // 設定を間違える前に入った購入者のセッションでも、閉じた商品は渡さない。
+      for (const path of ['/courses/redmine-clone', '/download/redmine-clone/source-zip']) {
+        const res = await send(path, { headers: { Cookie: productSession } });
+        assert.equal(res.status, 503, path); assert.equal(res.headers.get('Content-Disposition'), null);
+      }
+    } finally { await instance.dispose(); }
   }
 });
 test('release manifest validates all filenames and rejects unsafe filenames', async () => {
@@ -259,9 +473,14 @@ test('survey gift catalogue contains only TypeScript and never the Taskapp produ
   const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
   assert.match(catalogue, /アンケート/); assert.match(catalogue, /無料プレゼント/);
   assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /ご協力の感謝を、<br>次の学びに。/); assert.match(catalogue, /<title>プレゼント教材 \|/);
+  assert.match(catalogue, /<div class="eyebrow">THANK YOU FOR YOUR FEEDBACK<\/div><h1>ご協力の感謝を、<br>次の学びに。<\/h1><p class="lead">アンケートにお答えいただいた方へ。<br class="wide">TypeScript教材を無料プレゼントとしてお届けします。<\/p>/);
+  assert.match(catalogue, /<h2>TypeScript教材<\/h2><p>アンケートにお答えいただいた方への無料プレゼントです。<\/p>/);
+  assert.ok(catalogue.includes(`<footer>教材ライブラリ · ${version}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`), 'gift library footer');
+  assert.match(catalogue, /<span class="brand-note">アンケート回答者限定<\/span>/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
   assert.match(course, /ダミー教材/); assert.ok(course.includes(version));
+  assert.ok(course.includes(`<footer>教材ライブラリ · ${version}<br>`), 'gift course footer');
   assert.equal((course.match(/href="\/download\/typescript\//g) || []).length, 21);
 });
 test('aggregate login limiter rejects attempts spread across IP addresses', async () => {
@@ -320,6 +539,17 @@ test('pending, preview and published labels are distinct; verification copy belo
     manifest.giftPolicy.myaspVerified = true; manifest.giftPolicy.distributionApproved = true;
     course.release = { ...course.release, synthetic: false, verification: { delivery: '配送の確認記録A', materials: '教材の確認記録B', platforms: '環境の確認記録C' } };
     const catalogue = views.catalogue('synthetic-csrf', false, ['typescript']);
+    // Gift only keeps the gift hero; gift plus product uses the neutral hero; product only uses the product hero.
+    assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /<title>プレゼント教材 \|/);
+    const mixed = views.catalogue('synthetic-csrf', false, ['typescript', 'redmine-clone']);
+    assert.match(mixed, /<div class="eyebrow">YOUR LIBRARY<\/div><h1>次の学びを、<br>ひとつずつ。<\/h1>/); assert.match(mixed, /アンケートにお答えいただいた方への無料プレゼントです。/);
+    const bought = views.catalogue('synthetic-csrf', false, ['redmine-clone']);
+    assert.match(bought, /<h1>ご購入の教材を、<br>手元に。<\/h1>/); assert.doesNotMatch(bought, /アンケートにお答えいただいた方への/);
+    // A course without its own version falls back to the app version, never the gift version.
+    const product = manifest.collections.find(c => c.id === 'redmine-clone');
+    const unversioned = views.productLibrary('synthetic-csrf', { ...product, version: null });
+    const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+    assert.ok(unversioned.includes(`<footer>教材ライブラリ · ${appVersion}<br>`)); assert.ok(!/<footer>[^<]*synthetic/.test(unversioned));
     assert.match(catalogue, />公開中</); assert.doesNotMatch(catalogue, /開発プレビュー/);
     const html = views.library('synthetic-csrf', course);
     for (const value of ['配送の確認記録A', '教材の確認記録B', '環境の確認記録C']) assert.ok(html.includes(value));
@@ -349,6 +579,7 @@ test('production requires the Basic site gate before the phrase login', async ()
     const denied = await instance.dispatchFetch(prodOrigin);
     assert.equal(denied.status, 401);
     assert.match(denied.headers.get('WWW-Authenticate'), /^Basic realm="course-library"/);
+    assert.match(await denied.text(), /ご案内にある ID とパスワードを入力してください/);
     const wrong = await instance.dispatchFetch(prodOrigin, { headers: { Authorization: 'Basic ' + Buffer.from('test-basic-user:wrong').toString('base64') } });
     assert.equal(wrong.status, 401);
     for (const path of ['/library', '/download/typescript/chapter-01']) {
@@ -384,7 +615,7 @@ test('production auth remains secure but neither synthetic files nor unverified 
 test('release policy fails closed for product mixing, wrong audiences and incomplete MyASP/distribution approval', async () => {
   const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
   const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-  const course = manifest.collections[0], original = structuredClone(course), policy = { ...manifest.giftPolicy };
+  const course = manifest.collections[0], original = structuredClone(course), policy = { ...manifest.giftPolicy }, approval = course.approval;
   try {
     for (const [field, value] of [['id', 'taskapp'], ['distribution', 'free-product'], ['audience', 'all-newsletter-readers']]) {
       Object.assign(course, original, { [field]: value });
@@ -392,9 +623,17 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
       assert.throws(() => manifest.validateManifest());
     }
     // 商品コレクションは buyers 以外の audience を許可しない（paid-product 型は正当）。
-    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers' });
+    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers', phraseEnv: 'ACCESS_PHRASE_SHA256_TYPESCRIPT' });
     assert.doesNotThrow(() => manifest.validateManifest());
-    Object.assign(course, structuredClone(original));
+    // 商品の設定名がマニフェストに無い、または id と食い違う商品は、起動しない。
+    Object.assign(course, { phraseEnv: undefined });
+    assert.throws(() => manifest.validateManifest());
+    Object.assign(course, { phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE' });
+    assert.throws(() => manifest.validateManifest());
+    Object.assign(course, structuredClone(original), { distribution: 'paid-product', audience: 'buyers', phraseEnv: 'ACCESS_PHRASE_SHA256_TYPESCRIPT' });
+    assert.doesNotThrow(() => manifest.validateManifest());
+    Object.assign(course, structuredClone(original)); delete course.phraseEnv;
+    assert.doesNotThrow(() => manifest.validateManifest());
     course.materials[0].filename = 'taskapp-book-01.pdf';
     assert.throws(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original));
@@ -402,13 +641,42 @@ test('release policy fails closed for product mixing, wrong audiences and incomp
     assert.throws(() => manifest.validateManifest());
     Object.assign(course, structuredClone(original));
     course.status = 'published'; course.release.synthetic = false;
+    // 承認の旗はコレクションの中（course.approval）を見る。
     for (const [myaspVerified, distributionApproved] of [[false, false], [true, false], [false, true]]) {
-      Object.assign(manifest.giftPolicy, { myaspVerified, distributionApproved });
+      Object.assign(course.approval, { myaspVerified, distributionApproved });
       assert.equal(manifest.canDistribute(course, false), false);
     }
-    Object.assign(manifest.giftPolicy, { myaspVerified: true, distributionApproved: true });
+    Object.assign(course.approval, { myaspVerified: true, distributionApproved: true });
     assert.equal(manifest.canDistribute(course, false), true);
-  } finally { Object.assign(course, original); Object.assign(manifest.giftPolicy, policy); }
+  } finally { Object.assign(course, original, { approval }); delete course.phraseEnv; Object.assign(manifest.giftPolicy, policy); }
+});
+test('approval lives in each collection and one decision function covers gifts and products', async () => {
+  const js = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const manifest = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  const [gift, product] = manifest.collections;
+  assert.equal(gift.approval, manifest.giftPolicy);
+  assert.equal(product.approval, manifest.productPolicy);
+  // 今の動き: ギフトはダミー教材なのでローカルだけ、商品は本番でも配れる。
+  for (const local of [true, false]) {
+    assert.equal(manifest.isDistributable(gift, local), local);
+    assert.equal(manifest.canDistribute(gift, local), local);
+    assert.equal(manifest.isDistributable(product, local), true);
+  }
+  assert.equal(manifest.canDistributeProduct(product), true);
+  assert.equal(manifest.canDistribute(product, true), false);
+  assert.equal(manifest.canDistributeProduct(gift), false);
+  // 商品を1つ止めても、別の承認を持つ商品は止まらない。
+  const second = { ...structuredClone(product), id: 'second-product', approval: { distributionApproved: false } };
+  assert.equal(manifest.canDistributeProduct(second), false);
+  assert.equal(manifest.canDistributeProduct(product), true);
+  // ギフトは MyASP の確認が無いと、配布の承認があっても本番では配らない。
+  const published = { ...structuredClone(gift), status: 'published', release: { ...gift.release, synthetic: false } };
+  published.approval = { distributionApproved: true };
+  assert.equal(manifest.isDistributable(published, false), false);
+  published.approval = { distributionApproved: true, myaspVerified: true };
+  assert.equal(manifest.isDistributable(published, false), true);
+  assert.equal(manifest.isDistributable({ ...published, status: 'pending' }, true), false);
+  assert.equal(manifest.isDistributable({ ...published, release: null }, true), false);
 });
 test('zero-byte release objects return an authenticated no-store 503 without attachment metadata', async () => {
   const { cookie } = await loginAttempt();
@@ -439,4 +707,12 @@ test('zero-byte release objects return an authenticated no-store 503 without att
     const part = await req('/download/typescript/' + id, { headers: { Cookie: cookie, Range: 'bytes=0-9' } });
     assert.equal(part.status, 206, id); assert.deepEqual(Buffer.from(await part.arrayBuffer()), fixtures().get(name).subarray(0, 10));
   }
+});
+
+test('the local product fixture seeds the exact object prefix the manifest serves', async () => {
+  const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  assert.equal(productVersion, productRelease.version);
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  assert.ok(await bucket.head(`${productRelease.prefix}redmine-clone-source.zip`), 'seeded product object missing at the manifest prefix');
 });
