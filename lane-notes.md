@@ -43,6 +43,21 @@ HANDOFF 2026-11-15T01:40Z (PAUSE from managing session)
 - owner list: see needs owner | device: none
 - members still running: none (manager agent id a5da30e4e548e559a may not survive; decisions are above)
 - container worktrees: /workspace/w74..w78, /workspace/wcmp, /workspace/notes; nothing unpushed
+HANDOFF 2026-11-15 (cleanup hearing; lane handed to the personal-account manager; no merge, no new work after this line)
+- repositories touched: kouiso/course-library only
+- branches this lane created: notes/course-library (PR #85, draft, never merge). Branches this lane pushed merge commits to (created by the previous lane): fix/product-version-single-source? no (merged as it was) | chore/39-collection-approval (merged, #68) | feat/gift-chapter-phrases (merged, #72) | fix/48-entry-expiry (#74 open) | fix/29-logout-without-session (#75 open) | fix/50-key-screen-button (#76 open) | fix/45-basic-auth-hint (#77 open). Session branch claude/course-library-cloud-messaging-vrv4qr: never pushed to, no commits.
+- merged by this lane: #81 (5aeb8f3, carried #64), #68 (5479a50), #72 (28c4c27). PR bases changed: #68 and #74 retargeted to codex/initial-implementation.
+- in flight: nothing uncommitted, nothing unpushed, no job or subagent running. Half-done step: reviews of #74-#77 are PASS but only stored in reviews/74-77.md, not posted on the PRs; no LOCAL-CHECK/GATE comment posted on them yet.
+- exact next step per open PR:
+  #74 head 91bc5eb: post REVIEW from reviews/74-77.md, LOCAL-CHECK (evidence/74-91bc5eb.png, 80/0, design evidence/design-74-91bc5eb/), GATE, merge with a merge commit
+  #75 head cb3be3d (81/0): after #74 lands retarget base to default, then the same four steps
+  #76 head f49e6e5 (82/0): after #75, the same
+  #77 head 1c0641d (82/0): after #76, the same
+  #78 head 1fcd677 (untouched by this lane): rework so entry and footer keep the design copy; merge default in (src/views.ts conflicts); compare with tools/design-compare.cjs; review
+  #79 head 6016f5a, #80 head 6c705a2 (untouched): after #78, merge the layer below in, check, compare, review
+  #84 handoff PR of the previous lane, #85 notes PR: never merge or close
+- planned next after the PRs: design conformance PR over the 12 boards, #30, follow-ups 1-7, closing parent stories that are fully met (list above)
+- could not be pushed: nothing
 
 ## needs owner
 - ASK | #42/#43 ask for buyer-neutral copy on the entry screen and footer, the design board Main keeps "A GIFT FOR SURVEY RESPONDENTS" etc. Should the design copy win? (yes/no/don't know) | read: issues #42 #43, design Main.dc.html, PR #78 diff of src/views.ts | they contradict each other | on "don't know": design copy stays (lane default tonight)
