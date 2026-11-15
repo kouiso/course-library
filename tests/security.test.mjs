@@ -99,6 +99,17 @@ test('buyers read product wording in the library hero and the product footer; en
   assert.ok(footer.startsWith(`<footer>教材ライブラリ · ${productVersion}<br>`), footer); assert.ok(!footer.includes(version), 'gift version in product footer');
   assert.match(product, /<span class="brand-note">アンケート回答者限定<\/span>/);
 });
+test('the product page shows its version, date and the three verification sentences as body text', async () => {
+  const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
+  const { cookie } = await loginAttempt(productPhrase);
+  const html = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
+  const card = /<h2>ダウンロード<\/h2>[\s\S]*?<\/section>/.exec(html)[0];
+  assert.ok(card.includes(`<p class="release-meta">${productRelease.version} · <time datetime="${productRelease.date}">${productRelease.date}</time></p>`));
+  const items = [...card.matchAll(/<li>([^<]*)<\/li>/g)].map(m => m[1]);
+  assert.deepEqual(items, [productRelease.verification.materials, productRelease.verification.delivery, productRelease.verification.platforms]);
+  assert.doesNotMatch(card, /class="muted"/);
+});
 test('the gift phrase does not unlock paid products', async () => {
   const { cookie } = await loginAttempt(localPhrase);
   assert.equal((await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).status, 403);

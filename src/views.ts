@@ -67,7 +67,7 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
 export function productLibrary(nonce: string, course: Collection): string {
   const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
   const verification = course.release?.verification;
-  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
+  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
 }
 // 2つ目の合言葉で入り直した時の今の動き（前の教材は閉じる）を、そのまま伝える。
 export const switchNote = '別の合言葉で入り直すと、いま開いている教材は閉じます。続けて使う時は、その教材の合言葉でもう一度入ってください。';
@@ -169,7 +169,7 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .breadcrumb{font-size:14px;align-self:flex-start}
 .notice{padding:14px 20px;background:#fff0cd;border-radius:10px;font-size:14px}
 .section-title{display:flex;align-items:baseline;gap:16px}.section-title b{color:var(--accent);font-size:14px}
-.download{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
+.download{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
 .download:hover{background:#eaf5ed}
 .download small{white-space:nowrap;color:var(--muted)}
 .download.bundle{background:#edf5eb}
@@ -185,7 +185,8 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .status-card h1{font-size:30px;letter-spacing:0}
 .waiting{display:flex;align-items:flex-end;gap:8px;height:72px}
 .waiting .spine{border-radius:3px}.waiting .ink{width:22px;height:64px}.waiting .forest{width:18px;height:72px}.waiting .dashed{width:22px;height:56px}
-ol{margin:0;padding-left:22px}li{margin:10px 0}
+ol,ul{margin:0;padding-left:22px}li{margin:10px 0}
+.release-meta{margin:12px 0 0;color:var(--muted)}
 @media(max-width:720px){
 header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:2px}
 .brand{font-size:15px}
