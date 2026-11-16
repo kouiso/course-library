@@ -88,6 +88,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -107,25 +108,40 @@ jobs:
         run: |
           base_sha="$(git rev-parse HEAD)"
           branch="release/${COLLECTION}-${VERSION}"
+          node scripts/automation/promote-product.mjs --collection "$COLLECTION" --version "$VERSION" ${DATE:+--date "$DATE"} | tee /tmp/promote.log
+          if git diff --quiet src/manifest.ts; then
+            echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+            echo "needs_push=false" >> "$GITHUB_OUTPUT"
+            echo "needs_pr=false" >> "$GITHUB_OUTPUT"
+            echo "manifest は既に ${COLLECTION} ${VERSION} を指しています。PR は作りません。" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git restore src/manifest.ts
           gh auth setup-git
           remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')"
           if [ -n "$remote_sha" ]; then
             git fetch origin "$branch"
-            git switch -C "$branch" FETCH_HEAD
+            open_pr="$(gh pr list --head "$branch" --state open --json url -q '.[0].url')"
+            if [ -n "$open_pr" ] || git merge-base --is-ancestor "$base_sha" FETCH_HEAD; then
+              git switch -C "$branch" FETCH_HEAD
+            else
+              branch="release/${COLLECTION}-${VERSION}-$(date -u +%Y%m%d%H%M%S)"
+              git switch -c "$branch"
+            fi
           else
             git switch -c "$branch"
           fi
           node scripts/automation/promote-product.mjs --collection "$COLLECTION" --version "$VERSION" ${DATE:+--date "$DATE"} | tee /tmp/promote.log
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
           if ! git diff --quiet src/manifest.ts; then
             echo "needs_push=true" >> "$GITHUB_OUTPUT"
             echo "needs_pr=true" >> "$GITHUB_OUTPUT"
-          elif [ "$(git rev-parse HEAD)" != "$base_sha" ]; then
+          elif ! git diff --quiet "$base_sha" HEAD; then
             echo "needs_push=false" >> "$GITHUB_OUTPUT"
             echo "needs_pr=true" >> "$GITHUB_OUTPUT"
           else
             echo "needs_push=false" >> "$GITHUB_OUTPUT"
             echo "needs_pr=false" >> "$GITHUB_OUTPUT"
-            echo "manifest は既に ${COLLECTION} ${VERSION} を指しています。PR は作りません。" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Verify the candidate commit
@@ -136,13 +152,14 @@ jobs:
         if: steps.update.outputs.needs_pr == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.update.outputs.branch }}
           NEEDS_PUSH: ${{ steps.update.outputs.needs_push }}
           COLLECTION: ${{ steps.args.outputs.collection }}
           VERSION: ${{ steps.args.outputs.version }}
           SHA256: ${{ steps.args.outputs.sha256 }}
           SOURCE: ${{ steps.args.outputs.source }}
         run: |
-          branch="release/${COLLECTION}-${VERSION}"
+          branch="$BRANCH"
           gh auth setup-git
           if [ "$NEEDS_PUSH" = "true" ]; then
             git config user.name "github-actions[bot]"
