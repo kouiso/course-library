@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'node:crypto';
 export const localPhrase = 'synthetic-development-only';
 // Local-only dummy phrase for the paid product card. Never a production value.
 export const localProductPhrase = 'synthetic-product-development-only';
+// Each paid product needs a distinct phrase: two products sharing one digest would be closed as misconfigured.
+export const localTaskAppPhrase = 'synthetic-task-app-development-only';
 export const basicUser = 'test-basic-user';
 export const basicPass = 'test-basic-pass';
 export const basicHeader = 'Basic ' + Buffer.from(`${basicUser}:${basicPass}`).toString('base64');

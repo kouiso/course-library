@@ -60,7 +60,10 @@ test('every workflow is manual-only, has explicit permissions and pins external 
     const on = /^on:\n((?:[ #].*\n|\n)*)/m.exec(text);
     assert.ok(on, file);
     const triggers = on[1].split('\n').filter(line => /^  [a-z_]+:/.test(line)).map(line => line.trim().replace(/:.*/, ''));
-    assert.deepEqual(triggers, ['workflow_dispatch'], `${file} must not start on push, PR, issue or schedule events`);
+    // promote-product.yml also answers repository_dispatch(product-release): product repositories
+    // announce an uploaded release so the manifest can be pointed at it through a reviewed PR.
+    const expected = file === 'promote-product.yml' ? ['repository_dispatch', 'workflow_dispatch'] : ['workflow_dispatch'];
+    assert.deepEqual(triggers, expected, `${file} must not start on push, PR, issue or schedule events`);
     assert.match(text, /^permissions:\n/m, file);
     assert.doesNotMatch(text, /pull_request_target/, file);
     if (file !== 'verify.yml') assert.doesNotMatch(text, /secrets\./, `${file} must run with GITHUB_TOKEN only`);
@@ -238,4 +241,39 @@ test('email exemptions match the complete host rather than a domain prefix', asy
  const rules=(await loadRules('.github/public-content-rules.json')).filter(r=>r.name==='personal-email');
  for (const host of ['example.com.private.invalid','example.com-private.invalid','users.noreply.github.com.private.invalid','anthropic.com.private.invalid']) assert.equal(scan([{label:'body',text:'person'+'@'+host}],rules).length,1,host);
  for (const host of ['example.com','sub.example.com','users.noreply.github.com','noreply.github.com','anthropic.com']) for(const suffix of ['', '.', ',']) assert.equal(scan([{label:'body',text:'person'+'@'+host+suffix}],rules).length,0,host+suffix);
+});
+
+test('promote-product rewrites only the release block for the named collection', async () => {
+  const { promoteProduct, releaseConstName } = await import('../scripts/automation/promote-product.mjs');
+  const source = [
+    "export const redmineCloneRelease = {",
+    "  schemaVersion: 1,",
+    "  version: '0.2.1',",
+    "  date: '2026-11-10',",
+    "  synthetic: false,",
+    "  prefix: 'releases/redmine-clone/0.2.1/',",
+    "  verification: { delivery: 'a', materials: 'b', platforms: 'c' },",
+    "} as const;",
+    "export const taskAppRelease = {",
+    "  schemaVersion: 1,",
+    "  version: '1.1.4',",
+    "  date: '2026-11-14',",
+    "  synthetic: false,",
+    "  prefix: 'releases/task-app/1.1.4/',",
+    "  verification: { delivery: 'a', materials: 'b', platforms: 'c' },",
+    "} as const;",
+  ].join('\n');
+  assert.equal(releaseConstName('redmine-clone'), 'redmineCloneRelease');
+  assert.equal(releaseConstName('task-app'), 'taskAppRelease');
+  const same = promoteProduct(source, { collection: 'redmine-clone', version: '0.2.1', date: '2026-11-10' });
+  assert.equal(same.changed, false);
+  const { text, changed } = promoteProduct(source, { collection: 'task-app', version: '1.2.0', date: '2026-12-01' });
+  assert.equal(changed, true);
+  assert.match(text, /version: '1\.2\.0'/);
+  assert.match(text, /date: '2026-12-01'/);
+  assert.match(text, /prefix: 'releases\/task-app\/1\.2\.0\/'/);
+  // The untouched collection keeps every original field.
+  assert.match(text, /version: '0\.2\.1'/);
+  assert.match(text, /prefix: 'releases\/redmine-clone\/0\.2\.1\/'/);
+  assert.throws(() => promoteProduct(source, { collection: 'typescript', version: '1.0.0', date: '2026-12-01' }), /No release constant/);
 });
