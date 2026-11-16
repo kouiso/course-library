@@ -126,12 +126,31 @@ jobs:
           SOURCE: ${{ steps.args.outputs.source }}
         run: |
           branch="release/${COLLECTION}-${VERSION}"
+          gh auth setup-git
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$branch"
-          git add src/manifest.ts
-          git commit -m "feat(manifest): ${COLLECTION} の配布版を ${VERSION} へ"
-          git push -u origin "$branch"
+          cp src/manifest.ts /tmp/updated-manifest.ts
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            git switch -C "$branch" "origin/$branch"
+            cp /tmp/updated-manifest.ts src/manifest.ts
+            if ! git diff --quiet src/manifest.ts; then
+              git add src/manifest.ts
+              git commit -m "feat(manifest): ${COLLECTION} の配布版を ${VERSION} へ"
+              git push origin "$branch"
+            fi
+          else
+            git switch -c "$branch"
+            cp /tmp/updated-manifest.ts src/manifest.ts
+            git add src/manifest.ts
+            git commit -m "feat(manifest): ${COLLECTION} の配布版を ${VERSION} へ"
+            git push -u origin "$branch"
+          fi
+          existing_pr="$(gh pr list --head "$branch" --state open --json url -q '.[0].url')"
+          if [ -n "$existing_pr" ]; then
+            echo "既存の昇格 PR を維持します: ${existing_pr}" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           {
             echo "関連 Issue"
             echo ""
@@ -156,4 +175,4 @@ jobs:
             echo "- [ ] 版番号・配布日が意図どおり"
             echo "- [ ] マージ後に verify.yml の deploy で本番へ出す判断"
           } > /tmp/pr-body.md
-          gh pr create --title "release: ${COLLECTION} の配布版を ${VERSION} へ" --body-file /tmp/pr-body.md
+          gh pr create --head "$branch" --title "release: ${COLLECTION} の配布版を ${VERSION} へ" --body-file /tmp/pr-body.md
