@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { runtime, localPhrase, localProductPhrase, digest } from './runtime.mjs';
+import { runtime, localPhrase, localProductPhrase, localTaskAppPhrase, digest } from './runtime.mjs';
 import { seed } from './fixtures.mjs';
 const built = spawnSync('node', ['scripts/wrangler.mjs', 'deploy', '--dry-run', '--outdir', 'dist'], { stdio: 'inherit' });
 if (built.status !== 0) process.exit(built.status || 1);
 const port = Number(process.env.COURSE_PREVIEW_PORT || '8797');
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid preview port');
-const mf = runtime({ origin: `http://127.0.0.1:${port}`, port, bindings: { ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(localProductPhrase) } });
+const mf = runtime({ origin: `http://127.0.0.1:${port}`, port, bindings: { ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(localProductPhrase), ACCESS_PHRASE_SHA256_TASK_APP: digest(localTaskAppPhrase) } });
 await mf.ready;
 await seed(mf);
-console.log(`Synthetic local preview: http://127.0.0.1:${port}\nLocal dummy phrase (TypeScript gift): ${localPhrase}\nLocal dummy phrase (paid product, dummy ZIP): ${localProductPhrase}\nNo remote resources. Stop this preview with Ctrl+C.`);
+console.log(`Synthetic local preview: http://127.0.0.1:${port}\nLocal dummy phrase (TypeScript gift): ${localPhrase}\nLocal dummy phrase (Redmineクローン教材, dummy ZIP): ${localProductPhrase}\nLocal dummy phrase (Task-App教材, dummy ZIP): ${localTaskAppPhrase}\nNo remote resources. Stop this preview with Ctrl+C.`);
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { await mf.dispose(); process.exit(0); });

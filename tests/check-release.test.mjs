@@ -42,11 +42,15 @@ test('with the survey gift unapproved and the paid product ready, the check pass
 });
 
 test('release check blocks when the survey gift is unapproved and no paid product is ready', async () => {
-  const edit = text => replaceOnce(text, 'export const productPolicy = {\n  distributionApproved: true,', 'export const productPolicy = {\n  distributionApproved: false,');
+  const edit = text => {
+    let next = replaceOnce(text, 'export const productPolicy = {\n  distributionApproved: true,', 'export const productPolicy = {\n  distributionApproved: false,');
+    return replaceOnce(next, 'export const taskAppPolicy = {\n  distributionApproved: true,', 'export const taskAppPolicy = {\n  distributionApproved: false,');
+  };
   await withManifest(edit, result => {
     assert.equal(result.status, 1);
     assert.match(result.stdout, /^survey-gift: blocked typescript /m);
     assert.match(result.stdout, /^paid-product: blocked redmine-clone /m);
+    assert.match(result.stdout, /^paid-product: blocked task-app /m);
     assert.match(result.stderr, /^Release blocked: no collection is distributable \(survey gift and paid product blocked\)\./m);
   });
 });
@@ -152,7 +156,7 @@ test('two blocked paid products are counted in the plural', async () => {
 });
 
 test('a product that shares the gift approval object stops the release check', async () => {
-  const edit = text => replaceOnce(text, 'release: productRelease, approval: productPolicy,', 'release: productRelease, approval: giftPolicy,');
+  const edit = text => replaceOnce(text, 'release: redmineCloneRelease, approval: productPolicy,', 'release: redmineCloneRelease, approval: giftPolicy,');
   await withManifest(edit, result => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Shared approval/);

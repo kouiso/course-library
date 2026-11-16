@@ -104,13 +104,13 @@ test('buyers read product wording in the library hero and the product footer; en
 });
 test('the product page shows its version, date and the three verification sentences as body text', async () => {
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
-  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
+  const { redmineCloneRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
   const { cookie } = await loginAttempt(productPhrase);
   const html = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
   const card = /<h2>ダウンロード<\/h2>[\s\S]*?<\/section>/.exec(html)[0];
-  assert.ok(card.includes(`<p class="release-meta">${productRelease.version} · <time datetime="${productRelease.date}">${productRelease.date}</time></p>`));
+  assert.ok(card.includes(`<p class="release-meta">${redmineCloneRelease.version} · <time datetime="${redmineCloneRelease.date}">${redmineCloneRelease.date}</time></p>`));
   const items = [...card.matchAll(/<li>([^<]*)<\/li>/g)].map(m => m[1]);
-  assert.deepEqual(items, [productRelease.verification.materials, productRelease.verification.delivery, productRelease.verification.platforms]);
+  assert.deepEqual(items, [redmineCloneRelease.verification.materials, redmineCloneRelease.verification.delivery, redmineCloneRelease.verification.platforms]);
   assert.doesNotMatch(card, /class="muted"/);
 });
 test('the gift phrase does not unlock paid products', async () => {
@@ -917,8 +917,8 @@ test('zero-byte release objects return an authenticated no-store 503 without att
 
 test('the local product fixture seeds the exact object prefix the manifest serves', async () => {
   const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
-  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
-  assert.equal(productVersion, productRelease.version);
+  const { redmineCloneRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  assert.equal(productVersion, redmineCloneRelease.version);
   const bucket = await mf.getR2Bucket('MATERIALS');
-  assert.ok(await bucket.head(`${productRelease.prefix}redmine-clone-source.zip`), 'seeded product object missing at the manifest prefix');
+  assert.ok(await bucket.head(`${redmineCloneRelease.prefix}redmine-clone-source.zip`), 'seeded product object missing at the manifest prefix');
 });

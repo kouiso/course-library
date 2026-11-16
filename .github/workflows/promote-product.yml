@@ -1,0 +1,159 @@
+name: Promote product release to catalogue
+
+# 商品リポジトリ（task-app / redmine-clone）の deploy-r2.yml が R2 への配置を
+# 終えたあとに呼ばれ、購入者に見せる版を manifest.ts で指し替える PR を開く。
+# ZIP の配置と「見せる版の選択」は別の関門: このワークフローは PR を作るまでで、
+# 公開は PR のレビューとマージ（→ verify.yml の deploy）で決まる。
+#
+# 起き方は2つ:
+# - repository_dispatch（type: product-release）: 商品リポジトリからの自動通知。
+#   client_payload: {"collection": "<id>", "version": "<semver>", "date": "<YYYY-MM-DD>",
+#                    "sha256": "<zip の sha256>", "source": "<repo>@<run_id>"}
+# - workflow_dispatch: 手動での切り替え・巻き戻し。collection と version は必須。
+#
+# 自動通知を受ける側の準備（商品リポジトリ側の secrets）:
+# - GitHub App: APP_ID / APP_PRIVATE_KEY（course-library への contents:write 相当、
+#   repository_dispatch を打てるもの。installation id はトークン作成時に解決される）
+# - なければ COURSE_LIBRARY_TOKEN（fine-grained PAT で contents:write をこのリポジトリに）
+# - どちらも無いときは商品側の workflow が手動実行用の gh コマンドを summary に出すだけで、
+#   このワークフローは呼ばれない（リリース自体は失敗しない）。
+
+on:
+  repository_dispatch:
+    types: [product-release]
+  workflow_dispatch:
+    inputs:
+      collection:
+        description: 商品コレクション id（redmine-clone / task-app）
+        required: true
+        type: string
+      version:
+        description: "購入者に出す版（例: 1.2.0）。先に releases/<collection>/<version>/ へ配置済みのもの"
+        required: true
+        type: string
+      date:
+        description: 配布日（YYYY-MM-DD、省略時は実行日）
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# 同時に2つの昇格が走ると manifest.ts で競合する。実行中のものは止めない。
+concurrency:
+  group: promote-product
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve inputs
+        id: args
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+          INPUT_COLLECTION: ${{ inputs.collection }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_DATE: ${{ inputs.date }}
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            node -e '
+              const fs = require("fs");
+              const p = JSON.parse(process.env.PAYLOAD || "{}");
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, [
+                `collection=${p.collection || ""}`,
+                `version=${p.version || ""}`,
+                `date=${p.date || ""}`,
+                `sha256=${p.sha256 || ""}`,
+                `source=${p.source || ""}`,
+              ].join("\n") + "\n");
+            '
+          else
+            {
+              echo "collection=${INPUT_COLLECTION}"
+              echo "version=${INPUT_VERSION}"
+              echo "date=${INPUT_DATE}"
+              echo "sha256="
+              echo "source=manual (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+            } >> "$GITHUB_OUTPUT"
+          fi
+          if ! grep -q '^collection=.' "$GITHUB_OUTPUT" || ! grep -q '^version=.' "$GITHUB_OUTPUT"; then
+            echo "::error::collection と version は必須です（payload か inputs が空でした）"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.4'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Update the release constant
+        id: update
+        env:
+          COLLECTION: ${{ steps.args.outputs.collection }}
+          VERSION: ${{ steps.args.outputs.version }}
+          DATE: ${{ steps.args.outputs.date }}
+        run: |
+          node scripts/automation/promote-product.mjs --collection "$COLLECTION" --version "$VERSION" ${DATE:+--date "$DATE"} | tee /tmp/promote.log
+          if git diff --quiet src/manifest.ts; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "manifest は既に ${COLLECTION} ${VERSION} を指しています。PR は作りません。" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify the candidate commit
+        if: steps.update.outputs.changed == 'true'
+        run: npm run check
+
+      - name: Open the promotion PR
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COLLECTION: ${{ steps.args.outputs.collection }}
+          VERSION: ${{ steps.args.outputs.version }}
+          SHA256: ${{ steps.args.outputs.sha256 }}
+          SOURCE: ${{ steps.args.outputs.source }}
+        run: |
+          branch="release/${COLLECTION}-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add src/manifest.ts
+          git commit -m "feat(manifest): ${COLLECTION} の配布版を ${VERSION} へ"
+          git push -u origin "$branch"
+          {
+            echo "関連 Issue"
+            echo ""
+            echo "なし（リリース通知からの自動起票）"
+            echo ""
+            echo "概要・背景・妥協点"
+            echo ""
+            echo "商品リポジトリのリリースで \`releases/${COLLECTION}/${VERSION}/\` へ ZIP が配置されたため、"
+            echo "購入者に見せる版を ${VERSION} に指し替えます。配置と公開は別の関門で、"
+            echo "この PR のレビュー・マージが公開の決め手です。"
+            echo ""
+            echo "やったこと"
+            echo ""
+            echo "- \`src/manifest.ts\` の ${COLLECTION} 用 release 定数を version=${VERSION} に更新"
+            echo "- \`npm run check\`（manifest 検査・型・テスト）を同じ commit で通過済み"
+            if [ -n "${SHA256}" ]; then echo "- 配置された ZIP の sha256: \`${SHA256}\`"; fi
+            if [ -n "${SOURCE}" ]; then echo "- 通知元: ${SOURCE}"; fi
+            echo ""
+            echo "確認してほしいこと"
+            echo ""
+            echo "- [ ] R2 の \`releases/${COLLECTION}/${VERSION}/\` に商品 ZIP がある（rclone lsl またはダッシュボード）"
+            echo "- [ ] 版番号・配布日が意図どおり"
+            echo "- [ ] マージ後に verify.yml の deploy で本番へ出す判断"
+          } > /tmp/pr-body.md
+          gh pr create --title "release: ${COLLECTION} の配布版を ${VERSION} へ" --body-file /tmp/pr-body.md

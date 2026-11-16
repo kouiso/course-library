@@ -26,7 +26,7 @@ export type Release = { schemaVersion: number; version: string; date: string; sy
 export const productPolicy = {
   distributionApproved: true,
 };
-export const productRelease = {
+export const redmineCloneRelease = {
   schemaVersion: 1,
   version: '0.2.1',
   date: '2026-11-10',
@@ -35,6 +35,22 @@ export const productRelease = {
   verification: {
     delivery: 'ローカルの Worker で、この版の置き場から ZIP を版入りの名前で配布できることを検査で確かめています。',
     materials: 'Day0 の骨格 ZIP で、完成品の app/ は含みません。',
+    platforms: 'Windows と macOS の実機での実走は未検証です。',
+  },
+} as const;
+// taskAppPolicy は Task-App教材だけの承認。配布の開始は商品ごとに別に決める。
+export const taskAppPolicy = {
+  distributionApproved: true,
+};
+export const taskAppRelease = {
+  schemaVersion: 1,
+  version: '1.1.4',
+  date: '2026-11-14',
+  synthetic: false,
+  prefix: 'releases/task-app/1.1.4/',
+  verification: {
+    delivery: 'ローカルの Worker で、この版の置き場から ZIP を版入りの名前で配布できることを検査で確かめています。',
+    materials: 'Day1 で scaffold-from-scratch.sh が土台を組み立てるためのファイルだけの配布 ZIP です。完成したアプリの src/ や prisma/ は含みません。',
     platforms: 'Windows と macOS の実機での実走は未検証です。',
   },
 } as const;
@@ -54,10 +70,14 @@ export type Secrets = {
   BASIC_AUTH_PASS?: string;
   ACCESS_PHRASE_SHA256?: string;
   ACCESS_PHRASE_SHA256_REDMINE_CLONE?: string;
+  ACCESS_PHRASE_SHA256_TASK_APP?: string;
 } & { [Name in GiftLevelEnvName]?: string };
 // 商品の phraseEnv に書ける名前。ギフトの段の合言葉の名前は商品には使わせない。
 export type PhraseEnvName = Exclude<Extract<keyof Secrets, `ACCESS_PHRASE_SHA256${string}`>, GiftLevelEnvName>;
-export type Collection = { id: string; title: string; description: string; distribution: 'survey-gift' | 'paid-product'; audience: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; approval: Approval; materials: Material[]; cover: string; mark: string; phraseEnv?: PhraseEnvName };
+// filenameHint は「保存されたファイル名を教材が手順で使う名前に変える」案内。商品ごとに
+// 教材本文が使うファイル名と日割りを持つ。未設定の商品には案内を出さない。
+export type FilenameHint = { filename: string; day: string };
+export type Collection = { id: string; title: string; description: string; distribution: 'survey-gift' | 'paid-product'; audience: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; approval: Approval; materials: Material[]; cover: string; mark: string; phraseEnv?: PhraseEnvName; filenameHint?: FilenameHint };
 export const exerciseChapterIds = ['01', '02', '03', '04', '05', '06', '07', '08', '10'];
 export const materials: Material[] = [
   { id: 'learning-flow', title: '学習の進め方', filename: 'typescript-learning-flow.pdf', type: 'application/pdf', group: 'intro' },
@@ -73,8 +93,12 @@ export const materials: Material[] = [
 export const collections: Collection[] = [
   { id: 'typescript', title: 'TypeScript教材', description: 'アンケートにお答えいただいた方への無料プレゼントです。', distribution: 'survey-gift', audience: 'survey-respondents', status: 'preview', version: release.version, release, approval: giftPolicy, materials, cover: 'Make types\nyour ally.', mark: 'TS' },
   {
-    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: productRelease.version, release: productRelease, approval: productPolicy, cover: 'Build a\nRedmine clone.', mark: 'RM', phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE',
+    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: redmineCloneRelease.version, release: redmineCloneRelease, approval: productPolicy, cover: 'Build a\nRedmine clone.', mark: 'RM', phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE', filenameHint: { filename: 'redmine-clone.zip', day: 'Day 3' },
     materials: [{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }],
+  },
+  {
+    id: 'task-app', title: 'Task-App教材', description: 'Next.js 15で作るタスク管理アプリ教材の配布 ZIP です。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: taskAppRelease.version, release: taskAppRelease, approval: taskAppPolicy, cover: 'Build a\nNext.js app.', mark: 'TA', phraseEnv: 'ACCESS_PHRASE_SHA256_TASK_APP', filenameHint: { filename: 'task-app-curriculum-v1.1.zip', day: 'Day 1' },
+    materials: [{ id: 'source-zip', title: '写経用の土台（scaffold）一式', filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle' }],
   },
 ];
 export function isSurveyGift(c: Collection): boolean {
@@ -170,7 +194,8 @@ export function validateManifest(): void {
       || c.release.prefix !== `releases/${c.id}/${c.version}/`
       || new Set(c.materials.map(m => m.id)).size !== c.materials.length
       || new Set(c.materials.map(m => m.filename)).size !== c.materials.length
-      || c.materials.some(m => !validMaterial(m) || !m.filename.startsWith(`${c.id}-`))) throw new Error('Invalid release manifest');
+      || c.materials.some(m => !validMaterial(m) || !m.filename.startsWith(`${c.id}-`))
+      || (c.filenameHint && !/^[a-z0-9][a-z0-9.-]{0,100}\.zip$/.test(c.filenameHint.filename))) throw new Error('Invalid release manifest');
   }
 }
 export const collectionStatusLabel = (status: Collection['status']): string => ({ pending: '準備中', preview: '開発プレビュー', published: '公開中' })[status];
