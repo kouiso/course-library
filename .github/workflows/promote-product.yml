@@ -97,29 +97,46 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
-      - name: Update the release constant
+      - name: Prepare release branch and update manifest
         id: update
         env:
+          GH_TOKEN: ${{ github.token }}
           COLLECTION: ${{ steps.args.outputs.collection }}
           VERSION: ${{ steps.args.outputs.version }}
           DATE: ${{ steps.args.outputs.date }}
         run: |
-          node scripts/automation/promote-product.mjs --collection "$COLLECTION" --version "$VERSION" ${DATE:+--date "$DATE"} | tee /tmp/promote.log
-          if git diff --quiet src/manifest.ts; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "manifest は既に ${COLLECTION} ${VERSION} を指しています。PR は作りません。" >> "$GITHUB_STEP_SUMMARY"
+          base_sha="$(git rev-parse HEAD)"
+          branch="release/${COLLECTION}-${VERSION}"
+          gh auth setup-git
+          remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')"
+          if [ -n "$remote_sha" ]; then
+            git fetch origin "$branch"
+            git switch -C "$branch" FETCH_HEAD
           else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git switch -c "$branch"
+          fi
+          node scripts/automation/promote-product.mjs --collection "$COLLECTION" --version "$VERSION" ${DATE:+--date "$DATE"} | tee /tmp/promote.log
+          if ! git diff --quiet src/manifest.ts; then
+            echo "needs_push=true" >> "$GITHUB_OUTPUT"
+            echo "needs_pr=true" >> "$GITHUB_OUTPUT"
+          elif [ "$(git rev-parse HEAD)" != "$base_sha" ]; then
+            echo "needs_push=false" >> "$GITHUB_OUTPUT"
+            echo "needs_pr=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_push=false" >> "$GITHUB_OUTPUT"
+            echo "needs_pr=false" >> "$GITHUB_OUTPUT"
+            echo "manifest は既に ${COLLECTION} ${VERSION} を指しています。PR は作りません。" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Verify the candidate commit
-        if: steps.update.outputs.changed == 'true'
+        if: steps.update.outputs.needs_pr == 'true'
         run: npm run check
 
-      - name: Open the promotion PR
-        if: steps.update.outputs.changed == 'true'
+      - name: Push branch and open the promotion PR
+        if: steps.update.outputs.needs_pr == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          NEEDS_PUSH: ${{ steps.update.outputs.needs_push }}
           COLLECTION: ${{ steps.args.outputs.collection }}
           VERSION: ${{ steps.args.outputs.version }}
           SHA256: ${{ steps.args.outputs.sha256 }}
@@ -127,21 +144,9 @@ jobs:
         run: |
           branch="release/${COLLECTION}-${VERSION}"
           gh auth setup-git
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp src/manifest.ts /tmp/updated-manifest.ts
-          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-            git fetch origin "$branch"
-            git switch -C "$branch" "origin/$branch"
-            cp /tmp/updated-manifest.ts src/manifest.ts
-            if ! git diff --quiet src/manifest.ts; then
-              git add src/manifest.ts
-              git commit -m "feat(manifest): ${COLLECTION} の配布版を ${VERSION} へ"
-              git push origin "$branch"
-            fi
-          else
-            git switch -c "$branch"
-            cp /tmp/updated-manifest.ts src/manifest.ts
+          if [ "$NEEDS_PUSH" = "true" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add src/manifest.ts
             git commit -m "feat(manifest): ${COLLECTION} の配布版を ${VERSION} へ"
             git push -u origin "$branch"
