@@ -172,9 +172,9 @@ try {
   await page.getByRole('heading', { name: 'この教材はただいま準備中です' }).waitFor();
   await screenshot('desktop-missing-download');
   await bucket.put(key, fixtures().get('typescript-exercise-10.pdf'));
-  const productDenied = await context.request.get(origin + '/download/taskapp/book-01');
-  assert.equal(productDenied.status(), 404);
-  checkpoint('Taskapp product download is denied with valid survey-gift authentication.');
+  const unknownDenied = await context.request.get(origin + '/download/taskapp/book-01');
+  assert.equal(unknownDenied.status(), 404);
+  checkpoint('Unknown collection id (taskapp): download is denied with valid survey-gift authentication.');
   checkpoint('Missing download: useful authenticated error page instead of a broken attachment.');
 
   await bucket.put(key, new Uint8Array());
