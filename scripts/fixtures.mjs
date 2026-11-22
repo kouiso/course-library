@@ -44,17 +44,21 @@ export function fixtures() {
   const files = [['typescript-learning-flow.pdf', pdf('Synthetic TypeScript learning flow')], ...chapters, ...exercises];
   return new Map([...files, ['typescript-all-materials.zip', zip(files)]]);
 }
-// The paid product keeps its real release prefix, so the local preview can open and download it.
-// The version is read from src/manifest.ts (productRelease) so the fixture can never drift from what the Worker serves.
+// The paid products keep their real release prefixes, so the local preview can open and download them.
+// Versions are read from src/manifest.ts so fixtures can never drift from what the Worker serves.
 const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
-const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
-export const productVersion = productRelease.version;
+const { collections, isPaidProduct, redmineCloneRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
+export const productVersion = redmineCloneRelease.version;
 export function productFixtures() {
   const readme = 'SYNTHETIC PLACEHOLDER ONLY. This ZIP is a local dummy, not the real product source.\n';
-  return new Map([['redmine-clone-source.zip', zip([['redmine-clone-source/README.txt', readme]])]]);
+  const files = new Map();
+  for (const course of collections.filter(isPaidProduct))
+    for (const m of course.materials)
+      files.set(`${course.release.prefix}${m.filename}`, zip([[`${m.filename.replace(/\.zip$/, '')}/README.txt`, readme]]));
+  return files;
 }
 export async function seed(mf) {
   const bucket = await mf.getR2Bucket('MATERIALS');
   for (const [name, data] of fixtures()) await bucket.put(`releases/typescript/${version}/${name}`, data);
-  for (const [name, data] of productFixtures()) await bucket.put(`releases/redmine-clone/${productVersion}/${name}`, data);
+  for (const [key, data] of productFixtures()) await bucket.put(key, data);
 }
