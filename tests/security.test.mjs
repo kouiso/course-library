@@ -10,6 +10,7 @@ import { seed, fixtures, version, productVersion } from '../scripts/fixtures.mjs
 const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const version = ${JSON.stringify(JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version)};`);
 const origin = 'http://127.0.0.1:8813';
 const secret = 'synthetic-only-test-signing-key-000000000000000000000';
+const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 const productPhrase = 'synthetic-product-phrase-only';
 const taskAppPhrase = 'synthetic-task-app-phrase-only';
 let mf;
@@ -105,12 +106,13 @@ test('the Task-App phrase unlocks only Task-App with its Day 1 rename guidance a
   assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="task-app-curriculum-v${taskAppRelease.version}.zip"`);
   assert.ok((await dl.arrayBuffer()).byteLength > 0);
 });
-test('buyers read product wording in the library hero and the product footer; entry, header and footer keep the design copy', async () => {
+test('buyers read product wording in the library hero and the product footer; entry, header and footer are neutral', async () => {
   const entry = await (await req('/')).text();
-  assert.match(entry, /<title>プレゼント教材を受け取る \|/); assert.match(entry, /<div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS<\/div>/);
-  assert.match(entry, /<h2>TypeScript教材を受け取る<\/h2>/); assert.match(entry, /アンケートへのご協力、ありがとうございます。/);
-  assert.match(entry, /<span class="brand-note">アンケート回答者限定<\/span>/);
-  assert.match(entry, new RegExp(`<footer>教材ライブラリ · ${version.replaceAll('.', '\\.')}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`));
+  // 入口の文言は、ギフトと商品のどちらの人にも当てはまる言い方だけにする。
+  assert.match(entry, /<title>合言葉を入力して教材を開く \|/); assert.match(entry, /<div class="eyebrow">COURSE LIBRARY<\/div>/);
+  assert.match(entry, /<h2>合言葉で教材を開く<\/h2>/); assert.match(entry, /教材の合言葉をお持ちの方がご利用いただけます。/);
+  for (const respondent of ['アンケート', '回答者', 'SURVEY RESPONDENTS', 'プレゼント教材を受け取る', 'TypeScript教材を受け取る', 'brand-note']) assert.ok(!entry.includes(respondent), respondent);
+  assert.match(entry, new RegExp(`<footer>教材ライブラリ · ${appVersion.replaceAll('.', '\\.')}<br><span class="note-long">ご案内のURLをブックマークしてご利用ください。</span>`));
   const { cookie } = await loginAttempt(productPhrase);
   const library = await (await req('/library', { headers: { Cookie: cookie } })).text();
   const product = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
@@ -120,10 +122,13 @@ test('buyers read product wording in the library hero and the product footer; en
   // The locked survey gift card carries no survey description for buyers.
   assert.ok(!library.includes('アンケートにお答えいただいた方への無料プレゼントです。'), 'locked gift description');
   assert.match(library, /<h2>TypeScript教材<\/h2><div class="course-meta">/);
-  // The product page footer shows the product version, never the gift version.
+  // The product page footer shows the product version, never the gift version, and no respondent-only header.
   const footer = /<footer>[\s\S]*?<\/footer>/.exec(product)[0];
   assert.ok(footer.startsWith(`<footer>教材ライブラリ · ${productVersion}<br>`), footer); assert.ok(!footer.includes(version), 'gift version in product footer');
-  assert.match(product, /<span class="brand-note">アンケート回答者限定<\/span>/);
+  assert.doesNotMatch(product, /brand-note|アンケート回答者限定/);
+  // 購入者の一覧のフッターは、アプリの版でギフトの版は出ない。
+  const libraryFooter = /<footer>[\s\S]*?<\/footer>/.exec(library)[0];
+  assert.ok(libraryFooter.startsWith(`<footer>教材ライブラリ · ${appVersion}<br>`), libraryFooter); assert.ok(!libraryFooter.includes(version), 'gift version in buyer catalogue footer');
 });
 test('the product page shows its version, date and the three verification sentences as body text', async () => {
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
@@ -594,8 +599,8 @@ test('the gift section of the catalogue lists only TypeScript; a paid product is
   assert.match(catalogue, /THANK YOU FOR YOUR FEEDBACK/); assert.match(catalogue, /ご協力の感謝を、<br>次の学びに。/); assert.match(catalogue, /<title>プレゼント教材 \|/);
   assert.match(catalogue, /<div class="eyebrow">THANK YOU FOR YOUR FEEDBACK<\/div><h1>ご協力の感謝を、<br>次の学びに。<\/h1><p class="lead"><span class="wide-only">アンケートにお答えいただいた方へ。<br>TypeScript教材を無料プレゼントとしてお届けします。<\/span><span class="narrow-only">アンケートにお答えいただいた方へ。TypeScript教材を無料プレゼントとしてお届けします。<\/span><\/p>/);
   assert.match(catalogue, /<h2>TypeScript教材<\/h2><p>アンケートにお答えいただいた方への無料プレゼントです。<\/p>/);
-  assert.ok(catalogue.includes(`<footer>教材ライブラリ · ${version}<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span>`), 'gift library footer');
-  assert.match(catalogue, /<span class="brand-note">アンケート回答者限定<\/span>/);
+  assert.ok(catalogue.includes(`<footer>教材ライブラリ · ${appVersion}<br><span class="note-long">ご案内のURLをブックマークしてご利用ください。</span>`), 'library footer');
+  assert.doesNotMatch(catalogue, /brand-note|アンケート回答者限定/);
   assert.match(catalogue, /href="\/courses\/typescript"/); assert.doesNotMatch(catalogue, /taskapp|Taskapp|36巻|スターター|完成例/);
   // 商品は「教材（販売）」の欄に鍵つきで並ぶ。ギフトの欄には入らない。
   const giftSection = catalogue.slice(catalogue.indexOf('<h2>回答者限定プレゼント</h2>'), catalogue.indexOf('<h2>教材（販売）</h2>'));
@@ -643,7 +648,7 @@ test('the gift pages keep the design board copy at PC and mobile widths', async 
   const catalogue = await (await req('/library', { headers: { Cookie: cookie } })).text();
   assert.match(catalogue, /<div class="course-meta"><span class="wide-only">学習の進め方 \/ 本編 10章 \/ 練習問題 9本 \/ まとめて保存<\/span><span class="narrow-only">学習の進め方 \/ 本編 10章 \/ 練習問題 9本<\/span><\/div>/);
   const entry = await (await req('/')).text();
-  assert.match(entry, /<span class="wide-only">アンケートへのご協力、ありがとうございます。<br>回答後のご案内に記載された合言葉を入力してください。<\/span><span class="narrow-only">アンケートへのご協力、ありがとうございます。回答後のご案内に記載された合言葉を入力してください。<\/span>/);
+  assert.match(entry, /<span class="wide-only">教材の合言葉をお持ちの方がご利用いただけます。<br>ご案内に記載された合言葉を入力してください。<\/span><span class="narrow-only">教材の合言葉をお持ちの方がご利用いただけます。ご案内に記載された合言葉を入力してください。<\/span>/);
   // The board has no normal line-height override on body text; REPEAT. keeps the book's weight 800.
   const css = await (await req('/style.css')).text();
   assert.match(css, /body\{[^}]*font:16px\/normal /); assert.match(css, /\.shelf-book b,\.cover-book b\{color:var\(--accent\);font-weight:inherit\}/);

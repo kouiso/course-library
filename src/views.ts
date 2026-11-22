@@ -3,12 +3,13 @@ import { canDistribute, canDistributeProduct, collections, collectionStatusLabel
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
-// A course or product page passes its own version, so a buyer never sees the gift version.
+// Screens that are not tied to one collection (entry, catalogue, statuses) show the app version;
+// a course, product or guide page passes its own version, so a buyer never sees the gift version.
 // `learning` marks the gift's learning page: its mobile board has no bookmark sentence in the footer.
 // /guide and the product page share the course layout but have no board, so they keep the sentence.
-export function page(title: string, body: string, layout: Layout = 'status', version: string = release.version, learning = false): string {
-  const note = layout === 'status' ? '' : '<br><span class="note-long">回答後に届いたご案内のURLをブックマークしてご利用ください。</span><span class="note-short">ご案内のURLをブックマークしてご利用ください。</span>';
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a><span class="brand-note">アンケート回答者限定</span></header><main class="${layout}${learning ? ' learning' : ''}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
+export function page(title: string, body: string, layout: Layout = 'status', version: string = appVersion, learning = false): string {
+  const note = layout === 'status' ? '' : '<br><span class="note-long">ご案内のURLをブックマークしてご利用ください。</span><span class="note-short">ご案内のURLをブックマークしてご利用ください。</span>';
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 教材ライブラリ</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head><body><header><a href="/" class="brand">COURSE LIBRARY</a></header><main class="${layout}${learning ? ' learning' : ''}">${body}</main><footer>教材ライブラリ · ${escape(version)}${note}</footer></body></html>`;
 }
 // PC and mobile boards word or break some lines differently; each variant is its own text, the other one is hidden.
 const variants = (wide: string, narrow: string) => `<span class="wide-only">${wide}</span><span class="narrow-only">${narrow}</span>`;
@@ -23,8 +24,8 @@ export function notice(options: { eyebrow: string; title: string; body: string; 
 }
 export function login(csrf: string, error = '', info = ''): string {
   const invalid = error ? ' aria-invalid="true" aria-describedby="phrase-error"' : '';
-  const note = error ? '続けて間違えると、1分ほど入力を受け付けなくなります。' : 'アンケート回答者限定の無料プレゼントです。PDFを開くパスワードは配布時のご案内をご確認ください。';
-  return page('プレゼント教材を受け取る', `<div class="entry-copy"><div class="eyebrow">A GIFT FOR SURVEY RESPONDENTS</div><h1>次の学びを、<br>ひとつずつ。</h1>${lead('アンケートへのご協力、ありがとうございます。', '回答後のご案内に記載された合言葉を入力してください。')}${shelf}</div><section class="card login-card"><h2>TypeScript教材を受け取る</h2>${error ? `<p role="alert" class="error" id="phrase-error">${escape(error)}</p>` : ''}${info ? `<p role="status" class="notice">${escape(info)}</p>` : ''}<form method="post" action="/login"><input type="hidden" name="csrf" value="${escape(csrf)}"><label for="phrase">アクセス用の合言葉</label><input id="phrase" type="password" name="phrase" required maxlength="256" autocomplete="current-password"${invalid}><button>教材ページを開く <span aria-hidden="true">→</span></button><p class="muted form-note">${note}</p><p class="muted busy-note">送信は1回で大丈夫です。画面が切り替わるまでお待ちください。</p></form></section>`, 'entry');
+  const note = error ? '続けて間違えると、1分ほど入力を受け付けなくなります。' : '合言葉をお持ちの方だけが教材を開けます。PDFを開くパスワードは配布時のご案内をご確認ください。';
+  return page('合言葉を入力して教材を開く', `<div class="entry-copy"><div class="eyebrow">COURSE LIBRARY</div><h1>次の学びを、<br>ひとつずつ。</h1>${lead('教材の合言葉をお持ちの方がご利用いただけます。', 'ご案内に記載された合言葉を入力してください。')}${shelf}</div><section class="card login-card"><h2>合言葉で教材を開く</h2>${error ? `<p role="alert" class="error" id="phrase-error">${escape(error)}</p>` : ''}${info ? `<p role="status" class="notice">${escape(info)}</p>` : ''}<form method="post" action="/login"><input type="hidden" name="csrf" value="${escape(csrf)}"><label for="phrase">アクセス用の合言葉</label><input id="phrase" type="password" name="phrase" required maxlength="256" autocomplete="current-password"${invalid}><button>教材ページを開く <span aria-hidden="true">→</span></button><p class="muted form-note">${note}</p><p class="muted busy-note">送信は1回で大丈夫です。画面が切り替わるまでお待ちください。</p></form></section>`, 'entry');
 }
 function links(course: Collection, group: string): string {
   return course.materials.filter(m => m.group === group).map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${m.group === 'exercises' ? variants(escape(m.title), escape(m.title.replace(/^練習問題/, '問題'))) : escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
@@ -44,7 +45,7 @@ export function library(nonce: string, course: Collection): string {
   return page(course.title, `<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">YOUR TYPESCRIPT LEARNING GIFT</div><h1>TypeScriptを、<br>自分のペースで。</h1>${lead('学習の進め方を確認したら、本編と練習問題へ。', '手元に保存して、ひとつずつ進めましょう。')}${course.release?.synthetic ? '<p class="notice">ローカル確認用のダミー教材です。実教材と配布設定の確認が終わるまで本番配布は行いません。</p>' : ''}${intro ? `<section class="card"><div class="section-title"><b>01</b><h2>まずは学習の進め方から</h2></div><p class="lead wide-only">教材の読み方と進め方を確認しましょう。</p>${intro}<a href="/guide" class="text-link">保存と閲覧の手順を見る →</a></section>` : ''}${books ? `<section class="card"><div class="section-title"><b>02</b><h2>本編 ${chapterCount(course)}章</h2></div><p class="lead wide-only">必要な章を1つずつ保存できます。</p><div class="book-grid">${books}</div></section>` : ''}${exercises ? `<section class="card"><div class="section-title"><b>03</b><h2>練習問題 ${exerciseCount(course)}本</h2></div><p class="lead wide-only">学んだ内容を手を動かして確かめましょう。${missingExercises(course)}</p>${missingExercises(course) ? `<p class="lead narrow-only">${missingExercises(course)}</p>` : ''}<div class="book-grid">${exercises}</div></section>` : ''}<section class="card bundle-card">${bundle ? `<h2>まとめて手元に</h2>${bundle}<p class="muted">ZIPを展開してからPDFを開いてください。PDF用パスワードは配布時のご案内をご確認ください。</p>` : ''}<p class="muted">${escape(verification?.delivery || '')} ${escape(verification?.materials || '')} ${escape(verification?.platforms || '')}</p></section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion, true);
 }
 export function guide(): string {
-  return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course');
+  return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course', release.version);
 }
 // giftLevel はセッションの段。カードの数は、段で開ける教材（openedCollection）から数える。
 export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0): string {
@@ -134,7 +135,6 @@ a{color:var(--accent)}a:hover{color:var(--accent-dark)}
 a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #c07424;outline-offset:4px}
 header{background:#fff;border-bottom:1px solid var(--line);padding:22px 72px;display:flex;align-items:baseline;gap:14px}
 .brand{font-weight:800;letter-spacing:.12em;color:var(--ink);text-decoration:none;font-size:16px}
-.brand-note{font-size:12px;color:var(--muted)}
 main{flex:1;width:100%}
 footer{padding:28px 24px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--line);line-height:1.8}
 .note-short{display:none}
