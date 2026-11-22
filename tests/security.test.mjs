@@ -605,6 +605,33 @@ test('the gift section of the catalogue lists only TypeScript; a paid product is
   assert.ok(course.includes(`<footer>教材ライブラリ · ${version}<br>`), 'gift course footer');
   assert.equal((course.match(/href="\/download\/typescript\//g) || []).length, 21);
 });
+test('unopenable catalogue cards read as locked and openable collections sort first', async () => {
+  const cards = html => [...html.matchAll(/<article class="course-card( locked)?">[\s\S]*?<\/article>/g)].map(m => m[0]);
+  const { cookie: gift } = await loginAttempt();
+  const forGift = await (await req('/library', { headers: { Cookie: gift } })).text();
+  // ギフトの人にはギフトの欄が先で、開けない商品カードは薄い表紙・薄いバッジ・線だけの副ボタン。
+  assert.ok(forGift.indexOf('<h2>回答者限定プレゼント</h2>') < forGift.indexOf('<h2>教材（販売）</h2>'), 'gift section first for the respondent');
+  const forGiftCards = cards(forGift);
+  assert.equal(forGiftCards.length, 3);
+  assert.match(forGiftCards[0], /<article class="course-card">/); assert.match(forGiftCards[0], /<a class="course-action" href="\/courses\/typescript">/);
+  for (const [i, id] of [[1, 'redmine-clone'], [2, 'task-app']]) {
+    assert.match(forGiftCards[i], /<span class="badge locked">商品用の合言葉が必要<\/span>/, id);
+    assert.match(forGiftCards[i], new RegExp(`<a class="course-action secondary" href="/courses/${id}">合言葉を入力する`), id);
+  }
+  assert.doesNotMatch(forGift, /合言葉が必要です <span/);
+  const { cookie: buyer } = await loginAttempt(productPhrase);
+  const forBuyer = await (await req('/library', { headers: { Cookie: buyer } })).text();
+  // 購入者には商品の欄が先で、開けないギフトのカードが後に来る。
+  assert.ok(forBuyer.indexOf('<h2>教材（販売）</h2>') < forBuyer.indexOf('<h2>回答者限定プレゼント</h2>'), 'product section first for the buyer');
+  const forBuyerCards = cards(forBuyer);
+  assert.match(forBuyerCards[0], /<article class="course-card">/); assert.match(forBuyerCards[0], /href="\/courses\/redmine-clone"/);
+  assert.match(forBuyerCards.at(-1), /<span class="badge locked">合言葉が必要<\/span>/);
+  assert.match(forBuyerCards.at(-1), /<a class="course-action secondary" href="\/courses\/typescript">合言葉を入力する/);
+  const css = await (await req('/style.css')).text();
+  assert.match(css, /\.course-card\.locked \.course-cover\{background:var\(--pale\)/);
+  assert.match(css, /\.badge\.locked\{background:var\(--paper\)/);
+  assert.match(css, /\.course-action\.secondary\{background:transparent;color:var\(--accent\);border:1px solid var\(--accent\)\}/);
+});
 test('the gift pages keep the design board copy at PC and mobile widths', async () => {
   const { cookie } = await loginAttempt();
   const course = await (await req('/courses/typescript', { headers: { Cookie: cookie } })).text();
