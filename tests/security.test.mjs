@@ -11,9 +11,10 @@ const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const ve
 const origin = 'http://127.0.0.1:8813';
 const secret = 'synthetic-only-test-signing-key-000000000000000000000';
 const productPhrase = 'synthetic-product-phrase-only';
+const taskAppPhrase = 'synthetic-task-app-phrase-only';
 let mf;
 let ip = 0;
-before(async () => { mf = runtime({ origin, bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase) }, totalLimit: 1000 }); await mf.ready; await seed(mf); });
+before(async () => { mf = runtime({ origin, bindings: { SESSION_SECRET: secret, ACCESS_PHRASE_SHA256_REDMINE_CLONE: digest(productPhrase), ACCESS_PHRASE_SHA256_TASK_APP: digest(taskAppPhrase) }, totalLimit: 1000 }); await mf.ready; await seed(mf); });
 after(async () => { await mf?.dispose(); });
 const req = (path, opts = {}) => mf.dispatchFetch(origin + path, { redirect: 'manual', ...opts });
 function headerCookie(res, name) { return res.headers.getSetCookie().find(c => c.startsWith(name + '='))?.split(';')[0] || ''; }
@@ -74,6 +75,8 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.match(productHtml, /Day 3 の手順は <code>redmine-clone\.zip<\/code> という名前で書かれています。保存したファイルの名前を <code>redmine-clone\.zip<\/code> に変えてから、Day 3 の手順どおりに進めてください。/);
   assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
   assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
+  assert.equal((await req('/courses/task-app', { headers: { Cookie: cookie } })).status, 403);
+  assert.equal((await req('/download/task-app/source-zip', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
   const bucket = await mf.getR2Bucket('MATERIALS');
   await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES');
@@ -81,6 +84,26 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(dl.status, 200);
   assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-source-v${productVersion}.zip"`);
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
+});
+test('the Task-App phrase unlocks only Task-App with its Day 1 rename guidance and never unlocks Redmine or the gift', async () => {
+  const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const { taskAppRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const { res, cookie } = await loginAttempt(taskAppPhrase);
+  assert.equal(res.status, 303);
+  const course = await req('/courses/task-app', { headers: { Cookie: cookie } });
+  assert.equal(course.status, 200);
+  const html = await course.text();
+  assert.match(html, /写経用の土台（scaffold）一式/);
+  assert.ok(html.includes(`task-app-curriculum-v${taskAppRelease.version}.zip`));
+  assert.match(html, /Day 1 の手順は <code>task-app-curriculum-v1\.1\.zip<\/code> という名前で書かれています。保存したファイルの名前を <code>task-app-curriculum-v1\.1\.zip<\/code> に変えてから、Day 1 の手順どおりに進めてください。/);
+  assert.equal((await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).status, 403);
+  assert.equal((await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } })).status, 404);
+  assert.equal((await req('/courses/typescript', { headers: { Cookie: cookie } })).status, 403);
+  assert.equal((await req('/download/typescript/chapter-01', { headers: { Cookie: cookie } })).status, 404);
+  const dl = await req('/download/task-app/source-zip', { headers: { Cookie: cookie } });
+  assert.equal(dl.status, 200);
+  assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="task-app-curriculum-v${taskAppRelease.version}.zip"`);
+  assert.ok((await dl.arrayBuffer()).byteLength > 0);
 });
 test('buyers read product wording in the library hero and the product footer; entry, header and footer keep the design copy', async () => {
   const entry = await (await req('/')).text();
@@ -104,15 +127,15 @@ test('buyers read product wording in the library hero and the product footer; en
 });
 test('the product page shows its version, date and the three verification sentences as body text', async () => {
   const manifestSource = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
-  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
+  const { redmineCloneRelease } = await import('data:text/javascript;base64,' + Buffer.from(manifestSource).toString('base64'));
   const { cookie } = await loginAttempt(productPhrase);
   const html = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
   const card = /<h2>ダウンロード<\/h2>[\s\S]*?<\/section>/.exec(html)[0];
-  assert.ok(card.includes(`<p class="release-meta">${productRelease.version} · <time datetime="${productRelease.date}">${productRelease.date}</time></p>`));
+  assert.ok(card.includes(`<p class="release-meta">${redmineCloneRelease.version} · <time datetime="${redmineCloneRelease.date}">${redmineCloneRelease.date}</time></p>`));
   const items = [...card.matchAll(/<li>([^<]*)<\/li>/g)].map(m => m[1]);
   // 画面は文を escape（src/views.ts）に通して出す。同じ決まりで直した文と比べるので、& < > " ' を含む文でも通る。
   const escapeHtml = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-  assert.deepEqual(items, [productRelease.verification.materials, productRelease.verification.delivery, productRelease.verification.platforms].map(escapeHtml));
+  assert.deepEqual(items, [redmineCloneRelease.verification.materials, redmineCloneRelease.verification.delivery, redmineCloneRelease.verification.platforms].map(escapeHtml));
   assert.doesNotMatch(card, /class="muted"/);
 });
 test('the gift phrase does not unlock paid products', async () => {
@@ -923,8 +946,9 @@ test('zero-byte release objects return an authenticated no-store 503 without att
 
 test('the local product fixture seeds the exact object prefix the manifest serves', async () => {
   const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
-  const { productRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
-  assert.equal(productVersion, productRelease.version);
+  const { redmineCloneRelease, taskAppRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  assert.equal(productVersion, redmineCloneRelease.version);
   const bucket = await mf.getR2Bucket('MATERIALS');
-  assert.ok(await bucket.head(`${productRelease.prefix}redmine-clone-source.zip`), 'seeded product object missing at the manifest prefix');
+  assert.ok(await bucket.head(`${redmineCloneRelease.prefix}redmine-clone-source.zip`), 'seeded Redmine object missing at the manifest prefix');
+  assert.ok(await bucket.head(`${taskAppRelease.prefix}task-app-curriculum.zip`), 'seeded Task-App object missing at the manifest prefix');
 });
