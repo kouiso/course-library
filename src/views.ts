@@ -48,27 +48,31 @@ export function guide(): string {
 }
 // giftLevel はセッションの段。カードの数は、段で開ける教材（openedCollection）から数える。
 export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0): string {
-  const gifts = collections.filter(isSurveyGift);
-  const products = collections.filter(c => !isSurveyGift(c));
+  // 開けられるカードを先に並べる。欄の中も欄どうしも、合言葉で開いた教材が先に来る。
+  const byOpen = (a: Collection, b: Collection) => Number(unlocked.includes(b.id)) - Number(unlocked.includes(a.id));
+  const gifts = collections.filter(isSurveyGift).sort(byOpen);
+  const products = collections.filter(c => !isSurveyGift(c)).sort(byOpen);
   // A released gift reads as the board's badge; the synthetic preview keeps its preview label so it is never taken for the real gift.
   const giftBadge = (c: Collection) => (c.release?.synthetic ? collectionStatusLabel(c.status) : '受け取れます');
   const giftCard = (c: Collection) => {
-    const available = canDistribute(c, local) && unlocked.includes(c.id);
+    const open = unlocked.includes(c.id);
+    const available = canDistribute(c, local) && open;
     // 開ける物が無い項目は書かない。まとめて保存は 10 段目だけ。段の無いセッションでは内訳の行ごと出さない。
     const opened = openedCollection(c, giftLevel);
     const has = (group: string) => opened.materials.some(m => m.group === group);
     const parts = [has('intro') ? '学習の進め方' : '', has('books') ? `本編 ${chapterCount(opened)}章` : '', has('exercises') ? `練習問題 ${exerciseCount(opened)}本` : ''].filter(Boolean).join(' / ');
     const contents = parts ? variants(has('bundle') ? `${parts} / まとめて保存` : parts, parts) : '';
-    const meta = available ? contents : '回答後のご案内と配布版を確認しています';
-    const state = unlocked.includes(c.id) ? (available ? (c.release?.synthetic ? 'ダミー教材を見る' : '教材を受け取る') : '配布準備状況を見る') : 'ギフト用の合言葉が必要です';
+    // 開けられないカードは、状態の説明と開き方をバッジと本文に置く。ボタンの文字は行き先の操作だけを言う。
+    const meta = available ? contents : open ? '回答後のご案内と配布版を確認しています' : 'アンケート回答後のご案内にある合言葉で開きます';
+    const state = open ? (available ? (c.release?.synthetic ? 'ダミー教材を見る' : '教材を受け取る') : '配布準備状況を見る') : '合言葉を入力する';
     // The survey description is shown only to those who opened the gift, so buyers read no survey wording.
-    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${unlocked.includes(c.id) ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${unlocked.includes(c.id) ? `<p>${escape(c.description)}</p>` : ''}${meta ? `<div class="course-meta">${meta}</div>` : ''}<a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+    return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${open ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${open ? `<p>${escape(c.description)}</p>` : ''}${meta ? `<div class="course-meta">${meta}</div>` : ''}<a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
   const productCard = (c: Collection) => {
     const open = unlocked.includes(c.id);
     const available = canDistributeProduct(c);
-    const state = !open ? '商品用の合言葉が必要です' : available ? '教材を受け取る' : '配布準備状況を見る';
-    return `<article class="course-card"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `ソースコード一式 / ${c.materials.length} ファイル` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+    const state = !open ? '合言葉を入力する' : available ? '教材を受け取る' : '配布準備状況を見る';
+    return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `ソースコード一式 / ${c.materials.length} ファイル` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
   // The hero follows what the phrase opened: gift wording for gift holders, product wording for buyers only.
   const giftOpen = gifts.some(c => unlocked.includes(c.id));
@@ -78,7 +82,12 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
     : productOpen
       ? { title: '教材一覧', eyebrow: 'YOUR LIBRARY', heading: '次の学びを、<br>ひとつずつ。', lead: lead('お持ちの合言葉で開ける教材をお届けします。', '教材ページを開いて保存してください。') }
       : { title: 'プレゼント教材', eyebrow: 'THANK YOU FOR YOUR FEEDBACK', heading: 'ご協力の感謝を、<br>次の学びに。', lead: lead('アンケートにお答えいただいた方へ。', 'TypeScript教材を無料プレゼントとしてお届けします。') };
-  return page(hero.title, `<div class="catalogue-hero"><div><div class="eyebrow">${hero.eyebrow}</div><h1>${hero.heading}</h1>${hero.lead}</div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div><div class="library-label"><h2>回答者限定プレゼント</h2><span>SURVEY GIFT</span></div>${gifts.map(giftCard).join('')}${products.length ? `<div class="library-label"><h2>教材（販売）</h2><span>PAID PRODUCT</span></div>${products.map(productCard).join('')}` : ''}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
+  // 開いた教材を持つ欄を先に出す。どちらも開いていなければ今までどおりギフトが先。
+  const sections = [
+    { open: giftOpen, html: `<div class="library-label"><h2>回答者限定プレゼント</h2><span>SURVEY GIFT</span></div>${gifts.map(giftCard).join('')}` },
+    { open: productOpen, html: products.length ? `<div class="library-label"><h2>教材（販売）</h2><span>PAID PRODUCT</span></div>${products.map(productCard).join('')}` : '' },
+  ].filter(s => s.html).sort((a, b) => Number(b.open) - Number(a.open));
+  return page(hero.title, `<div class="catalogue-hero"><div><div class="eyebrow">${hero.eyebrow}</div><h1>${hero.heading}</h1>${hero.lead}</div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div>${sections.map(s => s.html).join('')}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
 }
 export function productLibrary(nonce: string, course: Collection): string {
   const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
@@ -183,6 +192,11 @@ form[aria-busy=true] input[type=password]{border:1px solid #b7c4c8;background:va
 .course-meta{font-size:14px;color:var(--muted)}
 .course-action{margin-top:10px;align-self:flex-start;padding:13px 22px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}
 .course-action:hover{background:var(--accent-dark);color:#fff}
+.course-action.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.course-action.secondary:hover{background:#e3f0ea;color:var(--accent-dark)}
+.course-card.locked .course-cover{background:var(--pale);color:var(--ink)}
+.course-card.locked .cover-mark{border-color:var(--field)}
+.badge.locked{background:var(--paper);color:var(--muted)}
 .version{font-size:11px;color:var(--muted)}
 .course{width:min(920px,100% - 48px);margin:0 auto;padding:56px 0;display:flex;flex-direction:column;gap:24px}
 .course h1{font-size:44px;letter-spacing:0}
