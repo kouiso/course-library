@@ -218,3 +218,10 @@ for (const [name, head, textbook] of [
     assert.deepEqual(keys, [textbookKey]);
   });
 }
+test('a textbook whose filename is not <id>-textbook.zip stops the release check', async () => {
+  const edit = text => replaceOnce(text, 'filename: `${id}-textbook.zip`', 'filename: `${id}-book.zip`');
+  await withManifest(edit, result => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Optional material must be the textbook/);
+  });
+});

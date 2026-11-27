@@ -226,7 +226,7 @@ export function validateManifest(): void {
     if (c.materials.some(m => m.optional) && !isPaidProduct(c)) throw new Error('Optional material outside a product');
     if (isPaidProduct(c) && !c.materials.some(m => !m.optional)) throw new Error('Product without a required material');
     // optional にできるのは教材本文（textbook）だけ。
-    if (c.materials.some(m => m.optional && m.id !== 'textbook')) throw new Error('Optional material must be the textbook');
+    if (c.materials.some(m => m.optional && (m.id !== 'textbook' || m.filename !== `${c.id}-textbook.zip`))) throw new Error('Optional material must be the textbook');
   }
 }
 export const collectionStatusLabel = (status: Collection['status']): string => ({ pending: '準備中', preview: '開発プレビュー', published: '公開中' })[status];

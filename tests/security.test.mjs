@@ -160,6 +160,15 @@ test('the Task-App textbook ZIP is listed, downloadable and counted on its card,
     assert.deepEqual(links(after), links(html));
     assert.ok(links(after).includes('/download/task-app/textbook'));
     assert.equal((await req('/download/task-app/textbook', { headers: { Cookie: cookie } })).status, 200);
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /教材本文とソースコード \/ 2 ファイル/);
+    // 逆向き: Task-App の本文を消すと Task-App からだけ消え、Redmine の本文はそのまま残る。
+    await bucket.put(redmineKey, productFixtures().get(redmineKey));
+    await bucket.delete(taskKey);
+    const gone = await (await req('/courses/task-app', { headers: { Cookie: cookie } })).text();
+    assert.ok(!links(gone).includes('/download/task-app/textbook'));
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /ソースコード一式 \/ 1 ファイル/);
+    const redmine = await loginAttempt(productPhrase);
+    assert.ok((await (await req('/courses/redmine-clone', { headers: { Cookie: redmine.cookie } })).text()).includes('href="/download/redmine-clone/textbook"'));
   } finally {
     await bucket.put(taskKey, productFixtures().get(taskKey));
     await bucket.put(redmineKey, productFixtures().get(redmineKey));

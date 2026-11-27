@@ -277,3 +277,12 @@ test('promote-product rewrites only the release block for the named collection',
   assert.match(text, /prefix: 'releases\/redmine-clone\/0\.2\.1\/'/);
   assert.throws(() => promoteProduct(source, { collection: 'typescript', version: '1.0.0', date: '2026-12-01' }), /No release constant/);
 });
+test('promote-product run() reminds to upload the textbook ZIP to the new release prefix, in dry-run too', async () => {
+  const { run } = await import('../scripts/automation/promote-product.mjs');
+  const lines = [];
+  const writes = [];
+  const result = await run(['--collection', 'redmine-clone', '--version', '9.9.9', '--date', '2026-12-01', '--dry-run'], { write: async (...args) => writes.push(args), log: line => lines.push(line) });
+  assert.equal(result.changed, true);
+  assert.equal(writes.length, 0);
+  assert.ok(lines.includes('Upload releases/redmine-clone/9.9.9/redmine-clone-textbook.zip too if the textbook is distributed; without it the product page hides the textbook for this version.'), lines.join('\n'));
+});
