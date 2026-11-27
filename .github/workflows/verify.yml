@@ -24,6 +24,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22.23.4'
+      # npm run check needs pdfinfo and pdftotext (tests/candidate.test.mjs); the runner image does not ship them.
+      - name: Install poppler for pdfinfo and pdftotext
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
       - run: npm ci --no-audit --no-fund
       - run: npm run check
   deploy:
