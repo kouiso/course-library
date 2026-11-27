@@ -19,7 +19,7 @@ Open `http://127.0.0.1:8797` and enter one of the three **local dummy phrases** 
 
 - `synthetic-development-only` opens the TypeScript survey gift (synthetic PDFs and ZIP).
 - `synthetic-product-development-only` opens the `redmine-clone` product page; its source ZIP is a local dummy that contains only a placeholder text file, and its textbook ZIP holds one synthetic PDF.
-- `synthetic-task-app-development-only` opens the `task-app` product page; its source ZIP and textbook ZIP are local dummies of the same kind.
+- `synthetic-task-app-development-only` opens the `task-app` product page; its source ZIP is a local dummy that contains only a placeholder text file, and its textbook ZIP holds one synthetic PDF.
 
 None is a production phrase. Local signing keys are generated in memory for each preview. They are never production credentials. The preview binds only to the loopback interface and uses ephemeral local R2 data.
 

@@ -1,5 +1,5 @@
 import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, openedCollection, phraseEnvName, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
+import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, openedCollection, phraseEnvName, presentCollection, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary, switchNote } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string } & Secrets;
@@ -99,11 +99,8 @@ async function boundedForm(req: Request): Promise<URLSearchParams | null> {
 // optional の教材は、その版の置き場に中身のあるオブジェクトが在る時だけ商品ページに出す。
 // 必ず出す教材は今までどおり在る無しを見ない（無ければダウンロードが準備中の 404 になる）。
 async function presentMaterials(env: AppEnv, course: Collection): Promise<Collection> {
-  const prefix = course.release?.prefix;
-  if (!prefix || !course.materials.some(m => m.optional)) return course;
   // R2 が一時的に失敗した時は「置かれていない」と同じに扱い、商品ページ自体は今までどおり出す。
-  const present = await Promise.all(course.materials.map(async m => !m.optional || ((await env.MATERIALS.head(prefix + m.filename).catch(() => null))?.size ?? 0) > 0));
-  return { ...course, materials: course.materials.filter((_, i) => present[i]) };
+  return presentCollection(course, key => env.MATERIALS.head(key));
 }
 
 async function download(req: Request, env: AppEnv, course: Collection, id: string): Promise<Response> {

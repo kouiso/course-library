@@ -194,6 +194,7 @@ jobs:
             echo "確認してほしいこと"
             echo ""
             echo "- [ ] R2 の \`releases/${COLLECTION}/${VERSION}/\` に商品 ZIP がある（rclone lsl またはダッシュボード）"
+            echo "- [ ] 教材本文を配る商品なら、R2 の \`releases/${COLLECTION}/${VERSION}/${COLLECTION}-textbook.zip\` もある（無いと、この版では商品ページから本文が消える）"
             echo "- [ ] 版番号・配布日が意図どおり"
             echo "- [ ] マージ後に verify.yml の deploy で本番へ出す判断"
           } > /tmp/pr-body.md

@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('../scripts/check-release.mjs', import.meta.url));
@@ -175,9 +176,45 @@ test('an optional material outside a paid product, a product with only optional 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Product without a required material/);
   });
+  // textbook 以外の教材は optional にできない。必ず出す教材（ソースの ZIP）は残したまま、textbook 以外の optional を足す。
+  const optionalExtra = text => replaceOnce(text, "filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle' }", "filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle' }, { id: 'extra-zip', title: 'おまけ', filename: 'task-app-extra.zip', type: 'application/zip', group: 'bundle', optional: true }");
+  await withManifest(optionalExtra, result => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Optional material must be the textbook/);
+    assert.doesNotMatch(result.stderr, /Product without a required material/);
+  });
+  // ソースの ZIP そのものを optional にした時（textbook も optional なので、必ず出す教材が無くなる）は、先にその規則で止まる。
+  const optionalSource = text => replaceOnce(replaceOnce(text, " filenameHint: { filename: 'task-app-curriculum-v1.1.zip', day: 'Day 1', material: 'source-zip' },", ''), "filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle' }", "filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle', optional: true }");
+  await withManifest(optionalSource, result => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Product without a required material/);
+  });
   const hintToTextbook = text => replaceOnce(text, "day: 'Day 3', material: 'source-zip'", "day: 'Day 3', material: 'textbook'");
   await withManifest(hintToTextbook, result => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Invalid release manifest/);
   });
 });
+
+// presentCollection: R2 の head の結果が何であっても、必ず出す教材は残り、教材本文は中身がある時だけ残る。
+async function presentCase(head) {
+  const source = stripTypeScriptTypes(await readFile(manifestPath, 'utf8'));
+  const manifest = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const course = manifest.collections.find(c => c.id === 'redmine-clone');
+  const keys = [];
+  const shown = await manifest.presentCollection(course, key => { keys.push(key); return head(key); });
+  return { ids: shown.materials.map(m => m.id), keys, textbookKey: `releases/redmine-clone/${manifest.redmineCloneRelease.version}/redmine-clone-textbook.zip` };
+}
+for (const [name, head, textbook] of [
+  ['rejects', () => Promise.reject(new Error('R2 down')), false],
+  ['throws synchronously', () => { throw new Error('R2 down'); }, false],
+  ['returns null', async () => null, false],
+  ['returns size 0', async () => ({ size: 0 }), false],
+  ['returns size > 0', async () => ({ size: 5 }), true],
+]) {
+  test(`presentCollection keeps the source ZIP and ${textbook ? 'keeps' : 'drops'} the textbook when head ${name}`, async () => {
+    const { ids, keys, textbookKey } = await presentCase(head);
+    assert.deepEqual(ids, textbook ? ['textbook', 'source-zip'] : ['source-zip']);
+    assert.deepEqual(keys, [textbookKey]);
+  });
+}

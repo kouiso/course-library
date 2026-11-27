@@ -151,6 +151,21 @@ export function canOpenMaterial(c: Collection, m: Material, giftLevel: number): 
 export function openedCollection(c: Collection, giftLevel: number): Collection {
   return { ...c, materials: c.materials.filter(m => canOpenMaterial(c, m, giftLevel)) };
 }
+// optional の教材のうち、置き場に中身のあるオブジェクトがあるものだけを残したコレクション。
+// head は R2 の head を渡す。同期の throw も reject も「置かれていない」と同じに扱う（商品ページ自体は出す）。
+export async function presentCollection(course: Collection, head: (key: string) => Promise<{ size: number } | null>): Promise<Collection> {
+  const prefix = course.release?.prefix;
+  if (!prefix || !course.materials.some(m => m.optional)) return course;
+  const present = await Promise.all(course.materials.map(async m => {
+    if (!m.optional) return true;
+    try {
+      return ((await head(prefix + m.filename))?.size ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  }));
+  return { ...course, materials: course.materials.filter((_, i) => present[i]) };
+}
 // コレクションの承認が揃っているか。ギフトは MyASP の確認と配布の承認の両方、商品は配布の承認だけ。
 // approval が無い・旗が true 以外の時は、承認されていない側に倒す（公開前の検査もこの関数を使う）。
 export function isApproved(c: Collection): boolean {
@@ -210,6 +225,8 @@ export function validateManifest(): void {
     // optional（置かれた時だけ出す）は商品だけ。商品には、必ず出す教材が1つ以上要る。
     if (c.materials.some(m => m.optional) && !isPaidProduct(c)) throw new Error('Optional material outside a product');
     if (isPaidProduct(c) && !c.materials.some(m => !m.optional)) throw new Error('Product without a required material');
+    // optional にできるのは教材本文（textbook）だけ。
+    if (c.materials.some(m => m.optional && m.id !== 'textbook')) throw new Error('Optional material must be the textbook');
   }
 }
 export const collectionStatusLabel = (status: Collection['status']): string => ({ pending: '準備中', preview: '開発プレビュー', published: '公開中' })[status];
