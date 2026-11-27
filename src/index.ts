@@ -1,5 +1,5 @@
 import { cookie, cookieName, cookies, equal, expiredButSigned, issue, SESSION_TTL, sha256, verify } from './auth';
-import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, openedCollection, phraseEnvName, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
+import { canDistribute, canDistributeProduct, canOpenMaterial, collections, GIFT_LEVELS, giftLevelEnvNames, isPaidProduct, isSurveyGift, openedCollection, phraseEnvName, presentCollection, saveName, type Collection, type GiftLevelEnvName, type PhraseEnvName, type Secrets, validateManifest } from './manifest';
 import { catalogue, closed, css, guide, js, library, lockedCourse, login, message, pendingCourse, preparingMaterial, productLibrary, switchNote } from './views';
 
 type AppEnv = Omit<Env, 'APP_MODE' | 'APP_ORIGIN'> & { APP_MODE: string; APP_ORIGIN: string } & Secrets;
@@ -94,6 +94,13 @@ async function boundedForm(req: Request): Promise<URLSearchParams | null> {
   const form = new URLSearchParams(new TextDecoder().decode(bytes));
   if ([...form.keys()].some(k => form.getAll(k).length !== 1)) return null;
   return form;
+}
+
+// optional の教材は、その版の置き場に中身のあるオブジェクトが在る時だけ商品ページに出す。
+// 必ず出す教材は今までどおり在る無しを見ない（無ければダウンロードが準備中の 404 になる）。
+async function presentMaterials(env: AppEnv, course: Collection): Promise<Collection> {
+  // R2 が一時的に失敗した時は「置かれていない」と同じに扱い、商品ページ自体は今までどおり出す。
+  return presentCollection(course, key => env.MATERIALS.head(key));
 }
 
 async function download(req: Request, env: AppEnv, course: Collection, id: string): Promise<Response> {
@@ -232,7 +239,12 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   const unlocked = session.unlocked ?? [];
   // 段を持たないセッションはギフトの教材を1つも開けない（全部開ける扱いにはしない）。
   const giftLevel = session.giftLevel ?? 0;
-  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local, unlocked, giftLevel));
+  if (url.pathname === '/library') {
+    if (req.method === 'HEAD') return response(null);
+    // 開けて配布中の商品だけ、カードの数を商品ページと同じ「今出せる教材」で数える。
+    const shown = await Promise.all(collections.filter(c => isPaidProduct(c) && unlocked.includes(c.id) && !misconfigured.has(c.id) && canDistributeProduct(c)).map(async c => [c.id, await presentMaterials(env, c)] as const));
+    return response(catalogue(session.nonce, local, unlocked, giftLevel, Object.fromEntries(shown)));
+  }
   if (url.pathname === '/status') {
     const gift = collections.find(isSurveyGift);
     return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift, session.nonce)) : error(503, '配布設定の確認中です');
@@ -246,7 +258,10 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
     if (isSurveyGift(course)) {
       return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, openedCollection(course, giftLevel)) : pendingCourse(course, session.nonce));
     }
-    if (isPaidProduct(course)) return response(req.method === 'HEAD' ? null : canDistributeProduct(course) ? productLibrary(session.nonce, course) : pendingCourse(course, session.nonce));
+    if (isPaidProduct(course)) {
+      if (req.method === 'HEAD') return response(null);
+      return response(canDistributeProduct(course) ? productLibrary(session.nonce, await presentMaterials(env, course)) : pendingCourse(course, session.nonce));
+    }
     return error(404, '教材が見つかりません');
   }
   if (url.pathname === '/guide') return response(req.method === 'HEAD' ? null : guide());

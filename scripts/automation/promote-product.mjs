@@ -72,6 +72,7 @@ export async function run(argv, { write = writeFile, log = console.log } = {}) {
   const course = await verify(text, args);
   if (!args.dryRun) await write(manifestPath, text);
   log(`${args.dryRun ? '[dry-run] ' : ''}${constName}: ${args.collection} ${course.release.version === args.version ? '' : ''}${args.version} (${args.date}), prefix releases/${args.collection}/${args.version}/`);
+  log(`Upload releases/${args.collection}/${args.version}/${args.collection}-textbook.zip too if the textbook is distributed; without it the product page hides the textbook for this version.`);
   return { changed: true, version: args.version, date: args.date };
 }
 
