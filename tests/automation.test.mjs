@@ -76,13 +76,18 @@ test('every workflow that runs npm run check installs poppler first, because the
   const checked = [];
   for (const file of files) {
     const text = await readFile(`.github/workflows/${file}`, 'utf8');
-    const check = text.search(/run: npm run check\b/);
-    if (check < 0) continue;
-    checked.push(file);
-    const install = text.search(/run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils\n/);
-    assert.ok(install > -1 && install < check, `${file} runs npm run check without installing poppler-utils before it`);
+    // Each job runs on its own runner, so the install must come before the tests in the same job.
+    const jobs = text.slice(text.search(/^jobs:\n/m)).split(/^ {2}(?=[a-z][\w-]*:\n)/m).slice(1);
+    for (const job of jobs) {
+      const steps = job.split('\n').filter(line => !/^\s*#/.test(line));
+      const check = steps.findIndex(line => /\brun: npm (?:run check|test)\s*$/.test(line));
+      if (check < 0) continue;
+      checked.push(`${file}:${job.slice(0, job.indexOf(':'))}`);
+      const install = steps.findIndex(line => /\brun: .*\bapt-get install\b.*\bpoppler-utils\b/.test(line));
+      assert.ok(install > -1 && install < check, `${file} job ${job.slice(0, job.indexOf(':'))} runs the tests without installing poppler-utils before them`);
+    }
   }
-  assert.deepEqual(checked.sort(), ['promote-product.yml', 'verify.yml']);
+  assert.deepEqual(checked.sort(), ['promote-product.yml:promote', 'verify.yml:verify']);
 });
 test('issue heading fix lifts ### to ## and #### to ### once, outside code blocks only', async () => {
   const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
