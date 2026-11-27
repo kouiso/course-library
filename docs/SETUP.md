@@ -4,7 +4,7 @@
 
 ## 決めることは3つ
 
-1. **配布対象**：配る物は2種類です。アンケート回答者向けの無料プレゼント（TypeScript教材）と、買った人向けの商品（今は`redmine-clone`）です。商品は無料プレゼントに入れません。プレゼントの合言葉で商品は開かず、商品の合言葉でプレゼントは開きません。プレゼントについては、TypeScriptの実配布版とMyASPの回答者向け案内設定を確認します。商品を配る手順は[OPERATIONS.mdの「Distribute a paid product」](OPERATIONS.md#distribute-a-paid-product)にあります。
+1. **配布対象**：配る物は2種類です。アンケート回答者向けの無料プレゼント（TypeScript教材）と、買った人向けの商品（今は`redmine-clone`と`task-app`の2つ）です。商品は無料プレゼントに入れません。プレゼントの合言葉で商品は開かず、商品の合言葉でプレゼントは開きません。プレゼントについては、TypeScriptの実配布版とMyASPの回答者向け案内設定を確認します。商品を配る手順は[OPERATIONS.mdの「Distribute a paid product」](OPERATIONS.md#distribute-a-paid-product)にあります。
 2. **公開先**：既存の本人アカウントに新しいWorkerと私有R2を作ります。既存の別サービス用リソースは使いません。最初は既存の`workers.dev`サブドメインを使うとDNS設定を減らせます。
 3. **秘密情報の安全な保管先**：利用者が管理する既存の秘密管理先を指定します。値をチャット、公開Git、コマンド引数、ログに貼らない方法を使います。
 
@@ -15,7 +15,7 @@
 | 種類 | 用途 | 最終的な保存先 |
 | --- | --- | --- |
 | アクセス用の合言葉（ギフト） | 無料プレゼントを開く。十分にランダムな128ビット以上の値を使う | 元の値は利用者の秘密管理先。SHA-256ダイジェストだけをWorkerの`ACCESS_PHRASE_SHA256`へ |
-| 商品の合言葉 | 買った人が商品を開く。商品ごとに別の、十分にランダムな128ビット以上の値を使う | 元の値は利用者の秘密管理先。SHA-256ダイジェストだけをWorkerの商品用のSecret（`redmine-clone`なら`ACCESS_PHRASE_SHA256_REDMINE_CLONE`。名前の決まりは[商品の合言葉（任意）](#商品の合言葉任意)）へ |
+| 商品の合言葉 | 買った人が商品を開く。商品ごとに別の、十分にランダムな128ビット以上の値を使う | 元の値は利用者の秘密管理先。SHA-256ダイジェストだけをWorkerの商品用のSecret（`redmine-clone`なら`ACCESS_PHRASE_SHA256_REDMINE_CLONE`、`task-app`なら`ACCESS_PHRASE_SHA256_TASK_APP`。名前の決まりは[商品の合言葉（任意）](#商品の合言葉任意)）へ |
 | セッション署名鍵 | 有効期限付きCookieを署名する。32ランダムバイト以上 | Workerの`SESSION_SECRET`と利用者の秘密管理先 |
 | 外側のBasic認証のIDとパスワード | 本番でサイトの全ページの前に入力する。配り始めた後も外さない | Workerの`BASIC_AUTH_USER`・`BASIC_AUTH_PASS`と利用者の秘密管理先 |
 | PDFの開封パスワード | 確認済みの同一配布版のPDFを開く | 利用者の秘密管理先と、別途承認された読者向け案内。WorkerやGitHubへ保存する必要はない |
@@ -70,17 +70,24 @@ printf %s "$PHRASE" | shasum -a 256 | cut -d' ' -f1
 
 ## 商品の合言葉（任意）
 
-商品（Redmineクローン教材）は、ギフトとは別の合言葉で開きます。設定名は`ACCESS_PHRASE_SHA256_REDMINE_CLONE`で、WorkerのSecretです。値の形は`ACCESS_PHRASE_SHA256`と同じ（合言葉のSHA-256ダイジェスト、**小文字の16進64文字**）で、上の[ダイジェストの作り方](#本番に必須の設定値)で作ります。「本番に必須の設定値」の表の条件（`configured`）には入らないので、未設定でも形が違ってもサイト全体は503になりません。どの設定がどう違うかは、画面にもログにも出ません（形が違う時と重なった時に、配布設定を確認している事だけが画面に出ます）。
+商品は、ギフトとは別の、商品ごとの合言葉で開きます。設定はどれもWorkerのSecretです。
+
+| 商品 | 設定名 |
+| --- | --- |
+| Redmineクローン教材（`redmine-clone`） | `ACCESS_PHRASE_SHA256_REDMINE_CLONE` |
+| Task-App教材（`task-app`） | `ACCESS_PHRASE_SHA256_TASK_APP` |
+
+下の説明と表は、どの商品にも同じように当てはまります（`<id>`は商品の`id`）。値の形は`ACCESS_PHRASE_SHA256`と同じ（合言葉のSHA-256ダイジェスト、**小文字の16進64文字**）で、上の[ダイジェストの作り方](#本番に必須の設定値)で作ります。「本番に必須の設定値」の表の条件（`configured`）には入らないので、未設定でも形が違ってもサイト全体は503になりません。どの設定がどう違うかは、画面にもログにも出ません（形が違う時と重なった時に、配布設定を確認している事だけが画面に出ます）。
 
 | 設定の状態 | Workerの動き |
 | --- | --- |
-| 未設定（空の値を含む） | 商品の合言葉は誰にも合わず、新しく商品を開ける人はいません。サイトとギフトは動きます。入口で合言葉が合わない時は、ほかに閉じた商品が無ければ、打ち間違いの時と同じ401の表示です。設定を外す前に商品を開けた人のセッションは閉じません。期限（4時間）が切れるまで、商品ページも`/download/redmine-clone/…`も今までどおり開きます |
-| 形が違う（大文字・ダイジェストにしていない合言葉・長さ違い等） | 商品だけを閉じます。入口では商品の合言葉を照合せず、合う合言葉が無い時の表示に「販売中の教材は、ただいま配布設定を確認しています。」を添えます。商品を開けたセッションでは、`/courses/redmine-clone`も`/download/redmine-clone/…`も「配布設定の確認中です」の503になり、設定を間違える前に入った人にも教材を渡しません。サイトとギフトは動きます |
+| 未設定（空の値を含む） | 商品の合言葉は誰にも合わず、新しく商品を開ける人はいません。サイトとギフトは動きます。入口で合言葉が合わない時は、ほかに閉じた商品が無ければ、打ち間違いの時と同じ401の表示です。設定を外す前に商品を開けた人のセッションは閉じません。期限（4時間）が切れるまで、商品ページも`/download/<id>/…`も今までどおり開きます |
+| 形が違う（大文字・ダイジェストにしていない合言葉・長さ違い等） | 商品だけを閉じます。入口では商品の合言葉を照合せず、合う合言葉が無い時の表示に「販売中の教材は、ただいま配布設定を確認しています。」を添えます。商品を開けたセッションでは、`/courses/<id>`も`/download/<id>/…`も「配布設定の確認中です」の503になり、設定を間違える前に入った人にも教材を渡しません。サイトとギフトは動きます |
 | ほかのコレクションの合言葉と同じダイジェスト | 形が違う時と同じく、商品だけを閉じます |
 
 商品の合言葉のダイジェストは、ほかのコレクションの合言葉（ギフトの`ACCESS_PHRASE_SHA256`・ギフトの段の合言葉・ほかの商品の合言葉）と別の値にします。同じ値だと1つの合言葉で2つのコレクションが開くので、Workerはその商品を閉じます。相手がギフト（`ACCESS_PHRASE_SHA256`か段の合言葉）の時は、その合言葉でギフトだけが開きます。相手がほかの商品の時は、両方の商品を閉じます。ギフトの中での重なり（段の合言葉と`ACCESS_PHRASE_SHA256`が同じ等）は、同じギフトが開くだけなので閉じません。
 
-商品を足す時の設定名は、`ACCESS_PHRASE_SHA256_`の後ろに、商品の`id`を大文字にして`-`を`_`に変えた物を付けます（`src/manifest.ts`の`productPhraseEnvName`。`redmine-clone`なら`ACCESS_PHRASE_SHA256_REDMINE_CLONE`）。同じ名前を`src/manifest.ts`の`Secrets`に足し、マニフェストのその商品の`phraseEnv`に書きます。`phraseEnv`に`Secrets`に無い名前やギフトの段の合言葉の名前を書くと、`npm run typecheck`が失敗します。`phraseEnv`が無い時、`id`から作った名前と違う時、ギフトの合言葉や段の合言葉と同じ名前の時は、`validateManifest`が止めるので、サイト全体が「ただいま準備中です」の503になります。
+商品を足す時の設定名は、`ACCESS_PHRASE_SHA256_`の後ろに、商品の`id`を大文字にして`-`を`_`に変えた物を付けます（`src/manifest.ts`の`productPhraseEnvName`。`redmine-clone`なら`ACCESS_PHRASE_SHA256_REDMINE_CLONE`、`task-app`なら`ACCESS_PHRASE_SHA256_TASK_APP`）。同じ名前を`src/manifest.ts`の`Secrets`に足し、マニフェストのその商品の`phraseEnv`に書きます。`phraseEnv`に`Secrets`に無い名前やギフトの段の合言葉の名前を書くと、`npm run typecheck`が失敗します。`phraseEnv`が無い時、`id`から作った名前と違う時、ギフトの合言葉や段の合言葉と同じ名前の時は、`validateManifest`が止めるので、サイト全体が「ただいま準備中です」の503になります。
 
 ## 初回は既存接続で手動公開する
 
@@ -113,4 +120,4 @@ PDF暗号化ツールは現在の公式版を使い、秘密値を引数に置�
 
 Sources: [API token permission scopes](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Worker roles](https://developers.cloudflare.com/workers/authorization/workers/), [binding permissions](https://developers.cloudflare.com/workers/authorization/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [GitHub environment secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [qpdf Job JSON](https://qpdf.readthedocs.io/en/stable/qpdf-job.html).
 
-ギフトの本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。商品の本番配布は、その商品の承認（`redmine-clone`は`productPolicy.distributionApproved`。現在はtrue）がtrueで、合成教材ではない公開中の版だけに許可します。共有合言葉だけで回答者本人を個別確認する仕組みはありません。無料プレゼント（ギフト）については、MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`は、ギフトも商品も1つも配れない状態のときに失敗（終了コード1）し、どちら側が止まっているかをメッセージに出します。配れない物は1行ずつ報告し、ほかに配れる物があれば成功（終了コード0）して、配れない物は本番で閉じたままである旨（`Note: … stays closed in production …`、閉じる物が2つ以上なら`stay`）を表示します。承認の旗は各コレクションの`approval`から読みます（Workerの判定と同じ`isApproved`）。ギフトを承認済みにしたのに配れない状態（合成教材のまま・公開中でない等）と、`validateManifest`が通らないマニフェスト（1行も出さずに止まります）も失敗します。
+ギフトの本番配布は`giftPolicy.myaspVerified`と`giftPolicy.distributionApproved`が両方trueで、合成教材ではない公開版だけに許可します。現在は両方falseです。商品の本番配布は、その商品の承認（`redmine-clone`は`productPolicy.distributionApproved`、`task-app`は`taskAppPolicy.distributionApproved`。現在はどちらもtrue）がtrueで、合成教材ではない公開中の版だけに許可します。共有合言葉だけで回答者本人を個別確認する仕組みはありません。無料プレゼント（ギフト）については、MyASPの実設定の確認が終わるまで、全読者への案内や実教材の配信をしません。`npm run release:ready`は、ギフトも商品も1つも配れない状態のときに失敗（終了コード1）し、どちら側が止まっているかをメッセージに出します。配れない物は1行ずつ報告し、ほかに配れる物があれば成功（終了コード0）して、配れない物は本番で閉じたままである旨（`Note: … stays closed in production …`、閉じる物が2つ以上なら`stay`）を表示します。承認の旗は各コレクションの`approval`から読みます（Workerの判定と同じ`isApproved`）。ギフトを承認済みにしたのに配れない状態（合成教材のまま・公開中でない等）と、`validateManifest`が通らないマニフェスト（1行も出さずに止まります）も失敗します。
