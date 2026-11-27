@@ -101,7 +101,8 @@ async function boundedForm(req: Request): Promise<URLSearchParams | null> {
 async function presentMaterials(env: AppEnv, course: Collection): Promise<Collection> {
   const prefix = course.release?.prefix;
   if (!prefix || !course.materials.some(m => m.optional)) return course;
-  const present = await Promise.all(course.materials.map(async m => !m.optional || ((await env.MATERIALS.head(prefix + m.filename))?.size ?? 0) > 0));
+  // R2 が一時的に失敗した時は「置かれていない」と同じに扱い、商品ページ自体は今までどおり出す。
+  const present = await Promise.all(course.materials.map(async m => !m.optional || ((await env.MATERIALS.head(prefix + m.filename).catch(() => null))?.size ?? 0) > 0));
   return { ...course, materials: course.materials.filter((_, i) => present[i]) };
 }
 

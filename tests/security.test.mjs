@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
-import { seed, fixtures, version, productVersion } from '../scripts/fixtures.mjs';
+import { seed, fixtures, productFixtures, version, productVersion } from '../scripts/fixtures.mjs';
 
 // views.ts reads the app version from package.json; data: modules need it as a module.
 const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const version = ${JSON.stringify(JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version)};`);
@@ -121,7 +121,8 @@ test('the product textbook ZIP is listed and downloadable only while its object 
     // 一覧のカードの数は、必ず出す教材だけを数える（本文の有無で変わらない）。
     assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /ソースコード一式 \/ 1 ファイル/);
   } finally {
-    await bucket.delete(key);
+    // 共有のバケットに、fixtures が置いた本文を戻す（後の試験が順番に左右されないように）。
+    await bucket.put(key, productFixtures().get(key));
   }
 });
 test('the Task-App phrase unlocks only Task-App with its Day 1 rename guidance and never unlocks Redmine or the gift', async () => {

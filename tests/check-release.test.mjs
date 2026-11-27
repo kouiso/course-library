@@ -169,10 +169,11 @@ test('an optional material outside a paid product, a product with only optional 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Optional material outside a product/);
   });
-  const onlyOptional = text => replaceOnce(text, "{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }", "{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle', optional: true }");
+  // 名前の変え方の案内を外してから、ソースの ZIP も optional にする（案内の検査より先にこの規則で止まる事を見る）。
+  const onlyOptional = text => replaceOnce(replaceOnce(text, " filenameHint: { filename: 'redmine-clone.zip', day: 'Day 3', material: 'source-zip' },", ''), "{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }", "{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle', optional: true }");
   await withManifest(onlyOptional, result => {
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Invalid release manifest|Product without a required material/);
+    assert.match(result.stderr, /Product without a required material/);
   });
   const hintToTextbook = text => replaceOnce(text, "day: 'Day 3', material: 'source-zip'", "day: 'Day 3', material: 'textbook'");
   await withManifest(hintToTextbook, result => {
