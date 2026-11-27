@@ -95,6 +95,11 @@ jobs:
         with:
           node-version: '22.23.4'
 
+      # The "Verify the candidate commit" step runs npm run check, which needs pdfinfo and pdftotext
+      # (tests/candidate.test.mjs); the runner image does not list poppler-utils.
+      - name: Install poppler for pdfinfo and pdftotext
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+
       - name: Install
         run: npm ci --no-audit --no-fund
 
@@ -194,6 +199,7 @@ jobs:
             echo "確認してほしいこと"
             echo ""
             echo "- [ ] R2 の \`releases/${COLLECTION}/${VERSION}/\` に商品 ZIP がある（rclone lsl またはダッシュボード）"
+            echo "- [ ] 教材本文を配る商品なら、R2 の \`releases/${COLLECTION}/${VERSION}/${COLLECTION}-textbook.zip\` もある（無いと、この版では商品ページから本文が消える）"
             echo "- [ ] 版番号・配布日が意図どおり"
             echo "- [ ] マージ後に verify.yml の deploy で本番へ出す判断"
           } > /tmp/pr-body.md

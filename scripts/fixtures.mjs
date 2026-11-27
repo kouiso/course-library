@@ -54,7 +54,9 @@ export function productFixtures() {
   const files = new Map();
   for (const course of collections.filter(isPaidProduct))
     for (const m of course.materials)
-      files.set(`${course.release.prefix}${m.filename}`, zip([[`${m.filename.replace(/\.zip$/, '')}/README.txt`, readme]]));
+      files.set(`${course.release.prefix}${m.filename}`, m.id === 'textbook'
+        ? zip([[`${m.filename.replace(/\.zip$/, '')}/day01-synthetic.pdf`, pdf(`Synthetic ${course.id} textbook Day 1`)]])
+        : zip([[`${m.filename.replace(/\.zip$/, '')}/README.txt`, readme]]));
   return files;
 }
 export async function seed(mf) {

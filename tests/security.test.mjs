@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { runtime, localPhrase, basicHeader, digest } from '../scripts/runtime.mjs';
-import { seed, fixtures, version, productVersion } from '../scripts/fixtures.mjs';
+import { seed, fixtures, productFixtures, version, productVersion } from '../scripts/fixtures.mjs';
 
 // views.ts reads the app version from package.json; data: modules need it as a module.
 const packageUrl = 'data:text/javascript,' + encodeURIComponent(`export const version = ${JSON.stringify(JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version)};`);
@@ -80,11 +80,99 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal((await req('/download/task-app/source-zip', { headers: { Cookie: cookie } })).status, 404);
   // 承認済みの商品は、実オブジェクトが置かれていればバイトごと取り出せる。
   const bucket = await mf.getR2Bucket('MATERIALS');
-  await bucket.put(`releases/redmine-clone/${productVersion}/redmine-clone-source.zip`, 'PRODUCT ZIP BYTES');
-  const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
-  assert.equal(dl.status, 200);
-  assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-source-v${productVersion}.zip"`);
-  assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
+  const sourceKey = `releases/redmine-clone/${productVersion}/redmine-clone-source.zip`;
+  try {
+    await bucket.put(sourceKey, 'PRODUCT ZIP BYTES');
+    const dl = await req('/download/redmine-clone/source-zip', { headers: { Cookie: cookie } });
+    assert.equal(dl.status, 200);
+    assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-source-v${productVersion}.zip"`);
+    assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
+  } finally {
+    // 共有のバケットに、fixtures が置いた中身を戻す（後の試験が順番に左右されないように）。
+    await bucket.put(sourceKey, productFixtures().get(sourceKey));
+  }
+});
+test('the product textbook ZIP is listed and downloadable only while its object is in the release prefix, and only with that product phrase', async () => {
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  const key = `releases/redmine-clone/${productVersion}/redmine-clone-textbook.zip`;
+  const { cookie } = await loginAttempt(productPhrase);
+  try {
+    await bucket.put(key, 'TEXTBOOK ZIP BYTES');
+    const html = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
+    assert.match(html, /href="\/download\/redmine-clone\/textbook"><span>教材本文（PDF）一式<\/span><small>ZIP<\/small><\/a>/);
+    assert.ok(html.includes(`保存されるファイル名は redmine-clone-textbook-v${productVersion}.zip です。展開すると、Day ごとの本文（PDF）が入っています。本文の Day 1 から順に読み進めてください。`));
+    // 本文は、ソースの ZIP より先に並ぶ。ソースの ZIP の名前の変え方の案内はそのまま出る。
+    assert.ok(html.indexOf('/download/redmine-clone/textbook') < html.indexOf('/download/redmine-clone/source-zip'));
+    assert.match(html, /Day 3 の手順は <code>redmine-clone\.zip<\/code> という名前で書かれています。/);
+    const dl = await req('/download/redmine-clone/textbook', { headers: { Cookie: cookie } });
+    assert.equal(dl.status, 200);
+    assert.equal(dl.headers.get('Content-Type'), 'application/zip');
+    assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-textbook-v${productVersion}.zip"`);
+    assert.equal(await dl.text(), 'TEXTBOOK ZIP BYTES');
+    // ほかの商品の合言葉とギフトの合言葉では取り出せない。
+    for (const phrase of [taskAppPhrase, localPhrase]) {
+      const other = await loginAttempt(phrase);
+      assert.equal((await req('/download/redmine-clone/textbook', { headers: { Cookie: other.cookie } })).status, 404);
+    }
+    // 中身の無いオブジェクト（上げかけ）は、置かれていないのと同じく出さない。
+    await bucket.put(key, '');
+    assert.doesNotMatch(await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text(), /教材本文（PDF）一式/);
+    await bucket.delete(key);
+    const without = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
+    assert.equal(without.status, 200);
+    const withoutHtml = await without.text();
+    assert.doesNotMatch(withoutHtml, /教材本文（PDF）一式|\/download\/redmine-clone\/textbook/);
+    assert.match(withoutHtml, /ソースコード一式（Day0 の骨格）/);
+    assert.equal((await req('/download/redmine-clone/textbook', { headers: { Cookie: cookie } })).status, 404);
+    // 一覧のカードは、商品ページと同じく今出せる教材だけを数える。
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /ソースコード一式 \/ 1 ファイル/);
+    await bucket.put(key, 'TEXTBOOK ZIP BYTES');
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /教材本文とソースコード \/ 2 ファイル/);
+    // HEAD は本文の有無に関わらず 200 で、本文を返さない。
+    for (const path of ['/courses/redmine-clone', '/library']) {
+      const head = await req(path, { method: 'HEAD', headers: { Cookie: cookie } });
+      assert.equal(head.status, 200); assert.equal(await head.text(), '');
+    }
+  } finally {
+    // 共有のバケットに、fixtures が置いた本文を戻す（後の試験が順番に左右されないように）。
+    await bucket.put(key, productFixtures().get(key));
+  }
+});
+test('the Task-App textbook ZIP is listed, downloadable and counted on its card, and the Redmine textbook does not change it', async () => {
+  const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
+  const { taskAppRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  const taskKey = `releases/task-app/${taskAppRelease.version}/task-app-textbook.zip`;
+  const redmineKey = `releases/redmine-clone/${productVersion}/redmine-clone-textbook.zip`;
+  const { cookie } = await loginAttempt(taskAppPhrase);
+  try {
+    const html = await (await req('/courses/task-app', { headers: { Cookie: cookie } })).text();
+    assert.ok(html.includes('href="/download/task-app/textbook"'));
+    const dl = await req('/download/task-app/textbook', { headers: { Cookie: cookie } });
+    assert.equal(dl.status, 200);
+    assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="task-app-textbook-v${taskAppRelease.version}.zip"`);
+    await dl.arrayBuffer();
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /教材本文とソースコード \/ 2 ファイル/);
+    // 別の商品の教材本文を消しても、Task-App のページは変わらない。
+    await bucket.delete(redmineKey);
+    const links = text => [...text.matchAll(/href="(\/download\/[^"]+)"/g)].map(m => m[1]);
+    const after = await (await req('/courses/task-app', { headers: { Cookie: cookie } })).text();
+    assert.deepEqual(links(after), links(html));
+    assert.ok(links(after).includes('/download/task-app/textbook'));
+    assert.equal((await req('/download/task-app/textbook', { headers: { Cookie: cookie } })).status, 200);
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /教材本文とソースコード \/ 2 ファイル/);
+    // 逆向き: Task-App の本文を消すと Task-App からだけ消え、Redmine の本文はそのまま残る。
+    await bucket.put(redmineKey, productFixtures().get(redmineKey));
+    await bucket.delete(taskKey);
+    const gone = await (await req('/courses/task-app', { headers: { Cookie: cookie } })).text();
+    assert.ok(!links(gone).includes('/download/task-app/textbook'));
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /ソースコード一式 \/ 1 ファイル/);
+    const redmine = await loginAttempt(productPhrase);
+    assert.ok((await (await req('/courses/redmine-clone', { headers: { Cookie: redmine.cookie } })).text()).includes('href="/download/redmine-clone/textbook"'));
+  } finally {
+    await bucket.put(taskKey, productFixtures().get(taskKey));
+    await bucket.put(redmineKey, productFixtures().get(redmineKey));
+  }
 });
 test('the Task-App phrase unlocks only Task-App with its Day 1 rename guidance and never unlocks Redmine or the gift', async () => {
   const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));

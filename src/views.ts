@@ -1,5 +1,5 @@
 import { version as appVersion } from '../package.json';
-import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, openedCollection, release, saveName, type Collection } from './manifest';
+import { canDistribute, canDistributeProduct, collections, collectionStatusLabel, exerciseChapterIds, isSurveyGift, openedCollection, release, saveName, type Collection, type Material } from './manifest';
 export const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 type Layout = 'entry' | 'library' | 'course' | 'status';
 // Status screens (errors, preparation, closed) carry only the version in the footer, as in the design.
@@ -48,7 +48,8 @@ export function guide(): string {
   return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course', release.version);
 }
 // giftLevel はセッションの段。カードの数は、段で開ける教材（openedCollection）から数える。
-export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0): string {
+// present は、開けた商品ごとの「今出せる教材」に絞ったコレクション（R2 に在る optional の教材を含む）。無い商品は必ず出す教材だけで数える。
+export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0, present: Readonly<Record<string, Collection>> = {}): string {
   // 開けられるカードを先に並べる。欄の中も欄どうしも、合言葉で開いた教材が先に来る。
   const byOpen = (a: Collection, b: Collection) => Number(unlocked.includes(b.id)) - Number(unlocked.includes(a.id));
   const gifts = collections.filter(isSurveyGift).sort(byOpen);
@@ -69,11 +70,12 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
     // The survey description is shown only to those who opened the gift, so buyers read no survey wording.
     return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${open ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${open ? `<p>${escape(c.description)}</p>` : ''}${meta ? `<div class="course-meta">${meta}</div>` : ''}<a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
+  const productSummary = (shown: Collection) => `${shown.materials.some(m => m.id === 'textbook') ? '教材本文とソースコード' : 'ソースコード一式'} / ${shown.materials.length} ファイル`;
   const productCard = (c: Collection) => {
     const open = unlocked.includes(c.id);
     const available = canDistributeProduct(c);
     const state = !open ? '合言葉を入力する' : available ? '教材を受け取る' : '配布準備状況を見る';
-    return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `ソースコード一式 / ${c.materials.length} ファイル` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+    return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `${productSummary(present[c.id] ?? { ...c, materials: c.materials.filter(m => !m.optional) })}` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
   // The hero follows what the phrase opened: gift wording for gift holders, product wording for buyers only.
   const giftOpen = gifts.some(c => unlocked.includes(c.id));
@@ -91,12 +93,16 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
   return page(hero.title, `<div class="catalogue-hero"><div><div class="eyebrow">${hero.eyebrow}</div><h1>${hero.heading}</h1>${hero.lead}</div><div class="hero-art" aria-hidden="true"><div class="cover-book"><div>LEARN<br>BUILD<br><b>REPEAT.</b></div><span>ONE STEP AT A TIME</span></div><div class="art-tag">一歩ずつ、自分のペースで。</div></div></div>${sections.map(s => s.html).join('')}${logout(nonce, 'ライブラリを閉じる', 'アクセスの有効期限は4時間です。')}`, 'library');
 }
 export function productLibrary(nonce: string, course: Collection): string {
-  const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>`).join('');
-  const zip = course.materials.find(m => m.type === 'application/zip');
   const hint = course.filenameHint;
-  const guidance = zip && course.release && hint ? `<p>保存されるファイル名は ${escape(saveName(course, zip))} です。教材の ${escape(hint.day)} の手順は <code>${escape(hint.filename)}</code> という名前で書かれています。保存したファイルの名前を <code>${escape(hint.filename)}</code> に変えてから、${escape(hint.day)} の手順どおりに進めてください。</p>` : '';
+  // 教材ごとに、リンクの後へその教材の案内を置く。教材本文は読み始めの案内、ソースの ZIP は名前の変え方の案内。
+  const note = (m: Material): string => {
+    if (m.id === 'textbook') return `<p>保存されるファイル名は ${escape(saveName(course, m))} です。展開すると、Day ごとの本文（PDF）が入っています。本文の Day 1 から順に読み進めてください。</p>`;
+    if (hint && m.id === hint.material && course.release) return `<p>保存されるファイル名は ${escape(saveName(course, m))} です。教材の ${escape(hint.day)} の手順は <code>${escape(hint.filename)}</code> という名前で書かれています。保存したファイルの名前を <code>${escape(hint.filename)}</code> に変えてから、${escape(hint.day)} の手順どおりに進めてください。</p>`;
+    return '';
+  };
+  const items = course.materials.map(m => `<a class="download${m.group === 'bundle' ? ' bundle' : ''}" href="/download/${course.id}/${m.id}"><span>${escape(m.title)}</span><small>${m.type === 'application/pdf' ? 'PDF' : 'ZIP'}</small></a>${note(m)}`).join('');
   const verification = course.release?.verification;
-  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${guidance}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
+  return page(course.title, `<a href="/library" class="breadcrumb">← 教材一覧へ</a><div class="eyebrow">PAID PRODUCT</div><h1>${escape(course.title)}</h1><p class="lead">${escape(course.description)}</p><section class="card"><h2>ダウンロード</h2>${items}${course.release ? `<p class="release-meta">${escape(course.release.version)} · <time datetime="${escape(course.release.date)}">${escape(course.release.date)}</time></p>` : ''}${verification ? `<ul class="verification"><li>${escape(verification.materials)}</li><li>${escape(verification.delivery)}</li><li>${escape(verification.platforms)}</li></ul>` : ''}</section>${logout(nonce, '教材ページを閉じる', 'アクセスは4時間で期限切れになります。続ける場合は再度合言葉を入力してください。')}`, 'course', course.version || appVersion);
 }
 // 2つ目の合言葉で入り直した時の今の動き（前の教材は閉じる）を、そのまま伝える。
 export const switchNote = '別の合言葉で入り直すと、いま開いている教材は閉じます。続けて使う時は、その教材の合言葉でもう一度入ってください。';
