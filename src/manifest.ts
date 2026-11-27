@@ -31,10 +31,10 @@ export const productPolicy = {
 };
 export const redmineCloneRelease = {
   schemaVersion: 1,
-  version: '0.2.1',
-  date: '2026-11-10',
+  version: '0.2.2',
+  date: '2026-11-28',
   synthetic: false,
-  prefix: 'releases/redmine-clone/0.2.1/',
+  prefix: 'releases/redmine-clone/0.2.2/',
   verification: {
     delivery: 'ローカルの Worker で、この版の置き場から ZIP を版入りの名前で配布できることを検査で確かめています。',
     materials: 'Day0 の骨格 ZIP で、完成品の app/ は含みません。',
