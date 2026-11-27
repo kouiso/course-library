@@ -96,6 +96,15 @@ async function boundedForm(req: Request): Promise<URLSearchParams | null> {
   return form;
 }
 
+// optional の教材は、その版の置き場に中身のあるオブジェクトが在る時だけ商品ページに出す。
+// 必ず出す教材は今までどおり在る無しを見ない（無ければダウンロードが準備中の 404 になる）。
+async function presentMaterials(env: AppEnv, course: Collection): Promise<Collection> {
+  const prefix = course.release?.prefix;
+  if (!prefix || !course.materials.some(m => m.optional)) return course;
+  const present = await Promise.all(course.materials.map(async m => !m.optional || ((await env.MATERIALS.head(prefix + m.filename))?.size ?? 0) > 0));
+  return { ...course, materials: course.materials.filter((_, i) => present[i]) };
+}
+
 async function download(req: Request, env: AppEnv, course: Collection, id: string): Promise<Response> {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) return error(404, '教材が見つかりません');
   const material = course.materials.find(m => m.id === id);
@@ -246,7 +255,10 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
     if (isSurveyGift(course)) {
       return response(req.method === 'HEAD' ? null : canDistribute(course, local) ? library(session.nonce, openedCollection(course, giftLevel)) : pendingCourse(course, session.nonce));
     }
-    if (isPaidProduct(course)) return response(req.method === 'HEAD' ? null : canDistributeProduct(course) ? productLibrary(session.nonce, course) : pendingCourse(course, session.nonce));
+    if (isPaidProduct(course)) {
+      if (req.method === 'HEAD') return response(null);
+      return response(canDistributeProduct(course) ? productLibrary(session.nonce, await presentMaterials(env, course)) : pendingCourse(course, session.nonce));
+    }
     return error(404, '教材が見つかりません');
   }
   if (url.pathname === '/guide') return response(req.method === 'HEAD' ? null : guide());

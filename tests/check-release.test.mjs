@@ -163,3 +163,20 @@ test('a product that shares the gift approval object stops the release check', a
     assert.doesNotMatch(result.stdout, /^paid-product: ready/m);
   });
 });
+test('an optional material outside a paid product, a product with only optional materials, and a rename hint for a missing material each stop the release check', async () => {
+  const giftOptional = text => replaceOnce(text, "{ id: 'learning-flow', title: '学習の進め方', filename: 'typescript-learning-flow.pdf', type: 'application/pdf', group: 'intro' }", "{ id: 'learning-flow', title: '学習の進め方', filename: 'typescript-learning-flow.pdf', type: 'application/pdf', group: 'intro', optional: true }");
+  await withManifest(giftOptional, result => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Optional material outside a product/);
+  });
+  const onlyOptional = text => replaceOnce(text, "{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }", "{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle', optional: true }");
+  await withManifest(onlyOptional, result => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Invalid release manifest|Product without a required material/);
+  });
+  const hintToTextbook = text => replaceOnce(text, "day: 'Day 3', material: 'source-zip'", "day: 'Day 3', material: 'textbook'");
+  await withManifest(hintToTextbook, result => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Invalid release manifest/);
+  });
+});

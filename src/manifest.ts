@@ -63,7 +63,9 @@ export function saveName(course: Collection, material: Material): string {
     ? material.filename.replace(/\.zip$/, `-v${course.release.version}.zip`)
     : material.filename;
 }
-export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'exercises' | 'bundle' };
+// optional の教材は、R2 にその版のオブジェクトが置かれている時だけ商品ページに出す（置かれていない間は出さない）。
+// 商品の教材本文（PDF をまとめた ZIP）がこれに当たる。ギフトの教材には使わない（validateManifest）。
+export type Material = { id: string; title: string; filename: string; type: 'application/pdf' | 'application/zip'; group: 'intro' | 'books' | 'exercises' | 'bundle'; optional?: true };
 // 秘密の設定値（wrangler secret で置く物）。生成物の worker-configuration.d.ts には出ないので、型はここ1か所で持つ。
 // 商品を足す時は、ここに商品用の合言葉の名前を足し、マニフェストの phraseEnv に同じ名前を書く。
 // ギフトの段の合言葉の名前も、下の GiftLevelEnvName でここに含める。
@@ -78,8 +80,8 @@ export type Secrets = {
 // 商品の phraseEnv に書ける名前。ギフトの段の合言葉の名前は商品には使わせない。
 export type PhraseEnvName = Exclude<Extract<keyof Secrets, `ACCESS_PHRASE_SHA256${string}`>, GiftLevelEnvName>;
 // filenameHint は「保存されたファイル名を教材が手順で使う名前に変える」案内。商品ごとに
-// 教材本文が使うファイル名と日割りを持つ。未設定の商品には案内を出さない。
-export type FilenameHint = { filename: string; day: string };
+// 教材本文が使うファイル名と日割りと、案内を付ける教材（material は Material の id）を持つ。未設定の商品には案内を出さない。
+export type FilenameHint = { filename: string; day: string; material: string };
 export type Collection = { id: string; title: string; description: string; distribution: 'survey-gift' | 'paid-product'; audience: string; status: 'preview' | 'pending' | 'published'; version: string | null; release: Release | null; approval: Approval; materials: Material[]; cover: string; mark: string; phraseEnv?: PhraseEnvName; filenameHint?: FilenameHint };
 export const exerciseChapterIds = ['01', '02', '03', '04', '05', '06', '07', '08', '10'];
 export const materials: Material[] = [
@@ -93,15 +95,20 @@ export const materials: Material[] = [
   }),
   { id: 'all-materials', title: 'ダミー教材をまとめて保存', filename: 'typescript-all-materials.zip', type: 'application/zip', group: 'bundle' },
 ];
+// 商品の教材本文。Day ごとの PDF を1つの ZIP にまとめ、ソースの ZIP と同じ版の置き場（release.prefix）に
+// <id>-textbook.zip の名前で置く。開ける合言葉はその商品の合言葉。置かれるまでは商品ページに出ない（optional）。
+export function textbookMaterial(id: string): Material {
+  return { id: 'textbook', title: '教材本文（PDF）一式', filename: `${id}-textbook.zip`, type: 'application/zip', group: 'books', optional: true };
+}
 export const collections: Collection[] = [
   { id: 'typescript', title: 'TypeScript教材', description: 'アンケートにお答えいただいた方への無料プレゼントです。', distribution: 'survey-gift', audience: 'survey-respondents', status: 'preview', version: release.version, release, approval: giftPolicy, materials, cover: 'Make types\nyour ally.', mark: 'TS' },
   {
-    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: redmineCloneRelease.version, release: redmineCloneRelease, approval: productPolicy, cover: 'Build a\nRedmine clone.', mark: 'RM', phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE', filenameHint: { filename: 'redmine-clone.zip', day: 'Day 3' },
-    materials: [{ id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }],
+    id: 'redmine-clone', title: 'Redmineクローン教材', description: '30日で学ぶフルスタック開発教材のソースコードです。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: redmineCloneRelease.version, release: redmineCloneRelease, approval: productPolicy, cover: 'Build a\nRedmine clone.', mark: 'RM', phraseEnv: 'ACCESS_PHRASE_SHA256_REDMINE_CLONE', filenameHint: { filename: 'redmine-clone.zip', day: 'Day 3', material: 'source-zip' },
+    materials: [textbookMaterial('redmine-clone'), { id: 'source-zip', title: 'ソースコード一式（Day0 の骨格）', filename: 'redmine-clone-source.zip', type: 'application/zip', group: 'bundle' }],
   },
   {
-    id: 'task-app', title: 'Task-App教材', description: 'Next.js 15で作るタスク管理アプリ教材の配布 ZIP です。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: taskAppRelease.version, release: taskAppRelease, approval: taskAppPolicy, cover: 'Build a\nNext.js app.', mark: 'TA', phraseEnv: 'ACCESS_PHRASE_SHA256_TASK_APP', filenameHint: { filename: 'task-app-curriculum-v1.1.zip', day: 'Day 1' },
-    materials: [{ id: 'source-zip', title: '写経用の土台（scaffold）一式', filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle' }],
+    id: 'task-app', title: 'Task-App教材', description: 'Next.js 15で作るタスク管理アプリ教材の配布 ZIP です。', distribution: 'paid-product', audience: 'buyers', status: 'published', version: taskAppRelease.version, release: taskAppRelease, approval: taskAppPolicy, cover: 'Build a\nNext.js app.', mark: 'TA', phraseEnv: 'ACCESS_PHRASE_SHA256_TASK_APP', filenameHint: { filename: 'task-app-curriculum-v1.1.zip', day: 'Day 1', material: 'source-zip' },
+    materials: [textbookMaterial('task-app'), { id: 'source-zip', title: '写経用の土台（scaffold）一式', filename: 'task-app-curriculum.zip', type: 'application/zip', group: 'bundle' }],
   },
 ];
 export function isSurveyGift(c: Collection): boolean {
@@ -198,7 +205,11 @@ export function validateManifest(): void {
       || new Set(c.materials.map(m => m.id)).size !== c.materials.length
       || new Set(c.materials.map(m => m.filename)).size !== c.materials.length
       || c.materials.some(m => !validMaterial(m) || !m.filename.startsWith(`${c.id}-`))
-      || (c.filenameHint && !/^[a-z0-9][a-z0-9.-]{0,100}\.zip$/.test(c.filenameHint.filename))) throw new Error('Invalid release manifest');
+      || (c.filenameHint && (!/^[a-z0-9][a-z0-9.-]{0,100}\.zip$/.test(c.filenameHint.filename)
+        || !c.materials.some(m => m.id === c.filenameHint?.material && m.type === 'application/zip' && !m.optional)))) throw new Error('Invalid release manifest');
+    // optional（置かれた時だけ出す）は商品だけ。商品には、必ず出す教材が1つ以上要る。
+    if (c.materials.some(m => m.optional) && !isPaidProduct(c)) throw new Error('Optional material outside a product');
+    if (isPaidProduct(c) && !c.materials.some(m => !m.optional)) throw new Error('Product without a required material');
   }
 }
 export const collectionStatusLabel = (status: Collection['status']): string => ({ pending: '準備中', preview: '開発プレビュー', published: '公開中' })[status];

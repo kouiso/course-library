@@ -86,6 +86,44 @@ test('the product phrase unlocks only its product, not the survey gift', async (
   assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-source-v${productVersion}.zip"`);
   assert.equal(await dl.text(), 'PRODUCT ZIP BYTES');
 });
+test('the product textbook ZIP is listed and downloadable only while its object is in the release prefix, and only with that product phrase', async () => {
+  const bucket = await mf.getR2Bucket('MATERIALS');
+  const key = `releases/redmine-clone/${productVersion}/redmine-clone-textbook.zip`;
+  const { cookie } = await loginAttempt(productPhrase);
+  try {
+    await bucket.put(key, 'TEXTBOOK ZIP BYTES');
+    const html = await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text();
+    assert.match(html, /href="\/download\/redmine-clone\/textbook"><span>教材本文（PDF）一式<\/span><small>ZIP<\/small><\/a>/);
+    assert.ok(html.includes(`保存されるファイル名は redmine-clone-textbook-v${productVersion}.zip です。展開すると、Day ごとの本文（PDF）が入っています。本文の Day 1 から順に読み進めてください。`));
+    // 本文は、ソースの ZIP より先に並ぶ。ソースの ZIP の名前の変え方の案内はそのまま出る。
+    assert.ok(html.indexOf('/download/redmine-clone/textbook') < html.indexOf('/download/redmine-clone/source-zip'));
+    assert.match(html, /Day 3 の手順は <code>redmine-clone\.zip<\/code> という名前で書かれています。/);
+    const dl = await req('/download/redmine-clone/textbook', { headers: { Cookie: cookie } });
+    assert.equal(dl.status, 200);
+    assert.equal(dl.headers.get('Content-Type'), 'application/zip');
+    assert.equal(dl.headers.get('Content-Disposition'), `attachment; filename="redmine-clone-textbook-v${productVersion}.zip"`);
+    assert.equal(await dl.text(), 'TEXTBOOK ZIP BYTES');
+    // ほかの商品の合言葉とギフトの合言葉では取り出せない。
+    for (const phrase of [taskAppPhrase, localPhrase]) {
+      const other = await loginAttempt(phrase);
+      assert.equal((await req('/download/redmine-clone/textbook', { headers: { Cookie: other.cookie } })).status, 404);
+    }
+    // 中身の無いオブジェクト（上げかけ）は、置かれていないのと同じく出さない。
+    await bucket.put(key, '');
+    assert.doesNotMatch(await (await req('/courses/redmine-clone', { headers: { Cookie: cookie } })).text(), /教材本文（PDF）一式/);
+    await bucket.delete(key);
+    const without = await req('/courses/redmine-clone', { headers: { Cookie: cookie } });
+    assert.equal(without.status, 200);
+    const withoutHtml = await without.text();
+    assert.doesNotMatch(withoutHtml, /教材本文（PDF）一式|\/download\/redmine-clone\/textbook/);
+    assert.match(withoutHtml, /ソースコード一式（Day0 の骨格）/);
+    assert.equal((await req('/download/redmine-clone/textbook', { headers: { Cookie: cookie } })).status, 404);
+    // 一覧のカードの数は、必ず出す教材だけを数える（本文の有無で変わらない）。
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /ソースコード一式 \/ 1 ファイル/);
+  } finally {
+    await bucket.delete(key);
+  }
+});
 test('the Task-App phrase unlocks only Task-App with its Day 1 rename guidance and never unlocks Redmine or the gift', async () => {
   const source = stripTypeScriptTypes(await readFile(new URL('../src/manifest.ts', import.meta.url), 'utf8'));
   const { taskAppRelease } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
