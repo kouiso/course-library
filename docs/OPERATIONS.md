@@ -40,11 +40,11 @@ The course text reaches buyers through this site too, behind the same product ph
 
 ### What `npm run release:ready` tells you
 
-`npm run release:ready` reads `src/manifest.ts`, runs `validateManifest` and prints one line per collection. Example output, taken with `redmine-clone` at 0.2.1 and `task-app` at 1.1.4 (the version numbers follow the manifest):
+`npm run release:ready` reads `src/manifest.ts`, runs `validateManifest` and prints one line per collection. Example output, taken with `redmine-clone` at 0.2.2 and `task-app` at 1.1.4 (the version numbers follow the manifest):
 
 ```text
 survey-gift: blocked typescript 0.2.2-synthetic - synthetic materials, status preview, giftPolicy.myaspVerified is false, giftPolicy.distributionApproved is false
-paid-product: ready redmine-clone 0.2.1
+paid-product: ready redmine-clone 0.2.2
 paid-product: ready task-app 1.1.4
 Note: the survey gift stays closed in production because it is blocked; only the ready collections are released.
 Approved manifest is ready for a separately authorized production release.
