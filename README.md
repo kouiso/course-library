@@ -2,7 +2,7 @@
 
 A small Japanese course library built with TypeScript, Cloudflare Workers, and a **private** R2 bucket. It delivers two kinds of material: the free TypeScript gift for survey respondents and paid products for buyers (currently `redmine-clone` and `task-app`). A stable entry URL, a separate access phrase for each collection, and a clear course catalogue keep delivery simple.
 
-**Status: version 0.2.2 is live at `https://course-library.kouiso.workers.dev` behind an outer HTTP Basic site gate and the access phrases. The survey gift stays closed in production until its approval flags and real (non-synthetic) materials land. The paid products `redmine-clone` and `task-app` are published and approved in `src/manifest.ts`, each with its own approval flag; production opens a product only to people who enter that product's phrase, which needs the product phrase secret described in the [setup guide](docs/SETUP.md#商品の合言葉任意). Every downloadable file generated in this repository is synthetic; real materials are never committed.**
+**Status: a Worker is live at `https://course-library.kouiso.workers.dev` behind an outer HTTP Basic site gate and the access phrases (an anonymous request answers 401). Which commit is deployed, and whether each product's phrase secret and R2 objects are in place, is recorded privately by the operator and cannot be read from this repository; `package.json` has said 0.2.2 since before `task-app` was added, so the version number alone does not tell. The survey gift stays closed in production until its approval flags and real (non-synthetic) materials land. In this repository's `src/manifest.ts`, the paid products `redmine-clone` and `task-app` are published and approved, each with its own approval flag; production opens a product only to people who enter that product's phrase, which needs the product phrase secret described in the [setup guide](docs/SETUP.md#商品の合言葉任意). Every downloadable file generated in this repository is synthetic; real materials are never committed.**
 
 ## Try locally
 
@@ -62,7 +62,7 @@ Local Chromium visual checks also cover desktop (1440×1000), mobile viewport (3
 
 <img src="docs/screenshots/mobile-catalogue.png" alt="Mobile synthetic survey-gift library" width="300">
 
-Windows and WSL are **pending**. Real course code, PDF password compatibility, Safari, and physical mobile devices are **not yet verified**. Production Cloudflare is verified for the synthetic build only: login page, phrase authentication, catalogue, status page, and fail-closed download denial.
+Windows and WSL are **pending**. Real course code, PDF password compatibility, Safari, and physical mobile devices are **not yet verified**. The production checks recorded here were made on the synthetic build only (login page, phrase authentication, catalogue, status page, and fail-closed download denial); the paid products in production have not been checked from this repository.
 
 `npm run check` includes the public staged-file/history scan. The local pre-push hook runs it again before publication; install it with `npm run hooks:install`. Pattern scanning supplements manual review and cannot prove that arbitrary content is safe to publish.
 
