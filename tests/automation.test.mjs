@@ -70,6 +70,25 @@ test('every workflow is manual-only, has explicit permissions and pins external 
     for (const [, ref] of text.matchAll(/uses:\s*\S+@(\S+)/g)) assert.match(ref, /^[0-9a-f]{40}$/, file);
   }
 });
+test('every workflow that runs npm run check installs poppler first, because the candidate tests need pdfinfo and pdftotext', async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const files = (await readdir('.github/workflows')).filter(f => /\.ya?ml$/.test(f));
+  const checked = [];
+  for (const file of files) {
+    const text = await readFile(`.github/workflows/${file}`, 'utf8');
+    // Each job runs on its own runner, so the install must come before the tests in the same job.
+    const jobs = text.slice(text.search(/^jobs:\n/m)).split(/^ {2}(?=[a-z][\w-]*:\n)/m).slice(1);
+    for (const job of jobs) {
+      const steps = job.split('\n').filter(line => !/^\s*#/.test(line));
+      const check = steps.findIndex(line => /\brun: npm (?:run check|test)\s*$/.test(line));
+      if (check < 0) continue;
+      checked.push(`${file}:${job.slice(0, job.indexOf(':'))}`);
+      const install = steps.findIndex(line => /\brun: .*\bapt-get install\b.*\bpoppler-utils\b/.test(line));
+      assert.ok(install > -1 && install < check, `${file} job ${job.slice(0, job.indexOf(':'))} runs the tests without installing poppler-utils before them`);
+    }
+  }
+  assert.deepEqual(checked.sort(), ['promote-product.yml:promote', 'verify.yml:verify']);
+});
 test('issue heading fix lifts ### to ## and #### to ### once, outside code blocks only', async () => {
   const { fixHeadings } = await import('../scripts/automation/heading-fix.mjs');
   const form = '### 背景\n本文\n#### 詳細\n## 既存\n##### 深い\n```\n### コード\n```\n###見出しではない';
