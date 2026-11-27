@@ -48,7 +48,8 @@ export function guide(): string {
   return page('保存と閲覧の手順', '<a href="/library" class="breadcrumb">← プレゼント一覧へ</a><div class="eyebrow">GETTING STARTED</div><h1>教材を手元に。</h1><section class="card"><ol><li>アンケート回答後のご案内から、合言葉を確認します。</li><li>TypeScript教材の「学習の進め方」と必要なPDFを保存します。</li><li>まとめて保存した場合はZIPを展開し、案内されたPDF用パスワードで開きます。</li></ol><h2>確認済みの範囲</h2><p>教材の確認済み環境は教材一覧に記載しています。お使いの環境が確認対象に含まれているかご確認ください。</p><p>配布版とPDFリーダーの案内もあわせてご確認ください。</p><a href="/library" class="text-link">← プレゼント一覧へ戻る</a></section>', 'course', release.version);
 }
 // giftLevel はセッションの段。カードの数は、段で開ける教材（openedCollection）から数える。
-export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0): string {
+// present は、開けた商品ごとの「今出せる教材」に絞ったコレクション（R2 に在る optional の教材を含む）。無い商品は必ず出す教材だけで数える。
+export function catalogue(nonce: string, local = false, unlocked: readonly string[] = [], giftLevel = 0, present: Readonly<Record<string, Collection>> = {}): string {
   // 開けられるカードを先に並べる。欄の中も欄どうしも、合言葉で開いた教材が先に来る。
   const byOpen = (a: Collection, b: Collection) => Number(unlocked.includes(b.id)) - Number(unlocked.includes(a.id));
   const gifts = collections.filter(isSurveyGift).sort(byOpen);
@@ -69,11 +70,12 @@ export function catalogue(nonce: string, local = false, unlocked: readonly strin
     // The survey description is shown only to those who opened the gift, so buyers read no survey wording.
     return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>THANK-YOU GIFT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${open ? (available ? giftBadge(c) : '配布準備中') : '合言葉が必要'}</span><h2>${escape(c.title)}</h2>${open ? `<p>${escape(c.description)}</p>` : ''}${meta ? `<div class="course-meta">${meta}</div>` : ''}<a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
+  const productSummary = (shown: Collection) => `${shown.materials.some(m => m.id === 'textbook') ? '教材本文とソースコード' : 'ソースコード一式'} / ${shown.materials.length} ファイル`;
   const productCard = (c: Collection) => {
     const open = unlocked.includes(c.id);
     const available = canDistributeProduct(c);
     const state = !open ? '合言葉を入力する' : available ? '教材を受け取る' : '配布準備状況を見る';
-    return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `ソースコード一式 / ${c.materials.filter(m => !m.optional).length} ファイル` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
+    return `<article class="course-card${open ? '' : ' locked'}"><div class="course-cover"><div class="cover-title"><span>PAID PRODUCT</span><strong>${escape(c.cover).replaceAll('\n', '<br>')}</strong></div><div class="cover-mark">${escape(c.mark)}</div></div><div class="course-body"><span class="badge${open ? '' : ' locked'}">${!open ? '商品用の合言葉が必要' : available ? collectionStatusLabel(c.status) : '配布準備中'}</span><h2>${escape(c.title)}</h2><p>${escape(c.description)}</p><div class="course-meta">${open ? (available ? `${productSummary(present[c.id] ?? { ...c, materials: c.materials.filter(m => !m.optional) })}` : '配布の準備を確認しています') : 'ご購入時にお渡しする商品用の合言葉で開きます'}</div><a class="course-action${open ? '' : ' secondary'}" href="/courses/${c.id}">${state} <span aria-hidden="true">↗</span></a>${c.version && open && available ? `<small class="version">${c.version}</small>` : ''}</div></article>`;
   };
   // The hero follows what the phrase opened: gift wording for gift holders, product wording for buyers only.
   const giftOpen = gifts.some(c => unlocked.includes(c.id));

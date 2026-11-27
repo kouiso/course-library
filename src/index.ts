@@ -242,7 +242,12 @@ async function handle(req: Request, env: AppEnv): Promise<Response> {
   const unlocked = session.unlocked ?? [];
   // 段を持たないセッションはギフトの教材を1つも開けない（全部開ける扱いにはしない）。
   const giftLevel = session.giftLevel ?? 0;
-  if (url.pathname === '/library') return response(req.method === 'HEAD' ? null : catalogue(session.nonce, local, unlocked, giftLevel));
+  if (url.pathname === '/library') {
+    if (req.method === 'HEAD') return response(null);
+    // 開けて配布中の商品だけ、カードの数を商品ページと同じ「今出せる教材」で数える。
+    const shown = await Promise.all(collections.filter(c => isPaidProduct(c) && unlocked.includes(c.id) && !misconfigured.has(c.id) && canDistributeProduct(c)).map(async c => [c.id, await presentMaterials(env, c)] as const));
+    return response(catalogue(session.nonce, local, unlocked, giftLevel, Object.fromEntries(shown)));
+  }
   if (url.pathname === '/status') {
     const gift = collections.find(isSurveyGift);
     return gift ? response(req.method === 'HEAD' ? null : pendingCourse(gift, session.nonce)) : error(503, '配布設定の確認中です');

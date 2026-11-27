@@ -118,8 +118,15 @@ test('the product textbook ZIP is listed and downloadable only while its object 
     assert.doesNotMatch(withoutHtml, /教材本文（PDF）一式|\/download\/redmine-clone\/textbook/);
     assert.match(withoutHtml, /ソースコード一式（Day0 の骨格）/);
     assert.equal((await req('/download/redmine-clone/textbook', { headers: { Cookie: cookie } })).status, 404);
-    // 一覧のカードの数は、必ず出す教材だけを数える（本文の有無で変わらない）。
+    // 一覧のカードは、商品ページと同じく今出せる教材だけを数える。
     assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /ソースコード一式 \/ 1 ファイル/);
+    await bucket.put(key, 'TEXTBOOK ZIP BYTES');
+    assert.match(await (await req('/library', { headers: { Cookie: cookie } })).text(), /教材本文とソースコード \/ 2 ファイル/);
+    // HEAD は本文の有無に関わらず 200 で、本文を返さない。
+    for (const path of ['/courses/redmine-clone', '/library']) {
+      const head = await req(path, { method: 'HEAD', headers: { Cookie: cookie } });
+      assert.equal(head.status, 200); assert.equal(await head.text(), '');
+    }
   } finally {
     // 共有のバケットに、fixtures が置いた本文を戻す（後の試験が順番に左右されないように）。
     await bucket.put(key, productFixtures().get(key));
