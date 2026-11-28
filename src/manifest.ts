@@ -47,10 +47,10 @@ export const taskAppPolicy = {
 };
 export const taskAppRelease = {
   schemaVersion: 1,
-  version: '1.1.4',
-  date: '2026-11-14',
+  version: '1.2.10',
+  date: '2026-11-28',
   synthetic: false,
-  prefix: 'releases/task-app/1.1.4/',
+  prefix: 'releases/task-app/1.2.10/',
   verification: {
     delivery: 'ローカルの Worker で、この版の置き場から ZIP を版入りの名前で配布できることを検査で確かめています。',
     materials: 'Day1 で scaffold-from-scratch.sh が土台を組み立てるためのファイルだけの配布 ZIP です。完成したアプリの src/ や prisma/ は含みません。',
